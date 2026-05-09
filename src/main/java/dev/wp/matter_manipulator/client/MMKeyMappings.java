@@ -15,35 +15,35 @@ public class MMKeyMappings {
     public static final String CATEGORY = "key.categories." + MMMod.MODID;
 
     public static final KeyMapping LOCK_POSITIONS = new KeyMapping(
-        "key." + MMMod.MODID + ".lock_positions",
+        key("lock_positions"),
         InputConstants.Type.KEYSYM,
         GLFW.GLFW_KEY_T,
         CATEGORY
     );
 
     public static final KeyMapping CUT = new KeyMapping(
-        "key." + MMMod.MODID + ".cut",
+        key("cut"),
         InputConstants.Type.KEYSYM,
         GLFW.GLFW_KEY_X,
         CATEGORY
     );
 
     public static final KeyMapping COPY = new KeyMapping(
-        "key." + MMMod.MODID + ".copy",
+        key("copy"),
         InputConstants.Type.KEYSYM,
         GLFW.GLFW_KEY_C,
         CATEGORY
     );
 
     public static final KeyMapping PASTE = new KeyMapping(
-        "key." + MMMod.MODID + ".paste",
+        key("paste"),
         InputConstants.Type.KEYSYM,
         GLFW.GLFW_KEY_V,
         CATEGORY
     );
 
     public static final KeyMapping RESET = new KeyMapping(
-        "key." + MMMod.MODID + ".reset",
+        key("reset"),
         InputConstants.Type.KEYSYM,
         GLFW.GLFW_KEY_Z,
         CATEGORY
@@ -56,5 +56,9 @@ public class MMKeyMappings {
         event.register(COPY);
         event.register(PASTE);
         event.register(RESET);
+    }
+
+    private static String key(String key){
+        return "key." + MMMod.MODID + "." + key;
     }
 }
