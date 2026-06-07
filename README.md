@@ -1,2 +1,1 @@
-Port of [MatterManipulator](https://github.com/RecursivePineapple/MatterManipulator) to 1.20.1
-or at least an attempt at it.
+A bad attempt at porting [MatterManipulator](https://github.com/RecursivePineapple/MatterManipulator) from 1.7.10 -> 1.20.1
