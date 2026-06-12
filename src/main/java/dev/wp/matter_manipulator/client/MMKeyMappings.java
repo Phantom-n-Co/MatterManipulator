@@ -14,10 +14,21 @@ public class MMKeyMappings {
 
     public static final String CATEGORY = "key.categories." + MMMod.MODID;
 
+    /**
+     * Modifier key gating the other bindings.
+     * If bound (default LCtrl), it must be held; if unbound, the other keys work bare.
+     */
+    public static final KeyMapping CONTROL = new KeyMapping(
+        key("ctrl"),
+        InputConstants.Type.KEYSYM,
+        GLFW.GLFW_KEY_LEFT_CONTROL,
+        CATEGORY
+    );
+
     public static final KeyMapping LOCK_POSITIONS = new KeyMapping(
         key("lock_positions"),
         InputConstants.Type.KEYSYM,
-        GLFW.GLFW_KEY_T,
+        GLFW.GLFW_KEY_G,
         CATEGORY
     );
 
@@ -51,6 +62,7 @@ public class MMKeyMappings {
 
     @SubscribeEvent
     public static void register(RegisterKeyMappingsEvent event) {
+        event.register(CONTROL);
         event.register(LOCK_POSITIONS);
         event.register(CUT);
         event.register(COPY);

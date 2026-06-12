@@ -1,12 +1,17 @@
 package dev.wp.matter_manipulator.common.items.manipulator;
 
+import dev.wp.matter_manipulator.client.ClientEvents;
 import dev.wp.matter_manipulator.client.gui.RadialMenuBuilder;
 import dev.wp.matter_manipulator.client.gui.RadialMenuScreen;
+import dev.wp.matter_manipulator.client.gui.TransformScreen;
+import dev.wp.matter_manipulator.client.render.MMRenderer;
 import dev.wp.matter_manipulator.common.building.Location;
 import dev.wp.matter_manipulator.common.building.PendingBuild;
 import dev.wp.matter_manipulator.common.config.MMModConfig;
 import dev.wp.matter_manipulator.common.networking.*;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.resources.language.I18n;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -86,7 +91,7 @@ public class ItemMatterManipulator extends Item {
         if (level.isClientSide) {
             var cfg = MMState.of(stack).getConfig();
             if (cfg.action == null) {
-                openRadialMenu(stack);
+                openRadialMenu(stack, player);
             } else if (!cfg.locked) {
                 int which = (cfg.placeMode == PlaceMode.COPYING || cfg.placeMode == PlaceMode.MOVING) ? 2 : 0;
                 MMNetwork.CHANNEL.sendToServer(new PacketSetCoord(which, new Location(level.dimension(), player.blockPosition())));
@@ -96,14 +101,14 @@ public class ItemMatterManipulator extends Item {
     }
 
     @OnlyIn(Dist.CLIENT)
-    private void openRadialMenu(ItemStack stack) {
+    private void openRadialMenu(ItemStack stack, Player player) {
         var cfg = MMState.of(stack).getConfig();
-        Minecraft.getInstance().setScreen(new RadialMenuScreen(buildRadialMenu(cfg)));
+        Minecraft.getInstance().setScreen(new RadialMenuScreen(buildRadialMenu(cfg, player)));
     }
 
     // spotless:off
     @OnlyIn(Dist.CLIENT)
-    private RadialMenuBuilder buildRadialMenu(MMConfig cfg) {
+    private RadialMenuBuilder buildRadialMenu(MMConfig cfg, Player player) {
         int allModes = MMCapability.ALLOW_GEOMETRY | MMCapability.ALLOW_COPYING
                 | MMCapability.ALLOW_MOVING | MMCapability.ALLOW_EXCHANGING | MMCapability.ALLOW_CABLES;
         boolean hasMultiMode = Integer.bitCount(tier.capabilities & allModes) > 1;
@@ -117,23 +122,23 @@ public class ItemMatterManipulator extends Item {
 
         // "Set Mode" branch — hidden for PROTO which only has GEOMETRY
         if (hasMultiMode) {
-            b.branch().label("Set Mode")
-                    .branch().label("Remove Mode").hidden(!hasRemove)
-                    .option().label("None").onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetRemoveMode(RemoveMode.NONE))).done()
-                    .option().label("Replaceable").onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetRemoveMode(RemoveMode.REPLACEABLE))).done()
-                    .option().label("All Blocks").onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetRemoveMode(RemoveMode.ALL))).done()
+            b.branch().label(I18n.get("mm.gui.set_mode"))
+                    .branch().label(I18n.get("mm.gui.set_remove_mode")).hidden(!hasRemove)
+                    .option().label(I18n.get("mm.gui.remove_none")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetRemoveMode(RemoveMode.NONE))).done()
+                    .option().label(I18n.get("mm.gui.remove_replaceable")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetRemoveMode(RemoveMode.REPLACEABLE))).done()
+                    .option().label(I18n.get("mm.gui.remove_all")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetRemoveMode(RemoveMode.ALL))).done()
                     .done()
-                    .option().label("Geometry").onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPlaceMode(PlaceMode.GEOMETRY))).done()
-                    .option().label("Copying").hidden(!hasCopy).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPlaceMode(PlaceMode.COPYING))).done()
-                    .option().label("Moving").hidden(!hasMove).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPlaceMode(PlaceMode.MOVING))).done()
-                    .option().label("Exchanging").hidden(!hasExch).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPlaceMode(PlaceMode.EXCHANGING))).done()
-                    .option().label("Cables").hidden(!hasCable).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPlaceMode(PlaceMode.CABLES))).done()
+                    .option().label(I18n.get("mm.gui.geometry")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPlaceMode(PlaceMode.GEOMETRY))).done()
+                    .option().label(I18n.get("mm.gui.copying")).hidden(!hasCopy).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPlaceMode(PlaceMode.COPYING))).done()
+                    .option().label(I18n.get("mm.gui.moving")).hidden(!hasMove).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPlaceMode(PlaceMode.MOVING))).done()
+                    .option().label(I18n.get("mm.gui.exchanging")).hidden(!hasExch).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPlaceMode(PlaceMode.EXCHANGING))).done()
+                    .option().label(I18n.get("mm.gui.cables")).hidden(!hasCable).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPlaceMode(PlaceMode.CABLES))).done()
                     .done();
         } else if (hasRemove) {
-            b.branch().label("Remove Mode")
-                    .option().label("None").onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetRemoveMode(RemoveMode.NONE))).done()
-                    .option().label("Replaceable").onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetRemoveMode(RemoveMode.REPLACEABLE))).done()
-                    .option().label("All Blocks").onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetRemoveMode(RemoveMode.ALL))).done()
+            b.branch().label(I18n.get("mm.gui.set_remove_mode"))
+                    .option().label(I18n.get("mm.gui.remove_none")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetRemoveMode(RemoveMode.NONE))).done()
+                    .option().label(I18n.get("mm.gui.remove_replaceable")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetRemoveMode(RemoveMode.REPLACEABLE))).done()
+                    .option().label(I18n.get("mm.gui.remove_all")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetRemoveMode(RemoveMode.ALL))).done()
                     .done();
         }
 
@@ -146,38 +151,36 @@ public class ItemMatterManipulator extends Item {
             case CABLES -> addCableOptions(b);
         }
 
-        if (cfg.placeMode == PlaceMode.COPYING || cfg.placeMode == PlaceMode.MOVING) {
-            addTransformOptions(b);
-        }
-
         // Universal actions
-        b.option().label("Start Build").onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketStartBuild())).done();
-        b.option().label("Cancel Build").onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketCancelBuild())).done();
+        b.option().label(I18n.get("mm.gui.start_build")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketStartBuild())).done();
+        b.option().label(I18n.get("mm.gui.cancel_build")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketCancelBuild())).done();
 
         return b;
     }
 
     @OnlyIn(Dist.CLIENT)
     private void addGeometryOptions(RadialMenuBuilder b) {
-        b.branch().label("Select Blocks")
-                .option().label("Corners").onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.GEOM_SELECTING_BLOCK, BlockSelectMode.CORNERS))).done()
-                .option().label("Edges").onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.GEOM_SELECTING_BLOCK, BlockSelectMode.EDGES))).done()
-                .option().label("Faces").onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.GEOM_SELECTING_BLOCK, BlockSelectMode.FACES))).done()
-                .option().label("Volumes").onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.GEOM_SELECTING_BLOCK, BlockSelectMode.VOLUMES))).done()
-                .option().label("All").onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.GEOM_SELECTING_BLOCK, BlockSelectMode.ALL))).done()
-                .option().label("Clear Palette").onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketClearBlocks())).done()
+        b.branch().label(I18n.get("mm.gui.select_blocks"))
+                .option().label(I18n.get("mm.gui.set_corners")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.GEOM_SELECTING_BLOCK, BlockSelectMode.CORNERS))).done()
+                .option().label(I18n.get("mm.gui.set_edges")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.GEOM_SELECTING_BLOCK, BlockSelectMode.EDGES))).done()
+                .option().label(I18n.get("mm.gui.set_faces")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.GEOM_SELECTING_BLOCK, BlockSelectMode.FACES))).done()
+                .option().label(I18n.get("mm.gui.set_volumes")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.GEOM_SELECTING_BLOCK, BlockSelectMode.VOLUMES))).done()
+                .option().label(I18n.get("mm.gui.set_all")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.GEOM_SELECTING_BLOCK, BlockSelectMode.ALL))).done()
+                .option().label(I18n.get("mm.gui.clear_all")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketClearBlocks())).done()
                 .done();
-        b.branch().label("Set Shape")
-                .option().label("Line").onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetShape(ShapeType.LINE))).done()
-                .option().label("Cube").onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetShape(ShapeType.CUBE))).done()
-                .option().label("Sphere").onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetShape(ShapeType.SPHERE))).done()
-                .option().label("Cylinder").onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetShape(ShapeType.CYLINDER))).done()
+        b.branch().label(I18n.get("mm.gui.set_shape"))
+                .option().label(I18n.get("mm.gui.line")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetShape(ShapeType.LINE))).done()
+                .option().label(I18n.get("mm.gui.cube")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetShape(ShapeType.CUBE))).done()
+                .option().label(I18n.get("mm.gui.sphere")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetShape(ShapeType.SPHERE))).done()
+                .option().label(I18n.get("mm.gui.cylinder")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetShape(ShapeType.CYLINDER))).done()
                 .done();
+        addMoveCoordsOptions(b);
+        addEditTransformOption(b);
     }
 
     @OnlyIn(Dist.CLIENT)
     private void addCopyingOptions(RadialMenuBuilder b) {
-        b.option().label("Mark Copy").onClicked(() -> {
+        b.option().label(I18n.get("mm.gui.mark_copy")).onClicked(() -> {
             if (MMModConfig.PASTE_AUTO_CLEAR.get()) {
                 MMNetwork.CHANNEL.sendToServer(new PacketClearCoords());
                 if (MMModConfig.RESET_TRANSFORM.get()) {
@@ -186,12 +189,25 @@ public class ItemMatterManipulator extends Item {
             }
             MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.MARK_COPY_A, null));
         }).done();
-        b.option().label("Mark Paste").onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.MARK_PASTE_A, null))).done();
+
+        b.branch().label(I18n.get("mm.gui.edit_stack"))
+                .option().label(I18n.get("mm.gui.reset")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketResetArray())).done()
+                .option().label(I18n.get("mm.gui.mark")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.MARK_ARRAY, null))).done()
+                .done();
+
+        b.branch().label(I18n.get("mm.gui.planning"))
+                .option().label(I18n.get("mm.gui.plan_all_manual")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketRequestRequiredItems(PacketRequestRequiredItems.PLAN_ALL))).done()
+                .option().label(I18n.get("mm.gui.plan_missing_manual")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketRequestRequiredItems(0))).done()
+                .done();
+
+        addEditTransformOption(b);
+
+        b.option().label(I18n.get("mm.gui.mark_paste")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.MARK_PASTE_A, null))).done();
     }
 
     @OnlyIn(Dist.CLIENT)
     private void addMovingOptions(RadialMenuBuilder b) {
-        b.option().label("Mark Cut").onClicked(() -> {
+        b.option().label(I18n.get("mm.gui.mark_cut")).onClicked(() -> {
             if (MMModConfig.PASTE_AUTO_CLEAR.get()) {
                 MMNetwork.CHANNEL.sendToServer(new PacketClearCoords());
                 if (MMModConfig.RESET_TRANSFORM.get()) {
@@ -200,41 +216,58 @@ public class ItemMatterManipulator extends Item {
             }
             MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.MARK_CUT_A, null));
         }).done();
-        b.option().label("Mark Paste").onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.MARK_PASTE_A, null))).done();
+        addEditTransformOption(b);
+        b.option().label(I18n.get("mm.gui.mark_paste")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.MARK_PASTE_A, null))).done();
     }
 
     @OnlyIn(Dist.CLIENT)
     private void addExchangingOptions(RadialMenuBuilder b) {
-        b.branch().label("Replace Whitelist")
-                .option().label("Add Block").onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.EXCH_ADD_REPLACE, null))).done()
-                .option().label("Set Block").onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.EXCH_SET_REPLACE, null))).done()
+        b.branch().label(I18n.get("mm.gui.edit_replace_whitelist"))
+                .option().label(I18n.get("mm.gui.clear")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketClearWhitelist())).done()
+                .option().label(I18n.get("mm.gui.add_block")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.EXCH_ADD_REPLACE, null))).done()
+                .option().label(I18n.get("mm.gui.set_block")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.EXCH_SET_REPLACE, null))).done()
                 .done();
-        b.option().label("Set Replace Target").onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.EXCH_SET_TARGET, null))).done();
-    }
-
-    @OnlyIn(Dist.CLIENT)
-    private void addTransformOptions(RadialMenuBuilder b) {
-        var sub = b.branch().label("Edit Transform");
-
-        sub.option().label("Rotate X+").onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketRotateTransform(Direction.EAST, true))).done();
-        sub.option().label("Rotate X-").onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketRotateTransform(Direction.EAST, false))).done();
-        sub.option().label("Rotate Y+").onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketRotateTransform(Direction.UP, true))).done();
-        sub.option().label("Rotate Y-").onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketRotateTransform(Direction.UP, false))).done();
-        sub.option().label("Rotate Z+").onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketRotateTransform(Direction.SOUTH, true))).done();
-        sub.option().label("Rotate Z-").onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketRotateTransform(Direction.SOUTH, false))).done();
-
-        sub.option().label("Flip X").onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketToggleFlip(MMTransform.FLIP_X))).done();
-        sub.option().label("Flip Y").onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketToggleFlip(MMTransform.FLIP_Y))).done();
-        sub.option().label("Flip Z").onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketToggleFlip(MMTransform.FLIP_Z))).done();
-
-        sub.option().label("Reset Transform").onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketResetTransform())).done();
-
-        sub.done();
+        b.option().label(I18n.get("mm.gui.set_block_to_replace_with")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.EXCH_SET_TARGET, null))).done();
+        addMoveCoordsOptions(b);
+        addEditTransformOption(b);
     }
 
     @OnlyIn(Dist.CLIENT)
     private void addCableOptions(RadialMenuBuilder b) {
-        b.option().label("Pick Cable").onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.PICK_CABLE, null))).done();
+        b.option().label(I18n.get("mm.gui.set_cable")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.PICK_CABLE, null))).done();
+        addMoveCoordsOptions(b);
+        addEditTransformOption(b);
+    }
+
+    /**
+     * "Move Coords" branch, in the original's option order (A, All, B, Here).
+     */
+    @OnlyIn(Dist.CLIENT)
+    private void addMoveCoordsOptions(RadialMenuBuilder b) {
+        b.branch().label(I18n.get("mm.gui.move_coords"))
+                .option().label(I18n.get("mm.gui.move_coord_a")).onClicked(() -> sendMoveCoords(PacketMoveCoords.Which.A)).done()
+                .option().label(I18n.get("mm.gui.move_all")).onClicked(() -> sendMoveCoords(PacketMoveCoords.Which.ALL)).done()
+                .option().label(I18n.get("mm.gui.move_coord_b")).onClicked(() -> sendMoveCoords(PacketMoveCoords.Which.B)).done()
+                .option().label(I18n.get("mm.gui.move_here")).onClicked(() -> sendMoveCoords(PacketMoveCoords.Which.HERE)).done()
+                .done();
+    }
+
+    @OnlyIn(Dist.CLIENT)
+    private static void sendMoveCoords(PacketMoveCoords.Which which) {
+        var look = MMRenderer.getLookingAt(Minecraft.getInstance(), null);
+        if (look == null) return;
+        MMNetwork.CHANNEL.sendToServer(new PacketMoveCoords(which, look));
+    }
+
+    /**
+     * Opens the transform screen (the 1.7.10 transform window). Opened deferred via
+     * the client tick so the radial menu's own teardown can't wipe the new screen.
+     */
+    @OnlyIn(Dist.CLIENT)
+    private void addEditTransformOption(RadialMenuBuilder b) {
+        b.option().label(I18n.get("mm.gui.edit_transform"))
+                .onClicked(() -> ClientEvents.openDeferred(new TransformScreen()))
+                .done();
     }
     // spotless:on
 
@@ -256,7 +289,7 @@ public class ItemMatterManipulator extends Item {
     public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip, TooltipFlag flag) {
         var state = MMState.of(stack);
         long charge = state.getCharge();
-        long max = tier.maxFE;
+        long max = tier.maxEnergy;
         tooltip.add(Component.literal(String.format("Energy: %,d / %,d FE", charge, max)));
         tooltip.add(Component.literal("Range: " + (tier.range < 0 ? "Unlimited" : tier.range + " blocks")));
         tooltip.add(Component.literal("Speed: " + tier.placeSpeed + " blocks/tick"));
@@ -268,7 +301,7 @@ public class ItemMatterManipulator extends Item {
 
         tooltip.add(Component.literal("Mode: " + cfg.placeMode + " | Shape: " + cfg.shape));
         if (cfg.locked) {
-            tooltip.add(Component.literal("POSITIONS LOCKED").withStyle(net.minecraft.ChatFormatting.RED));
+            tooltip.add(Component.literal("POSITIONS LOCKED").withStyle(ChatFormatting.RED));
         }
     }
 
@@ -308,10 +341,10 @@ public class ItemMatterManipulator extends Item {
         public int receiveEnergy(int maxReceive, boolean simulate) {
             var s = state();
             long current = s.getCharge();
-            long space = tier.maxFE - current;
+            long space = tier.maxEnergy - current;
             long accepted = Math.min(space, maxReceive);
             if (!simulate) s.setCharge(current + accepted);
-            return (int) Math.min(accepted, Integer.MAX_VALUE);
+            return (int) accepted;
         }
 
         @Override
@@ -320,7 +353,7 @@ public class ItemMatterManipulator extends Item {
             long current = s.getCharge();
             long extracted = Math.min(current, maxExtract);
             if (!simulate) s.setCharge(current - extracted);
-            return (int) Math.min(extracted, Integer.MAX_VALUE);
+            return (int) extracted;
         }
 
         @Override
@@ -330,7 +363,7 @@ public class ItemMatterManipulator extends Item {
 
         @Override
         public int getMaxEnergyStored() {
-            return (int) Math.min(tier.maxFE, Integer.MAX_VALUE);
+            return (int) Math.min(tier.maxEnergy, Integer.MAX_VALUE);
         }
 
         @Override

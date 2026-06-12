@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
 import net.minecraft.core.RegistryAccess;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.flag.FeatureFlagSet;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.biome.Biome;
@@ -73,7 +74,7 @@ public class SimulatedLevelReader implements LevelReader {
     public WorldBorder getWorldBorder() { return delegate.getWorldBorder(); }
 
     @Override
-    public List<VoxelShape> getEntityCollisions(@Nullable net.minecraft.world.entity.Entity entity, AABB aabb) {
+    public List<VoxelShape> getEntityCollisions(@Nullable Entity entity, AABB aabb) {
         return delegate.getEntityCollisions(entity, aabb);
     }
 

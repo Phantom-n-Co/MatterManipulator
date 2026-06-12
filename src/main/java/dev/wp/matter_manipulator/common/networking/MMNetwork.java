@@ -61,5 +61,29 @@ public class MMNetwork {
 
         CHANNEL.registerMessage(nextId++, PacketToggleFlip.class,
                 PacketToggleFlip::encode, PacketToggleFlip::decode, PacketToggleFlip::handle);
+
+        CHANNEL.registerMessage(nextId++, PacketSetArraySpan.class,
+                PacketSetArraySpan::encode, PacketSetArraySpan::decode, PacketSetArraySpan::handle);
+
+        CHANNEL.registerMessage(nextId++, PacketMMBPressed.class,
+                PacketMMBPressed::encode, PacketMMBPressed::decode, PacketMMBPressed::handle);
+
+        CHANNEL.registerMessage(nextId++, PacketMoveCoords.class,
+                PacketMoveCoords::encode, PacketMoveCoords::decode, PacketMoveCoords::handle);
+
+        CHANNEL.registerMessage(nextId++, PacketClearWhitelist.class,
+                PacketClearWhitelist::encode, PacketClearWhitelist::decode, PacketClearWhitelist::handle);
+
+        CHANNEL.registerMessage(nextId++, PacketResetArray.class,
+                PacketResetArray::encode, PacketResetArray::decode, PacketResetArray::handle);
+
+        CHANNEL.registerMessage(nextId++, PacketBuildStatus.class,
+                PacketBuildStatus::encode, PacketBuildStatus::decode, PacketBuildStatus::handle);
+
+        CHANNEL.registerMessage(nextId++, PacketRequestRequiredItems.class,
+                PacketRequestRequiredItems::encode, PacketRequestRequiredItems::decode, PacketRequestRequiredItems::handle);
+
+        CHANNEL.registerMessage(nextId++, PacketSetCoordDirect.class,
+                PacketSetCoordDirect::encode, PacketSetCoordDirect::decode, PacketSetCoordDirect::handle);
     }
 }

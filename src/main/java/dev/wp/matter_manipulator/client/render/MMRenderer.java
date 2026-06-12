@@ -1,10 +1,13 @@
 package dev.wp.matter_manipulator.client.render;
 
 import com.mojang.blaze3d.vertex.*;
+import dev.wp.matter_manipulator.common.building.BuildGenerator;
 import dev.wp.matter_manipulator.common.building.Location;
+import dev.wp.matter_manipulator.common.building.PendingBlock;
 import dev.wp.matter_manipulator.common.building.shapes.*;
 import dev.wp.matter_manipulator.common.items.manipulator.*;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.core.BlockPos;
@@ -20,8 +23,8 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Renders translucent bounding boxes, ruler lines, and cable line previews
- * for the currently held matter manipulator. Matches 1.7.10 visual style.
+ * Renders translucent bounding boxes and cable line previews
+ * for the currently held matter manipulator.
  */
 public class MMRenderer {
 
@@ -32,7 +35,6 @@ public class MMRenderer {
     private static final float TR = 0.15f, TG = 0.6f, TB = 0.75f, TA = 0.75f;
     // Orange (paste): 0.75, 0.5, 0.15
     private static final float OR = 0.75f, OG = 0.5f, OB = 0.15f;
-    private static final int RULER_LENGTH = 128;
 
     @SubscribeEvent
     public static void onRender(RenderLevelStageEvent event) {
@@ -56,6 +58,14 @@ public class MMRenderer {
         var camPos = mc.gameRenderer.getMainCamera().getPosition();
         var ps = event.getPoseStack();
 
+        updateAnalysisCache(cfg, mc.level);
+
+        // Ghost-block hints: positions are coordC-relative in COPYING/MOVING, absolute otherwise
+        BlockPos ghostOrigin = (cfg.placeMode == PlaceMode.COPYING || cfg.placeMode == PlaceMode.MOVING)
+                && cfg.coordC != null ? cfg.coordC.pos : null;
+        int tierRange = ((ItemMatterManipulator) held.getItem()).getTier().range;
+        GhostBlockRenderer.submit(analysisCache, ghostOrigin, mc.level, player, tierRange);
+
         ps.pushPose();
         ps.translate(-camPos.x, -camPos.y, -camPos.z);
 
@@ -65,6 +75,8 @@ public class MMRenderer {
                 case CABLES               -> renderCableMode(ps, mc, cfg);
                 case COPYING, MOVING      -> renderCopyMode(ps, mc, cfg);
             }
+            GhostBlockRenderer.render(ps, cfg.placeMode);
+            GhostBlockRenderer.renderStatusBoxes(ps);
         } finally {
             ps.popPose();
         }
@@ -78,34 +90,16 @@ public class MMRenderer {
     // ── GEOMETRY / EXCHANGING ─────────────────────────────────────────────────────
 
     private static void renderAreaMode(PoseStack ps, Minecraft mc, MMConfig cfg) {
-        var bufSource = mc.renderBuffers().bufferSource();
-        var linesBuf  = bufSource.getBuffer(RenderType.lines());
-
         if (cfg.coordA != null && cfg.coordB != null) {
             BlockPos a = cfg.coordA.pos, b = cfg.coordB.pos;
 
             if (cfg.placeMode == PlaceMode.GEOMETRY && cfg.shape != ShapeType.CUBE) {
-                List<ShapeBlock> blocks = switch (cfg.shape) {
-                    case LINE     -> ShapeLine.generate(a, b);
-                    case SPHERE   -> ShapeSphere.generate(a, b);
-                    case CYLINDER -> ShapeCylinder.generate(a, b, 3);
-                    default -> Collections.emptyList();
-                };
-
-                for (var sb : blocks) {
-                    var p = sb.pos();
-                    LevelRenderer.renderLineBox(ps, linesBuf,
-                        p.getX(), p.getY(), p.getZ(),
-                        p.getX() + 1, p.getY() + 1, p.getZ() + 1,
-                        TR, TG, TB, 0.7f);
-                }
-
-                BoxRenderer.drawRulers(ps, linesBuf, a.getX() + 0.5, a.getY() + 0.5, a.getZ() + 0.5, TR, TG, TB, TA, RULER_LENGTH);
-                BoxRenderer.drawRulers(ps, linesBuf, b.getX() + 0.5, b.getY() + 0.5, b.getZ() + 0.5, TR, TG, TB, TA, RULER_LENGTH);
-
-                hudText = blocks.size() + " blocks";
-                bufSource.endBatch(RenderType.lines());
+                // Shape blocks themselves are shown as ghost-block hints
+                hudText = analysisCache.size() + " blocks";
             } else {
+                var bufSource = mc.renderBuffers().bufferSource();
+                var linesBuf  = bufSource.getBuffer(RenderType.lines());
+
                 double x0 = Math.min(a.getX(), b.getX());
                 double y0 = Math.min(a.getY(), b.getY());
                 double z0 = Math.min(a.getZ(), b.getZ());
@@ -115,17 +109,10 @@ public class MMRenderer {
 
                 BoxRenderer.drawFilledBox(ps, x0, y0, z0, x1, y1, z1, TR, TG, TB, 0.3f);
                 LevelRenderer.renderLineBox(ps, linesBuf, x0, y0, z0, x1, y1, z1, TR, TG, TB, TA);
-                BoxRenderer.drawRulers(ps, linesBuf, a.getX() + 0.5, a.getY() + 0.5, a.getZ() + 0.5, TR, TG, TB, TA, RULER_LENGTH);
-                BoxRenderer.drawRulers(ps, linesBuf, b.getX() + 0.5, b.getY() + 0.5, b.getZ() + 0.5, TR, TG, TB, TA, RULER_LENGTH);
 
                 hudText = dims(a, b);
                 bufSource.endBatch(RenderType.lines());
             }
-        } else if (cfg.coordA != null) {
-            BlockPos a = cfg.coordA.pos;
-            BoxRenderer.drawRulers(ps, linesBuf, a.getX() + 0.5, a.getY() + 0.5, a.getZ() + 0.5, TR, TG, TB, TA, RULER_LENGTH);
-            hudText = "";
-            bufSource.endBatch(RenderType.lines());
         } else {
             hudText = "";
         }
@@ -134,36 +121,16 @@ public class MMRenderer {
     // ── CABLES ───────────────────────────────────────────────────────────────────
 
     private static void renderCableMode(PoseStack ps, Minecraft mc, MMConfig cfg) {
-        var bufSource = mc.renderBuffers().bufferSource();
-        var linesBuf  = bufSource.getBuffer(RenderType.lines());
-
+        // The cable line itself is shown as ghost-block hints
         if (cfg.coordA != null && cfg.coordB != null) {
             BlockPos a = cfg.coordA.pos;
             BlockPos b = pinToAxis(a, cfg.coordB.pos);
-
-            BoxRenderer.drawRulers(ps, linesBuf, a.getX() + 0.5, a.getY() + 0.5, a.getZ() + 0.5, TR, TG, TB, TA, RULER_LENGTH);
-            BoxRenderer.drawRulers(ps, linesBuf, b.getX() + 0.5, b.getY() + 0.5, b.getZ() + 0.5, TR, TG, TB, TA, RULER_LENGTH);
-
-            for (var sb : ShapeLine.generate(a, b)) {
-                var p = sb.pos();
-                LevelRenderer.renderLineBox(ps, linesBuf,
-                    p.getX(), p.getY(), p.getZ(),
-                    p.getX() + 1, p.getY() + 1, p.getZ() + 1,
-                    TR, TG, TB, 0.7f);
-            }
 
             int len = Math.max(Math.max(
                 Math.abs(a.getX() - b.getX()),
                 Math.abs(a.getY() - b.getY())),
                 Math.abs(a.getZ() - b.getZ())) + 1;
             hudText = len + " blocks";
-
-            bufSource.endBatch(RenderType.lines());
-        } else if (cfg.coordA != null) {
-            BlockPos a = cfg.coordA.pos;
-            BoxRenderer.drawRulers(ps, linesBuf, a.getX() + 0.5, a.getY() + 0.5, a.getZ() + 0.5, TR, TG, TB, TA, RULER_LENGTH);
-            hudText = "";
-            bufSource.endBatch(RenderType.lines());
         } else {
             hudText = "";
         }
@@ -172,21 +139,9 @@ public class MMRenderer {
     // ── COPYING / MOVING ─────────────────────────────────────────────────────────
 
     private static void renderCopyMode(PoseStack ps, Minecraft mc, MMConfig cfg) {
-        // Ghost-block preview at paste destination (matches 1.7.10 behaviour)
-        PreviewRenderer.renderPastePreview(ps, mc, cfg);
-
+        // Ghost-block previews at the paste destination are drawn by GhostBlockRenderer
         var bufSource = mc.renderBuffers().bufferSource();
         var linesBuf  = bufSource.getBuffer(RenderType.lines());
-
-        if (cfg.coordA != null) {
-            BoxRenderer.drawRulers(ps, linesBuf, cfg.coordA.pos.getX() + 0.5, cfg.coordA.pos.getY() + 0.5, cfg.coordA.pos.getZ() + 0.5, TR, TG, TB, TA, RULER_LENGTH);
-        }
-        if (cfg.coordB != null) {
-            BoxRenderer.drawRulers(ps, linesBuf, cfg.coordB.pos.getX() + 0.5, cfg.coordB.pos.getY() + 0.5, cfg.coordB.pos.getZ() + 0.5, TR, TG, TB, TA, RULER_LENGTH);
-        }
-        if (cfg.coordC != null) {
-            BoxRenderer.drawRulers(ps, linesBuf, cfg.coordC.pos.getX() + 0.5, cfg.coordC.pos.getY() + 0.5, cfg.coordC.pos.getZ() + 0.5, OR, OG, OB, TA, RULER_LENGTH);
-        }
 
         if (cfg.coordA != null && cfg.coordB != null) {
             BlockPos a = cfg.coordA.pos, b = cfg.coordB.pos;
@@ -239,7 +194,20 @@ public class MMRenderer {
 
         MMConfig eff = cfg.copy();
         switch (cfg.action) {
-            case MOVING_COORDS -> eff.coordB = loc;
+            case SELECTING_CORNER_B -> eff.coordB = loc;
+            case MOVING_COORDS -> {
+                // Coords with offsets track the crosshair until committed
+                if (cfg.coordAOffset != null) eff.coordA = new Location(loc.dimension, cfg.getCoordA(level, look));
+                if (cfg.coordBOffset != null) eff.coordB = new Location(loc.dimension, cfg.getCoordB(level, look));
+                if (cfg.coordCOffset != null) eff.coordC = new Location(loc.dimension, cfg.getCoordC(level, look));
+            }
+            case MARK_ARRAY -> {
+                // Live array span preview while aiming
+                if (cfg.coordA != null && cfg.coordB != null && cfg.coordC != null) {
+                    var mult = cfg.getArrayMult(look);
+                    eff.arraySpan = new int[]{mult.x, mult.y, mult.z};
+                }
+            }
             case MARK_COPY_A, MARK_CUT_A -> {
                 eff.coordA = loc;
                 eff.coordB = null;
@@ -251,7 +219,7 @@ public class MMRenderer {
         return eff;
     }
 
-    /** Pins {@code b} to the dominant axis relative to {@code a} (matches 1.7.10 pinToAxes). */
+    /** Pins {@code b} to the dominant axis relative to {@code a}. */
     private static BlockPos pinToAxis(BlockPos a, BlockPos b) {
         int dx = Math.abs(b.getX() - a.getX());
         int dy = Math.abs(b.getY() - a.getY());
@@ -262,7 +230,7 @@ public class MMRenderer {
     }
 
     @Nullable
-    private static BlockPos getLookingAt(Minecraft mc, @Nullable PendingAction action) {
+    public static BlockPos getLookingAt(Minecraft mc, @Nullable PendingAction action) {
         var hit = mc.hitResult;
         var player = mc.player;
         if (player == null) return null;
@@ -279,6 +247,20 @@ public class MMRenderer {
         if (action != null && action.isDirectBlockPick()) return null;
 
         return player.blockPosition();
+    }
+
+    private static List<PendingBlock> analysisCache = Collections.emptyList();
+    private static long lastAnalysisTime = 0;
+    private static MMConfig lastAnalyzedConfig = null;
+
+    private static void updateAnalysisCache(MMConfig cfg, ClientLevel level) {
+        if (level == null) return;
+        long now = System.currentTimeMillis();
+        if (now - lastAnalysisTime < 1000 && lastAnalyzedConfig != null && lastAnalyzedConfig.equals(cfg)) return;
+        
+        lastAnalysisTime = now;
+        lastAnalyzedConfig = cfg.copy();
+        analysisCache = BuildGenerator.generateBlocks(cfg, level);
     }
 
     private static String dims(BlockPos a, BlockPos b) {

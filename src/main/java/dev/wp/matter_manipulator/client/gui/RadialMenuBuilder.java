@@ -12,7 +12,6 @@ import java.util.function.Supplier;
 
 /**
  * Builder that helps constructing radial menus with options and nested sub-menus.
- * Ported from the 1.7.10 original.
  */
 @OnlyIn(Dist.CLIENT)
 public class RadialMenuBuilder {

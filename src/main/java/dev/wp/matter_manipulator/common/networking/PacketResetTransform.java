@@ -29,7 +29,7 @@ public class PacketResetTransform {
 
             var cfg = state.mutate();
             cfg.transform = new MMTransform();
-            cfg.arraySpan = new int[]{1, 1, 1};
+            cfg.arraySpan = new int[]{0, 0, 0};
             
             player.sendSystemMessage(Component.literal("Matter Manipulator transform reset."));
             

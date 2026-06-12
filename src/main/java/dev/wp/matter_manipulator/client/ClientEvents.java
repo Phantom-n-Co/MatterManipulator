@@ -8,17 +8,52 @@ import dev.wp.matter_manipulator.common.items.manipulator.MMState;
 import dev.wp.matter_manipulator.common.items.manipulator.PendingAction;
 import dev.wp.matter_manipulator.common.items.manipulator.PlaceMode;
 import dev.wp.matter_manipulator.common.networking.*;
+import dev.wp.matter_manipulator.client.gui.RadialMenuScreen;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.InputEvent;
 import net.minecraftforge.client.event.RenderGuiOverlayEvent;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
+import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
+import javax.annotation.Nullable;
+
 @Mod.EventBusSubscriber(modid = MMMod.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
 public class ClientEvents {
+
+    @Nullable
+    private static Screen deferredScreen;
+
+    /**
+     * Opens a screen once no other screen is open. Needed when opening from a radial
+     * menu click: the menu tears its own screen down right after the click handler
+     * runs (possibly over several animation frames), which would wipe a screen opened
+     * synchronously.
+     */
+    public static void openDeferred(Screen screen) {
+        deferredScreen = screen;
+    }
+
+    @SubscribeEvent
+    public static void onClientTick(TickEvent.ClientTickEvent event) {
+        if (event.phase != TickEvent.Phase.END || deferredScreen == null) return;
+        var mc = Minecraft.getInstance();
+        if (mc.screen == null) {
+            var screen = deferredScreen;
+            deferredScreen = null;
+            mc.setScreen(screen);
+        } else if (!(mc.screen instanceof RadialMenuScreen)) {
+            // Something else (chat, pause menu, ...) got there first; don't ambush the user later
+            deferredScreen = null;
+        }
+    }
 
     @SubscribeEvent
     public static void onRender(RenderLevelStageEvent event) {
@@ -39,13 +74,65 @@ public class ClientEvents {
         event.getGuiGraphics().drawString(font, text, (w - tw) / 2, h - 50, 0xFFFFFF, true);
     }
 
+    /**
+     * Drains accumulated clicks so they don't fire later. KeyMapping click counts keep
+     * accumulating even when we early-return, which reproduces the original's phantom-press
+     * bug (1.7.10 MMKeyInputs: presses queued while another item was held fire on swap).
+     */
+    private static void drainClicks() {
+        while (MMKeyMappings.LOCK_POSITIONS.consumeClick()) {}
+        while (MMKeyMappings.CUT.consumeClick()) {}
+        while (MMKeyMappings.COPY.consumeClick()) {}
+        while (MMKeyMappings.PASTE.consumeClick()) {}
+        while (MMKeyMappings.RESET.consumeClick()) {}
+    }
+
+    @SubscribeEvent
+    public static void onMouseScroll(InputEvent.MouseScrollingEvent event) {
+        // Mirrors the original's scroll workaround: hotbar scrolling must not ghost-trigger keys
+        drainClicks();
+    }
+
+    /**
+     * Middle-mouse picking, faithful to 1.7.10: while holding the manipulator, pick-block is
+     * intercepted in all modes and picks into the palette / exchange whitelist / cable slot.
+     */
+    @SubscribeEvent
+    public static void onPickBlock(InputEvent.InteractionKeyMappingTriggered event) {
+        if (!event.isPickBlock()) return;
+        var mc = Minecraft.getInstance();
+        var player = mc.player;
+        if (player == null) return;
+
+        if (!(player.getMainHandItem().getItem() instanceof ItemMatterManipulator)) return;
+
+        event.setCanceled(true);
+        event.setSwingHand(false);
+
+        if (mc.hitResult instanceof BlockHitResult bhr && mc.hitResult.getType() == HitResult.Type.BLOCK) {
+            MMNetwork.CHANNEL.sendToServer(new PacketMMBPressed(bhr.getBlockPos(), true));
+        } else {
+            MMNetwork.CHANNEL.sendToServer(new PacketMMBPressed(BlockPos.ZERO, false));
+        }
+    }
+
     @SubscribeEvent
     public static void onKeyInput(InputEvent.Key event) {
         var mc = Minecraft.getInstance();
         if (mc.player == null || mc.screen != null) return;
 
         var held = mc.player.getMainHandItem();
-        if (!(held.getItem() instanceof ItemMatterManipulator)) return;
+        if (!(held.getItem() instanceof ItemMatterManipulator)) {
+            drainClicks();
+            return;
+        }
+
+        // Faithful to 1.7.10: if the CONTROL modifier is bound, it must be held;
+        // unbinding it makes the keys work bare.
+        if (!MMKeyMappings.CONTROL.isUnbound() && !MMKeyMappings.CONTROL.isDown()) {
+            drainClicks();
+            return;
+        }
 
         if (MMKeyMappings.LOCK_POSITIONS.consumeClick()) {
             MMNetwork.CHANNEL.sendToServer(new PacketToggleLock());
@@ -53,7 +140,9 @@ public class ClientEvents {
         }
 
         if (MMKeyMappings.CUT.consumeClick()) {
-            MMNetwork.CHANNEL.sendToServer(new PacketSetPlaceMode(PlaceMode.MOVING));
+            if (MMState.of(held).getConfig().placeMode != PlaceMode.MOVING) {
+                MMNetwork.CHANNEL.sendToServer(new PacketSetPlaceMode(PlaceMode.MOVING));
+            }
             if (MMModConfig.PASTE_AUTO_CLEAR.get()) {
                 MMNetwork.CHANNEL.sendToServer(new PacketClearCoords());
                 if (MMModConfig.RESET_TRANSFORM.get()) {
@@ -65,7 +154,9 @@ public class ClientEvents {
         }
 
         if (MMKeyMappings.COPY.consumeClick()) {
-            MMNetwork.CHANNEL.sendToServer(new PacketSetPlaceMode(PlaceMode.COPYING));
+            if (MMState.of(held).getConfig().placeMode != PlaceMode.COPYING) {
+                MMNetwork.CHANNEL.sendToServer(new PacketSetPlaceMode(PlaceMode.COPYING));
+            }
             if (MMModConfig.PASTE_AUTO_CLEAR.get()) {
                 MMNetwork.CHANNEL.sendToServer(new PacketClearCoords());
                 if (MMModConfig.RESET_TRANSFORM.get()) {

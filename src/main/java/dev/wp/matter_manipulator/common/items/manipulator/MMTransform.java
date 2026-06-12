@@ -43,6 +43,13 @@ public class MMTransform {
         return new Vector3i(Math.round(v2.x), Math.round(v2.y), Math.round(v2.z));
     }
 
+    /** Applies the inverse transform, used to map world-space deltas back into copy space. */
+    public Vector3i applyInverse(Vector3i v) {
+        Vector3f v2 = new Vector3f(v.x(), v.y(), v.z())
+                .mulTransposeDirection(new Matrix4f(getRotation()).invert());
+        return new Vector3i(Math.round(v2.x), Math.round(v2.y), Math.round(v2.z));
+    }
+
     public void rotate(Direction axis, int amount) {
         uncache();
         Matrix4f rot = new Matrix4f().rotate((float) (Math.PI / 2 * amount), v(axis));

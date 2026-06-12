@@ -41,16 +41,16 @@ public enum MMTier {
     public final int range;
     /** Blocks placed per tick. */
     public final int placeSpeed;
-    /** Maximum FE stored. */
-    public final long maxFE;
+    /** Maximum Energy (FE/EU depending on if GTm is present) stored. */
+    public final long maxEnergy;
     /** Capability bitmask. */
     public final int capabilities;
 
-    MMTier(String id, int range, int placeSpeed, long maxFE, int capabilities) {
+    MMTier(String id, int range, int placeSpeed, long maxEnergy, int capabilities) {
         this.id = id;
         this.range = range;
         this.placeSpeed = placeSpeed;
-        this.maxFE = maxFE;
+        this.maxEnergy = maxEnergy;
         this.capabilities = capabilities;
     }
 

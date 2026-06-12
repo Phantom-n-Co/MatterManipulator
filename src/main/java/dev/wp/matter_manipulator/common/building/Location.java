@@ -1,6 +1,7 @@
 package dev.wp.matter_manipulator.common.building;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
@@ -58,7 +59,7 @@ public class Location {
 
     public static Location fromNBT(CompoundTag tag) {
         var dimKey = ResourceKey.create(
-                net.minecraft.core.registries.Registries.DIMENSION,
+                Registries.DIMENSION,
                 ResourceLocation.parse(tag.getString("dim"))
         );
         return new Location(dimKey, new BlockPos(tag.getInt("x"), tag.getInt("y"), tag.getInt("z")));

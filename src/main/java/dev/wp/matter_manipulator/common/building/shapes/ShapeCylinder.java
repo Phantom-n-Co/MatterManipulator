@@ -1,76 +1,109 @@
 package dev.wp.matter_manipulator.common.building.shapes;
 
+import dev.wp.matter_manipulator.common.items.manipulator.MMConfig;
 import dev.wp.matter_manipulator.common.items.manipulator.SlotType;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
+import org.joml.Vector3i;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class ShapeCylinder {
 
-    /**
-     * Cylinder whose axis runs from a to b. The radius is derived from the
-     * perpendicular offset provided by coordC (or defaults to 3 if absent).
-     * For simplicity: axis = primary direction A→B, radius applied in the
-     * two perpendicular axes.
-     */
-    public static List<ShapeBlock> generate(BlockPos a, BlockPos b, int radius) {
+    public static List<ShapeBlock> generate(BlockPos a, BlockPos b, BlockPos c) {
         var result = new ArrayList<ShapeBlock>();
+        
+        Vector3i va = new Vector3i(a.getX(), a.getY(), a.getZ());
+        Vector3i vb = new Vector3i(b.getX(), b.getY(), b.getZ());
+        Vector3i vc = new Vector3i(c.getX(), c.getY(), c.getZ());
 
-        int dx = b.getX() - a.getX();
-        int dy = b.getY() - a.getY();
-        int dz = b.getZ() - a.getZ();
+        Vector3i b2 = MMConfig.pinToPlanes(va, vb);
+        Vector3i height = MMConfig.pinToLine(va, b2, vc).sub(va);
+        Vector3i delta = new Vector3i(b2).sub(va);
 
-        // Determine primary axis
-        if (Math.abs(dy) >= Math.abs(dx) && Math.abs(dy) >= Math.abs(dz)) {
-            // Y axis cylinder
-            generateAlongAxis(result, a, b, Direction.Axis.Y, radius);
-        } else if (Math.abs(dx) >= Math.abs(dz)) {
-            generateAlongAxis(result, a, b, Direction.Axis.X, radius);
-        } else {
-            generateAlongAxis(result, a, b, Direction.Axis.Z, radius);
+        delta.x += (int) Math.signum(delta.x);
+        delta.y += (int) Math.signum(delta.y);
+        delta.z += (int) Math.signum(delta.z);
+
+        int dA = 0, dB = 0, dH = 0;
+        Vector3i vecA, vecB, vecH;
+
+        int minComp = -1;
+        int minVal = Integer.MAX_VALUE;
+        if (Math.abs(delta.x) < minVal) { minVal = Math.abs(delta.x); minComp = 0; }
+        if (Math.abs(delta.y) < minVal) { minVal = Math.abs(delta.y); minComp = 1; }
+        if (Math.abs(delta.z) < minVal) { minVal = Math.abs(delta.z); minComp = 2; }
+
+        switch (minComp) {
+            case 0 -> {
+                dA = delta.y; dB = delta.z; dH = height.x;
+                vecA = new Vector3i(0, (int) Math.signum(delta.y), 0);
+                vecB = new Vector3i(0, 0, (int) Math.signum(delta.z));
+                vecH = new Vector3i((int) Math.signum(height.x), 0, 0);
+            }
+            case 1 -> {
+                dA = delta.x; dB = delta.z; dH = height.y;
+                vecA = new Vector3i((int) Math.signum(delta.x), 0, 0);
+                vecB = new Vector3i(0, 0, (int) Math.signum(delta.z));
+                vecH = new Vector3i(0, (int) Math.signum(height.y), 0);
+            }
+            case 2 -> {
+                dA = delta.x; dB = delta.y; dH = height.z;
+                vecA = new Vector3i((int) Math.signum(delta.x), 0, 0);
+                vecB = new Vector3i(0, (int) Math.signum(delta.y), 0);
+                vecH = new Vector3i(0, 0, (int) Math.signum(height.z));
+            }
+            default -> throw new IllegalStateException();
         }
 
-        return result;
-    }
+        int absA = Math.abs(dA), absB = Math.abs(dB), absH = Math.abs(dH) + 1;
+        float rA = absA / 2f, rB = absB / 2f;
 
-    private static void generateAlongAxis(List<ShapeBlock> result, BlockPos a, BlockPos b,
-                                          Direction.Axis axis, int radius) {
-        int r2 = radius * radius;
-        int shellR2 = (radius - 1) * (radius - 1);
+        boolean[][][] present = new boolean[absA + 2][absH + 2][absB + 2];
 
-        int minAxis = axisCoord(a, axis), maxAxis = axisCoord(b, axis);
-        if (minAxis > maxAxis) { int tmp = minAxis; minAxis = maxAxis; maxAxis = tmp; }
-        int cx = a.getX(), cy = a.getY(), cz = a.getZ();
+        for (int aIdx = 0; aIdx < absA; aIdx++) {
+            for (int bIdx = 0; bIdx < absB; bIdx++) {
+                double distance = Math.pow((aIdx - rA + 0.5) / rA, 2.0) + Math.pow((bIdx - rB + 0.5) / rB, 2.0);
+                if (distance <= 1.0) {
+                    for (int hIdx = 0; hIdx < absH; hIdx++) {
+                        present[aIdx + 1][hIdx + 1][bIdx + 1] = true;
+                    }
+                }
+            }
+        }
 
-        for (int main = minAxis; main <= maxAxis; main++) {
-            boolean cap = (main == minAxis || main == maxAxis);
+        for (int aIdx = 0; aIdx < absA; aIdx++) {
+            for (int hIdx = 0; hIdx < absH; hIdx++) {
+                for (int bIdx = 0; bIdx < absB; bIdx++) {
+                    if (!present[aIdx + 1][hIdx + 1][bIdx + 1]) continue;
 
-            for (int u = -radius; u <= radius; u++) {
-                for (int v = -radius; v <= radius; v++) {
-                    int dist2 = u * u + v * v;
-                    if (dist2 > r2) continue;
+                    boolean onSurface = false;
+                    for (int da = -1; da <= 1; da++) {
+                        for (int dh = -1; dh <= 1; dh++) {
+                            for (int db = -1; db <= 1; db++) {
+                                if (Math.abs(da) + Math.abs(dh) + Math.abs(db) != 1) continue;
+                                if (!present[aIdx + 1 + da][hIdx + 1 + dh][bIdx + 1 + db]) {
+                                    onSurface = true;
+                                    break;
+                                }
+                            }
+                            if (onSurface) break;
+                        }
+                        if (onSurface) break;
+                    }
 
-                    boolean shell = dist2 >= shellR2 || cap;
-                    SlotType slot = cap ? SlotType.FACE : (shell ? SlotType.EDGE : SlotType.VOLUME);
+                    SlotType slot = onSurface ? SlotType.FACE : SlotType.VOLUME;
 
-                    BlockPos pos = switch (axis) {
-                        case X -> new BlockPos(main, cy + u, cz + v);
-                        case Y -> new BlockPos(cx + u, main, cz + v);
-                        case Z -> new BlockPos(cx + u, cy + v, main);
-                    };
+                    BlockPos pos = new BlockPos(
+                            aIdx * vecA.x + bIdx * vecB.x + hIdx * vecH.x + a.getX(),
+                            aIdx * vecA.y + bIdx * vecB.y + hIdx * vecH.y + a.getY(),
+                            aIdx * vecA.z + bIdx * vecB.z + hIdx * vecH.z + a.getZ()
+                    );
                     result.add(new ShapeBlock(pos, slot));
                 }
             }
         }
-    }
 
-    private static int axisCoord(BlockPos pos, Direction.Axis axis) {
-        return switch (axis) {
-            case X -> pos.getX();
-            case Y -> pos.getY();
-            case Z -> pos.getZ();
-        };
+        return result;
     }
 }

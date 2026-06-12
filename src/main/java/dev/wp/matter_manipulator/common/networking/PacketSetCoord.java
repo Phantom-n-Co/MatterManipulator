@@ -1,18 +1,21 @@
 package dev.wp.matter_manipulator.common.networking;
 
-import dev.wp.matter_manipulator.common.building.BlockSpec;
 import dev.wp.matter_manipulator.common.building.Location;
-import dev.wp.matter_manipulator.common.data.WeightedSpecList;
+import dev.wp.matter_manipulator.common.items.manipulator.ManipulatorActions;
 import dev.wp.matter_manipulator.common.items.manipulator.MMConfig;
 import dev.wp.matter_manipulator.common.items.manipulator.MMState;
 import dev.wp.matter_manipulator.common.items.manipulator.PendingAction;
 import dev.wp.matter_manipulator.common.items.manipulator.PlaceMode;
+import dev.wp.matter_manipulator.common.utils.MMUtils;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.network.NetworkEvent;
+import org.joml.Vector3i;
 
 import java.util.function.Supplier;
 
@@ -63,7 +66,7 @@ public class PacketSetCoord {
                 // First click in GEOMETRY/EXCHANGING/CABLES: anchor corner A, wait for corner B
                 cfg.coordA = pkt.loc;
                 cfg.coordB = null;
-                cfg.action = PendingAction.MOVING_COORDS;
+                cfg.action = PendingAction.SELECTING_CORNER_B;
                 player.sendSystemMessage(Component.literal(
                         "Corner A set at " + pkt.loc.pos.toShortString() + ". Right-click to set corner B."));
             } else {
@@ -104,54 +107,46 @@ public class PacketSetCoord {
         }
     }
 
-    private static void handlePendingAction(ServerPlayer player, net.minecraft.world.item.ItemStack held,
+    private static void handlePendingAction(ServerPlayer player, ItemStack held,
                                             MMState state, MMConfig cfg, Location loc) {
         switch (cfg.action) {
-            case MOVING_COORDS -> {
+            case SELECTING_CORNER_B -> {
                 // Second click: confirm corner B
                 cfg.coordB = loc;
                 cfg.action = null;
                 player.sendSystemMessage(Component.literal(
                         "Corner B set at " + loc.pos.toShortString() + "."));
             }
-            case GEOM_SELECTING_BLOCK -> {
+            case MOVING_COORDS -> {
+                // Commit: coords with non-null offsets have been tracking the crosshair
                 var level = player.serverLevel();
-                BlockSpec block = BlockSpec.fromWorld(level, loc.pos);
-                boolean add = player.isShiftKeyDown();
-                String blockName = block.state.getBlock().getName().getString();
-                switch (cfg.blockSelectMode) {
-                    case CORNERS -> {
-                        if (!add) cfg.corners = new WeightedSpecList();
-                        cfg.corners.add(block, 1);
-                    }
-                    case EDGES -> {
-                        if (!add) cfg.edges = new WeightedSpecList();
-                        cfg.edges.add(block, 1);
-                    }
-                    case FACES -> {
-                        if (!add) cfg.faces = new WeightedSpecList();
-                        cfg.faces.add(block, 1);
-                    }
-                    case VOLUMES -> {
-                        if (!add) cfg.volumes = new WeightedSpecList();
-                        cfg.volumes.add(block, 1);
-                    }
-                    case ALL -> {
-                        if (!add) {
-                            cfg.corners = new WeightedSpecList();
-                            cfg.edges = new WeightedSpecList();
-                            cfg.faces = new WeightedSpecList();
-                            cfg.volumes = new WeightedSpecList();
-                        }
-                        cfg.corners.add(block, 1);
-                        cfg.edges.add(block, 1);
-                        cfg.faces.add(block, 1);
-                        cfg.volumes.add(block, 1);
-                    }
+                BlockPos a = cfg.coordAOffset != null ? cfg.getCoordA(level, loc.pos) : null;
+                BlockPos b = cfg.coordBOffset != null ? cfg.getCoordB(level, loc.pos) : null;
+                BlockPos c = cfg.coordCOffset != null ? cfg.getCoordC(level, loc.pos) : null;
+                if (a != null) cfg.coordA = new Location(loc.dimension, a);
+                if (b != null) cfg.coordB = new Location(loc.dimension, b);
+                if (c != null) cfg.coordC = new Location(loc.dimension, c);
+                cfg.coordAOffset = null;
+                cfg.coordBOffset = null;
+                cfg.coordCOffset = null;
+                cfg.action = null;
+                MMUtils.sendInfoToPlayer(player, "mm.info.coords_moved");
+            }
+            case MARK_ARRAY -> {
+                if (cfg.coordA == null || cfg.coordB == null
+                        || !cfg.coordA.dimension.equals(cfg.coordB.dimension)) {
+                    MMUtils.sendErrorToPlayer(player, "mm.info.error.cannot_mark_copy");
+                } else if (cfg.coordC == null || !cfg.coordC.dimension.equals(cfg.coordA.dimension)) {
+                    MMUtils.sendErrorToPlayer(player, "mm.info.error.cannot_mark_paste");
+                } else {
+                    Vector3i mult = cfg.getArrayMult(loc.pos);
+                    cfg.arraySpan = new int[]{mult.x, mult.y, mult.z};
+                    MMUtils.sendInfoToPlayer(player, "mm.info.array_marked", mult.x, mult.y, mult.z);
                 }
-                String slot = cfg.blockSelectMode.name().toLowerCase();
-                player.sendSystemMessage(Component.literal(
-                        (add ? "Added " : "Set ") + slot + " block to " + blockName));
+                cfg.action = null;
+            }
+            case GEOM_SELECTING_BLOCK -> {
+                ManipulatorActions.pickBlock(player, cfg, cfg.blockSelectMode, loc.pos, player.isShiftKeyDown());
                 cfg.action = null;
             }
             case MARK_COPY_A -> {
@@ -180,48 +175,19 @@ public class PacketSetCoord {
                 player.sendSystemMessage(Component.literal("Paste target set."));
             }
             case EXCH_SET_TARGET -> {
-                // Air is valid — "replace with air" means delete matching blocks
-                var level = player.serverLevel();
-                BlockSpec block = BlockSpec.fromWorld(level, loc.pos);
-                cfg.replaceWith = new WeightedSpecList();
-                cfg.replaceWith.add(block, 1);
-                String name = block.isAir() ? "air (delete)" : block.state.getBlock().getName().getString();
-                player.sendSystemMessage(Component.literal("Will replace with: " + name));
+                ManipulatorActions.exchangeSetTarget(player, cfg, loc.pos);
                 cfg.action = null;
             }
             case EXCH_ADD_REPLACE -> {
-                var level = player.serverLevel();
-                BlockSpec block = BlockSpec.fromWorld(level, loc.pos);
-                if (!block.isAir()) {
-                    if (cfg.replaceWhitelist == null) cfg.replaceWhitelist = new WeightedSpecList();
-                    cfg.replaceWhitelist.add(block, 1);
-                    player.sendSystemMessage(Component.literal(
-                            "Added to replace whitelist: " + block.state.getBlock().getName().getString()));
-                }
+                ManipulatorActions.exchangeAddWhitelist(player, cfg, loc.pos);
                 cfg.action = null;
             }
             case EXCH_SET_REPLACE -> {
-                var level = player.serverLevel();
-                BlockSpec block = BlockSpec.fromWorld(level, loc.pos);
-                if (!block.isAir()) {
-                    cfg.replaceWhitelist = new WeightedSpecList();
-                    cfg.replaceWhitelist.add(block, 1);
-                    player.sendSystemMessage(Component.literal(
-                            "Replace whitelist set to: " + block.state.getBlock().getName().getString()));
-                }
+                ManipulatorActions.exchangeSetWhitelist(player, cfg, loc.pos);
                 cfg.action = null;
             }
             case PICK_CABLE -> {
-                var level = player.serverLevel();
-                BlockSpec block = BlockSpec.fromWorld(level, loc.pos);
-                if (!block.isAir()) {
-                    cfg.replaceWith = new WeightedSpecList();
-                    cfg.replaceWith.add(block, 1);
-                    player.sendSystemMessage(Component.literal(
-                            "Cable block set to: " + block.state.getBlock().getName().getString()));
-                } else {
-                    player.sendSystemMessage(Component.literal("No block there."));
-                }
+                ManipulatorActions.pickCable(player, cfg, loc.pos);
                 cfg.action = null;
             }
         }

@@ -2,6 +2,7 @@ package dev.wp.matter_manipulator.common.data;
 
 import dev.wp.matter_manipulator.common.building.BlockSpec;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 
@@ -55,6 +56,10 @@ public class WeightedSpecList {
         BlockSpec spec = pick(rng);
         if (spec != null) return spec.state;
         return Blocks.STONE.defaultBlockState();
+    }
+
+    public boolean contains(Block block) {
+        return entries.stream().anyMatch(e -> e.spec.state.getBlock() == block);
     }
 
     public static class WeightedEntry {

@@ -57,7 +57,7 @@ public class MMInventory {
         }
     }
 
-    private int countInInventory(ItemStack target) {
+    public int countInInventory(ItemStack target) {
         int total = 0;
         var inv = player.getInventory();
         for (int i = 0; i < inv.getContainerSize(); i++) {

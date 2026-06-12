@@ -3,6 +3,7 @@ package dev.wp.matter_manipulator.common.networking;
 import dev.wp.matter_manipulator.common.data.WeightedSpecList;
 import dev.wp.matter_manipulator.common.items.manipulator.MMState;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
 
@@ -30,7 +31,7 @@ public class PacketClearBlocks {
             cfg.faces = new WeightedSpecList();
             cfg.volumes = new WeightedSpecList();
             state.saveIfDirty();
-            player.sendSystemMessage(net.minecraft.network.chat.Component.literal("Palette cleared."));
+            player.sendSystemMessage(Component.literal("Palette cleared."));
         });
         ctx.get().setPacketHandled(true);
     }

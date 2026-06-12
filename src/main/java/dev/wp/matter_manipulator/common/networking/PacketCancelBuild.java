@@ -2,6 +2,7 @@ package dev.wp.matter_manipulator.common.networking;
 
 import dev.wp.matter_manipulator.common.building.PendingBuild;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
 
@@ -26,7 +27,7 @@ public class PacketCancelBuild {
     }
 
     public static void execute(ServerPlayer player) {
-        PendingBuild.cancel(player.getUUID());
-        player.sendSystemMessage(net.minecraft.network.chat.Component.literal("Build cancelled."));
+        PendingBuild.cancel(player);
+        player.sendSystemMessage(Component.literal("Build cancelled."));
     }
 }

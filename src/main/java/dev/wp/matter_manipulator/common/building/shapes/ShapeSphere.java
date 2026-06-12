@@ -8,46 +8,50 @@ import java.util.List;
 
 public class ShapeSphere {
 
-    /**
-     * Ellipsoid shell where center=a and radius=distance(a,b) per axis.
-     * Only the outer shell (1 block thick) is included.
-     */
     public static List<ShapeBlock> generate(BlockPos center, BlockPos radiusPoint) {
         var result = new ArrayList<ShapeBlock>();
 
-        double rx = Math.abs(radiusPoint.getX() - center.getX()) + 0.5;
-        double ry = Math.abs(radiusPoint.getY() - center.getY()) + 0.5;
-        double rz = Math.abs(radiusPoint.getZ() - center.getZ()) + 0.5;
+        int sx = Math.abs(radiusPoint.getX() - center.getX()) * 2 + 1;
+        int sy = Math.abs(radiusPoint.getY() - center.getY()) * 2 + 1;
+        int sz = Math.abs(radiusPoint.getZ() - center.getZ()) * 2 + 1;
 
-        if (rx < 0.5) rx = 0.5;
-        if (ry < 0.5) ry = 0.5;
-        if (rz < 0.5) rz = 0.5;
+        int minX = center.getX() - Math.abs(radiusPoint.getX() - center.getX());
+        int minY = center.getY() - Math.abs(radiusPoint.getY() - center.getY());
+        int minZ = center.getZ() - Math.abs(radiusPoint.getZ() - center.getZ());
 
-        int minX = (int) Math.floor(center.getX() - rx);
-        int maxX = (int) Math.ceil(center.getX() + rx);
-        int minY = (int) Math.floor(center.getY() - ry);
-        int maxY = (int) Math.ceil(center.getY() + ry);
-        int minZ = (int) Math.floor(center.getZ() - rz);
-        int maxZ = (int) Math.ceil(center.getZ() + rz);
+        double rx = sx / 2.0;
+        double ry = sy / 2.0;
+        double rz = sz / 2.0;
 
-        for (int x = minX; x <= maxX; x++) {
-            for (int y = minY; y <= maxY; y++) {
-                for (int z = minZ; z <= maxZ; z++) {
-                    double dx = (x - center.getX()) / rx;
-                    double dy = (y - center.getY()) / ry;
-                    double dz = (z - center.getZ()) / rz;
-                    double dist = dx * dx + dy * dy + dz * dz;
+        boolean[][][] present = new boolean[sx + 2][sy + 2][sz + 2];
 
-                    // Only the surface shell: between (r-1)^2 and r^2 when normalized
-                    double innerRx = (rx - 1) / rx, innerRy = (ry - 1) / ry, innerRz = (rz - 1) / rz;
-                    double innerDx = (x - center.getX()) / Math.max(rx - 1, 0.001);
-                    double innerDy = (y - center.getY()) / Math.max(ry - 1, 0.001);
-                    double innerDz = (z - center.getZ()) / Math.max(rz - 1, 0.001);
-                    double innerDist = innerDx * innerDx + innerDy * innerDy + innerDz * innerDz;
+        for (int x = 0; x < sx; x++) {
+            for (int y = 0; y < sy; y++) {
+                for (int z = 0; z < sz; z++) {
+                    double dx = (rx > 1 ? Math.pow((x - rx + 0.5) / rx, 2.0) : 0);
+                    double dy = (ry > 1 ? Math.pow((y - ry + 0.5) / ry, 2.0) : 0);
+                    double dz = (rz > 1 ? Math.pow((z - rz + 0.5) / rz, 2.0) : 0);
+                    double distance = Math.sqrt(dx + dy + dz);
 
-                    if (dist <= 1.0 && (rx <= 1 || ry <= 1 || rz <= 1 || innerDist >= 1.0)) {
-                        result.add(new ShapeBlock(new BlockPos(x, y, z), SlotType.FACE));
+                    if (distance <= 1) {
+                        present[x + 1][y + 1][z + 1] = true;
                     }
+                }
+            }
+        }
+
+        for (int x = 0; x < sx; x++) {
+            for (int y = 0; y < sy; y++) {
+                for (int z = 0; z < sz; z++) {
+                    if (!present[x + 1][y + 1][z + 1]) continue;
+
+                    boolean onSurface = false;
+                    if (rx > 1 && (!present[x][y + 1][z + 1] || !present[x + 2][y + 1][z + 1])) onSurface = true;
+                    if (!onSurface && ry > 1 && (!present[x + 1][y][z + 1] || !present[x + 1][y + 2][z + 1])) onSurface = true;
+                    if (!onSurface && rz > 1 && (!present[x + 1][y + 1][z] || !present[x + 1][y + 1][z + 2])) onSurface = true;
+
+                    SlotType slot = onSurface ? SlotType.FACE : SlotType.VOLUME;
+                    result.add(new ShapeBlock(new BlockPos(x + minX, y + minY, z + minZ), slot));
                 }
             }
         }

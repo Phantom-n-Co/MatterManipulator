@@ -15,7 +15,16 @@ public enum PendingAction {
     /**
      * Waiting for the user to right-click to set corner B after corner A was anchored.
      */
-    MOVING_COORDS;
+    SELECTING_CORNER_B,
+    /**
+     * Coordinates with non-null offsets in MMConfig track the crosshair until the next
+     * right-click commits them.
+     */
+    MOVING_COORDS,
+    /**
+     * The next right-click sets the copy array span from the looked-at position.
+     */
+    MARK_ARRAY;
 
     public boolean isDirectBlockPick() {
         return this == GEOM_SELECTING_BLOCK

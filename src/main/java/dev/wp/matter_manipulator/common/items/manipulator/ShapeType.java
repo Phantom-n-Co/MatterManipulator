@@ -4,5 +4,9 @@ public enum ShapeType {
     LINE,
     CUBE,
     SPHERE,
-    CYLINDER
+    CYLINDER;
+
+    public boolean requiresC() {
+        return this == CYLINDER;
+    }
 }

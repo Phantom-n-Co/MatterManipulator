@@ -2,6 +2,7 @@ package dev.wp.matter_manipulator.client.render;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.*;
+import lombok.Setter;
 import net.minecraft.client.renderer.ShaderInstance;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
@@ -10,28 +11,28 @@ import org.joml.Matrix4f;
 import javax.annotation.Nullable;
 
 /**
- * Utility for drawing translucent animated selection boxes and ruler lines.
+ * Utility for drawing translucent animated selection boxes.
  * The filled box uses a custom GLSL shader (fancybox) that reproduces the
  * diagonal sine-wave shimmer from the 1.7.10 original.
  */
 @OnlyIn(Dist.CLIENT)
 public class BoxRenderer {
 
+    /**
+     * -- SETTER --
+     * Called from RegisterShadersEvent once the shader is compiled and linked.
+     */
+    @Setter
     @Nullable
     private static ShaderInstance fancyBoxShader;
-
-    /** Called from RegisterShadersEvent once the shader is compiled and linked. */
-    public static void setFancyBoxShader(ShaderInstance shader) {
-        fancyBoxShader = shader;
-    }
 
     // ── Filled animated box ───────────────────────────────────────────────────────
 
     /**
      * Draws a translucent, animated filled AABB using the fancybox shader.
-     * UV coordinates match the 1.7.10 continuous-unwrap pattern so the
+     * UV coordinates match the 1.7.10 continuous-unwrap pattern, so the
      * diagonal stripe animation is visually identical to the original.
-     *
+     * <p>
      * Callers must have the PoseStack already translated by -camPos before calling.
      */
     // spotless:off
@@ -110,33 +111,4 @@ public class BoxRenderer {
         RenderSystem.disableBlend();
     }
     // spotless:on
-
-    // ── Ruler lines ───────────────────────────────────────────────────────────────
-
-    /**
-     * Draws axis-aligned ruler lines extending from (cx, cy, cz) in all 6 directions.
-     * {@code linesBuf} must come from a {@code RenderType.lines()} buffer.
-     */
-    public static void drawRulers(PoseStack ps, VertexConsumer linesBuf,
-                                  double cx, double cy, double cz,
-                                  float r, float g, float b, float a, int length) {
-        float fx = (float) cx, fy = (float) cy, fz = (float) cz;
-        var pose = ps.last();
-
-        addLine(linesBuf, pose, fx, fy, fz, fx + length, fy, fz, r, g, b, a,  1,  0,  0);
-        addLine(linesBuf, pose, fx, fy, fz, fx - length, fy, fz, r, g, b, a, -1,  0,  0);
-        addLine(linesBuf, pose, fx, fy, fz, fx, fy + length, fz, r, g, b, a,  0,  1,  0);
-        addLine(linesBuf, pose, fx, fy, fz, fx, fy - length, fz, r, g, b, a,  0, -1,  0);
-        addLine(linesBuf, pose, fx, fy, fz, fx, fy, fz + length, r, g, b, a,  0,  0,  1);
-        addLine(linesBuf, pose, fx, fy, fz, fx, fy, fz - length, r, g, b, a,  0,  0, -1);
-    }
-
-    private static void addLine(VertexConsumer buf, PoseStack.Pose pose,
-                                float x1, float y1, float z1,
-                                float x2, float y2, float z2,
-                                float r, float g, float b, float a,
-                                float nx, float ny, float nz) {
-        buf.vertex(pose.pose(), x1, y1, z1).color(r, g, b, a).normal(pose.normal(), nx, ny, nz).endVertex();
-        buf.vertex(pose.pose(), x2, y2, z2).color(r, g, b, a).normal(pose.normal(), nx, ny, nz).endVertex();
-    }
 }

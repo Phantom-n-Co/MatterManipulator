@@ -67,7 +67,9 @@ public class PacketSetPendingAction {
             case EXCH_SET_REPLACE -> "set replace whitelist";
             case EXCH_SET_TARGET -> "set block to replace with";
             case PICK_CABLE -> "pick cable";
-            case MOVING_COORDS -> "set corner B";
+            case SELECTING_CORNER_B -> "set corner B";
+            case MOVING_COORDS -> "commit the moved coordinates";
+            case MARK_ARRAY -> "mark the array span";
         };
     }
 }

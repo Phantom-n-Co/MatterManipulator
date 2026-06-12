@@ -5,7 +5,9 @@ import com.google.gson.GsonBuilder;
 import dev.wp.matter_manipulator.MMMod;
 import dev.wp.matter_manipulator.common.building.BlockSpec;
 import dev.wp.matter_manipulator.common.building.Location;
+import dev.wp.matter_manipulator.common.config.MMModConfig;
 import dev.wp.matter_manipulator.common.data.WeightedSpecList;
+import dev.wp.matter_manipulator.common.items.MMUpgrades;
 import dev.wp.matter_manipulator.common.persist.BlockSpecAdapter;
 import dev.wp.matter_manipulator.common.persist.LocationAdapter;
 import dev.wp.matter_manipulator.common.persist.WeightedSpecListAdapter;
@@ -66,10 +68,8 @@ public class MMState {
         return actual;
     }
 
-    // TODO: enable power usage when mod is ready
     public boolean hasCharge(long amount) {
-        return true;
-//        return getCharge() >= amount;
+        return getCharge() >= amount;
     }
 
     // ── Upgrades ─────────────────────────────────────────────────────────────────
@@ -85,6 +85,24 @@ public class MMState {
 
     public boolean hasUpgrade(int upgradeId) {
         return getUpgrades().get(upgradeId);
+    }
+
+    public boolean hasCapability(MMTier tier, int cap) {
+        int c = tier.capabilities;
+        for (var u : MMUpgrades.values()) {
+            if (hasUpgrade(u.bit)) {
+                c |= u.providesCaps;
+            }
+        }
+        return (c & cap) != 0;
+    }
+
+    public int getPlaceSpeed(MMTier tier) {
+        int speed = (tier == MMTier.MK3) ? MMModConfig.MK3_PLACE_SPEED.get() : tier.placeSpeed;
+        if (hasUpgrade(MMUpgrades.SPEED.bit)) {
+            speed *= 2;
+        }
+        return speed;
     }
 
     // ── Config ───────────────────────────────────────────────────────────────────
