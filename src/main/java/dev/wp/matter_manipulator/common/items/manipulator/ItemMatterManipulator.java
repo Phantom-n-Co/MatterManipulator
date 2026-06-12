@@ -239,9 +239,6 @@ public class ItemMatterManipulator extends Item {
         addEditTransformOption(b);
     }
 
-    /**
-     * "Move Coords" branch, in the original's option order (A, All, B, Here).
-     */
     @OnlyIn(Dist.CLIENT)
     private void addMoveCoordsOptions(RadialMenuBuilder b) {
         b.branch().label(I18n.get("mm.gui.move_coords"))
@@ -259,10 +256,7 @@ public class ItemMatterManipulator extends Item {
         MMNetwork.CHANNEL.sendToServer(new PacketMoveCoords(which, look));
     }
 
-    /**
-     * Opens the transform screen (the 1.7.10 transform window). Opened deferred via
-     * the client tick so the radial menu's own teardown can't wipe the new screen.
-     */
+    /** Opens the transform screen, deferred so the radial menu teardown can't wipe it. */
     @OnlyIn(Dist.CLIENT)
     private void addEditTransformOption(RadialMenuBuilder b) {
         b.option().label(I18n.get("mm.gui.edit_transform"))

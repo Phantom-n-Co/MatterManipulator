@@ -40,7 +40,7 @@ public class MMLanguageProvider extends LanguageProvider {
         addInfoKeys();
     }
 
-    /** Transform window labels, matching the original 1.7.10 mm.transform.* keys and strings. */
+    /** Transform screen button/header labels. */
     private void addTransformKeys() {
         add("mm.transform.info", "Flip: %s\nUp: %s\nForward: %s");
         add("mm.transform.button.rotate_x-", "Rotate X-");
@@ -60,7 +60,7 @@ public class MMLanguageProvider extends LanguageProvider {
         add("mm.transform.header.stacking", "Stacking");
     }
 
-    /** Radial menu labels, matching the original 1.7.10 mm.gui.* keys and strings. */
+    /** Radial menu labels. */
     private void addRadialMenuKeys() {
         add("mm.gui.set_mode", "Set Mode");
         add("mm.gui.set_remove_mode", "Set Remove Mode");
@@ -109,7 +109,7 @@ public class MMLanguageProvider extends LanguageProvider {
         add("mm.gui.cancel_build", "Cancel Build");
     }
 
-    /** Chat feedback messages, matching the original 1.7.10 mm.info.* keys (EU reworded to FE). */
+    /** Chat feedback messages. */
     private void addInfoKeys() {
         add("mm.info.building", "Building %s blocks...");
         add("mm.info.error.out_of_eu", "Matter Manipulator ran out of energy.");

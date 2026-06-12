@@ -75,9 +75,9 @@ public class ClientEvents {
     }
 
     /**
-     * Drains accumulated clicks so they don't fire later. KeyMapping click counts keep
-     * accumulating even when we early-return, which reproduces the original's phantom-press
-     * bug (1.7.10 MMKeyInputs: presses queued while another item was held fire on swap).
+     * Drains accumulated clicks so they don't fire on the next tick. KeyMapping click
+     * counts keep accumulating even when we early-return (e.g. while holding a non-manipulator
+     * item), so they must be drained to prevent phantom presses after swapping items.
      */
     private static void drainClicks() {
         while (MMKeyMappings.LOCK_POSITIONS.consumeClick()) {}
@@ -89,14 +89,10 @@ public class ClientEvents {
 
     @SubscribeEvent
     public static void onMouseScroll(InputEvent.MouseScrollingEvent event) {
-        // Mirrors the original's scroll workaround: hotbar scrolling must not ghost-trigger keys
         drainClicks();
     }
 
-    /**
-     * Middle-mouse picking, faithful to 1.7.10: while holding the manipulator, pick-block is
-     * intercepted in all modes and picks into the palette / exchange whitelist / cable slot.
-     */
+    /** Intercepts middle-mouse pick-block while holding the manipulator. */
     @SubscribeEvent
     public static void onPickBlock(InputEvent.InteractionKeyMappingTriggered event) {
         if (!event.isPickBlock()) return;
@@ -127,8 +123,7 @@ public class ClientEvents {
             return;
         }
 
-        // Faithful to 1.7.10: if the CONTROL modifier is bound, it must be held;
-        // unbinding it makes the keys work bare.
+        // If the CONTROL modifier is bound it must be held; unbinding it makes the keys work bare.
         if (!MMKeyMappings.CONTROL.isUnbound() && !MMKeyMappings.CONTROL.isDown()) {
             drainClicks();
             return;

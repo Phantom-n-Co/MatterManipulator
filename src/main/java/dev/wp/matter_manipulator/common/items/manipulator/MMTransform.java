@@ -5,10 +5,7 @@ import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
 
-/**
- * Represents the rotation and flipping of a build region.
- * Ported from the 1.7.10 original.
- */
+/** Represents the rotation and flipping of a build region. */
 public class MMTransform {
 
     public boolean flipX, flipY, flipZ;

@@ -183,8 +183,7 @@ public class MMConfig {
 
     /**
      * Computes the array span from the paste origin (coordC) to {@code lookingAt}:
-     * how many extra copies of the region fit per axis. Ported from the 1.7.10 getArrayMult.
-     * Requires coordA/B/C to be set.
+     * how many extra copies of the region fit per axis. Requires coordA/B/C to be set.
      */
     public Vector3i getArrayMult(BlockPos lookingAt) {
         Vector3i array = new Vector3i(

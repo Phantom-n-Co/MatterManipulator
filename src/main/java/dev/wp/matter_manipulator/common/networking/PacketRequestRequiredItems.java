@@ -20,11 +20,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 
-/**
- * Radial menu "Planning" options: computes the material list for the current copy
- * and prints it to chat, like the original GetRequiredItems (manual plans only —
- * the uplink auto-plan variants are out of scope).
- */
+/** Radial menu "Planning" options: computes the material list for the current copy and prints it to chat. */
 public class PacketRequestRequiredItems {
 
     /** Include all blocks rather than only those that don't match the world yet. */

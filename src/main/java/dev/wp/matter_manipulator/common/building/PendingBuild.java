@@ -129,7 +129,7 @@ public class PendingBuild {
 
         int speed = state.getPlaceSpeed(tier);
 
-        // One aggregated teleport sound per tick batch, like the original (not per block)
+        // One aggregated teleport sound per tick batch, not per block
         int soundCount = 0;
         double soundX = 0, soundY = 0, soundZ = 0;
 
@@ -185,7 +185,7 @@ public class PendingBuild {
                 }
             }
 
-            // Dry-run placement check (matches 1.7.10 ProxiedWorld)
+            // Dry-run placement check to catch blocks with unmet placement requirements
             var simulated = new SimulatedLevelReader(level, pb.relPos);
             if (!pb.spec.state.canSurvive(simulated, pb.relPos)) {
                 // Dependency not met (e.g. torch neighbor), shuffle to back
@@ -279,8 +279,7 @@ public class PendingBuild {
         }
 
         if (soundCount > 0) {
-            // The original always played the enderman warp sound for placements,
-            // with volume scaled by distance so far-away batches stay audible
+            // Volume scales with distance so far-away batches stay audible
             double cx = soundX / soundCount, cy = soundY / soundCount, cz = soundZ / soundCount;
             float volume = (float) (player.position().distanceTo(new Vec3(cx, cy, cz)) / 16.0 + 1.0);
             level.playSound(null, cx, cy, cz, SoundEvents.ENDERMAN_TELEPORT, SoundSource.BLOCKS, volume, 1.0f);
@@ -295,15 +294,11 @@ public class PendingBuild {
             MMUtils.sendInfoToPlayer(player, "mm.info.finished_placing");
             sendStatus(player, LongList.of(), LongList.of());
         } else if (fullCycle && placed == 0) {
-            // Nothing in the queue can be placed any more — stop and report, like the original
             giveUp(player, inv);
         }
     }
 
-    /**
-     * Reports the blocks that could not be placed (red hints for placement failures,
-     * yellow for missing items) and stops the build, like the original's onStopped.
-     */
+    /** Reports blocks that could not be placed (red = placement failure, yellow = missing items) and stops the build. */
     private void giveUp(Player player, MMInventory inv) {
         LongList errors = new LongArrayList();
         LongList warnings = new LongArrayList();

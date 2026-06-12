@@ -29,19 +29,16 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Renders translucent ghost-block hints for all manipulator modes, like the 1.7.10
- * drawHints. The pending-block list is baked into a cached VertexBuffer and redrawn
- * each frame; rebuilds happen when the analysis changes, the player moves, or status
- * hints arrive. Blocks flagged as build warnings/errors are tinted yellow/red.
+ * Renders translucent ghost-block hints for all manipulator modes. The pending-block
+ * list is baked into a cached VertexBuffer and redrawn each frame; rebuilds happen
+ * when the analysis changes, the player moves, or status hints arrive. Blocks flagged
+ * as build warnings/errors are tinted yellow/red.
  */
 @OnlyIn(Dist.CLIENT)
 public class GhostBlockRenderer {
 
     private static final float GHOST_ALPHA = 0.35f;
-    /**
-     * Hard cap on baked block models (the configurable maxHints still applies if lower).
-     * The original's 1M hint cap drew simple boxes; full block models are far heavier.
-     */
+    /** Hard cap on baked block models (the configurable maxHints still applies if lower). */
     private static final int HARD_BLOCK_CAP = 32768;
     private static final int MAX_REMOVAL_BOXES = 4096;
     /** Rebake when the player moves this far (blocks), for range culling. */
@@ -79,7 +76,6 @@ public class GhostBlockRenderer {
         dirty = true;
     }
 
-    /** Step 7 entry point: build status hints with expiration. */
     public static void setStatusHints(long[] errors, long[] warnings) {
         errorHints.clear();
         warningHints.clear();
@@ -153,7 +149,7 @@ public class GhostBlockRenderer {
                 if (!current.isAir() && removalBoxes.size() < MAX_REMOVAL_BOXES) removalBoxes.add(pos);
                 continue;
             }
-            if (current == target) continue; // already correct, like the original drawHints skip
+            if (current == target) continue;
 
             long key = pos.asLong();
             consumer.setTint(errorHints.contains(key) ? TINT_ERROR
@@ -182,8 +178,7 @@ public class GhostBlockRenderer {
 
     /**
      * Draws the baked ghosts. The PoseStack must already be translated by -camPos.
-     * EXCHANGING always draws on top (the targets are inside existing blocks),
-     * matching the original's drawOnTop logic.
+     * EXCHANGING always draws on top since its targets are inside existing blocks.
      */
     public static void render(PoseStack ps, PlaceMode mode) {
         boolean onTop = MMModConfig.HINTS_ON_TOP.get() || mode == PlaceMode.EXCHANGING;
@@ -227,10 +222,7 @@ public class GhostBlockRenderer {
                 r, g, b, 0.4f);
     }
 
-    /**
-     * Multiplies vertex colors by a tint and forces a fixed alpha, making the
-     * block model translucent like the original's hint rendering.
-     */
+    /** Multiplies vertex colors by a tint and forces a fixed alpha, making block models translucent. */
     private static final class GhostConsumer implements VertexConsumer {
 
         private final VertexConsumer inner;

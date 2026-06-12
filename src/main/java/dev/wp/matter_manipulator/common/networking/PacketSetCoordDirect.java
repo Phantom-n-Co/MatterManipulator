@@ -13,7 +13,7 @@ import java.util.function.Supplier;
 /**
  * Sets a coordinate to an absolute position, bypassing the pending-action and
  * area-selection semantics of {@link PacketSetCoord}. Used by the transform screen's
- * coordinate editors (the original's SetA/SetB/SetC messages).
+ * coordinate editors.
  */
 public class PacketSetCoordDirect {
 

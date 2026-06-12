@@ -31,11 +31,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Faithful port of the 1.7.10 transform window: a transparent full-screen overlay with
- * rotate/flip/reset controls and an info panel on the left, and coordinate editors for
- * Copy / Copy (A) / Copy (B) / Paste / Stacking on the right. Implemented as a vanilla
- * Screen (the original used ModularUI 1, but the port's radial menu screen lifecycle
- * fights nested ModularUI windows).
+ * Transparent full-screen overlay with rotate/flip/reset controls and an info panel on
+ * the left, and coordinate editors for Copy / Copy (A) / Copy (B) / Paste / Stacking on
+ * the right. Stacking is only shown in COPYING mode.
  */
 @OnlyIn(Dist.CLIENT)
 public class TransformScreen extends Screen {
@@ -63,7 +61,7 @@ public class TransformScreen extends Screen {
 
     private MMConfig cfg = new MMConfig();
 
-    /** Per-frame label/value updaters, mirroring the original widgets' tickers. */
+    /** Per-frame label/value updaters (button step labels, field sync). */
     private final List<Runnable> tickers = new ArrayList<>();
     /** Static decorations (headers, N/A boxes, info panel) drawn behind the widgets. */
     private final List<Runnable> decorations = new ArrayList<>();
@@ -159,7 +157,7 @@ public class TransformScreen extends Screen {
             ty += font.lineHeight + 1;
         }
 
-        // Axis color legend (the original also drew a 3D axis indicator here)
+        // Axis color legend
         int lx = x + 3;
         int ly = y + 36 + (30 - font.lineHeight) / 2;
         lx += drawLegend(g, "X+ ", 0xFFFF5555, lx, ly);
@@ -308,10 +306,7 @@ public class TransformScreen extends Screen {
         return axisGet(getCoordVec(coord), axis);
     }
 
-    /**
-     * Stacking is displayed as a copy count: spans >= 0 show one higher
-     * (span 0 = the single original copy).
-     */
+    /** Stacking displays as a copy count: span 0 = 1 copy, span 1 = 2 copies, etc. */
     private int getVisual(Coord coord, int axis) {
         int k = getComponent(coord, axis);
         if (coord == Coord.STACK && k >= 0) k++;
@@ -382,7 +377,7 @@ public class TransformScreen extends Screen {
     /**
      * Step size for the -/+ buttons: 1 normally, 10 with Shift, and the copy/paste
      * region's size on that axis with Ctrl (so one click steps a whole region).
-     * The region size is captured once per Ctrl press, like the original SizeStorage.
+     * The region size is captured once per Ctrl press and held until Ctrl is released.
      */
     private class StepSize {
 
@@ -480,8 +475,8 @@ public class TransformScreen extends Screen {
         return false;
     }
 
-    // Transparent overlay, like the original TransparentModularGui
     @Override
     public void renderBackground(GuiGraphics graphics) {
+        // Transparent overlay — no background fill
     }
 }

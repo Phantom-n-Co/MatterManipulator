@@ -10,11 +10,7 @@ import org.joml.Matrix4f;
 
 import javax.annotation.Nullable;
 
-/**
- * Utility for drawing translucent animated selection boxes.
- * The filled box uses a custom GLSL shader (fancybox) that reproduces the
- * diagonal sine-wave shimmer from the 1.7.10 original.
- */
+/** Utility for drawing translucent animated selection boxes via the fancybox shader. */
 @OnlyIn(Dist.CLIENT)
 public class BoxRenderer {
 
@@ -30,9 +26,6 @@ public class BoxRenderer {
 
     /**
      * Draws a translucent, animated filled AABB using the fancybox shader.
-     * UV coordinates match the 1.7.10 continuous-unwrap pattern, so the
-     * diagonal stripe animation is visually identical to the original.
-     * <p>
      * Callers must have the PoseStack already translated by -camPos before calling.
      */
     // spotless:off
@@ -42,7 +35,7 @@ public class BoxRenderer {
                                      float r, float g, float b, float a) {
         if (fancyBoxShader == null) return;
 
-        // Expand slightly — matches 1.7.10 expand(0.002) so fill sits just outside wireframe
+        // Expand slightly so the fill sits just outside the wireframe
         x0 -= 0.002; y0 -= 0.002; z0 -= 0.002;
         x1 += 0.002; y1 += 0.002; z1 += 0.002;
 
@@ -51,7 +44,7 @@ public class BoxRenderer {
         float dX = fx1 - fx0, dY = fy1 - fy0, dZ = fz1 - fz0;
         Matrix4f mat = ps.last().pose();
 
-        // Upload time (0‥2.5 s period, matching 1.7.10: millis%2500 / 1000)
+        // Upload time uniform (0‥2.5 s period)
         var timeUniform = fancyBoxShader.getUniform("time");
         if (timeUniform != null) timeUniform.set((System.currentTimeMillis() % 2500) / 1000f);
 
@@ -65,8 +58,7 @@ public class BoxRenderer {
         BufferBuilder buf = tess.getBuilder();
         buf.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR_TEX);
 
-        // Each face uses UV coords that form a continuous unwrap across the whole box,
-        // reproducing the 1.7.10 CapturingTessellator UV pattern exactly.
+        // Each face uses UV coords that form a continuous unwrap across the whole box.
 
         // ── bottom (y-)  UV = (localX, localZ) ───────────────────────────────────
         buf.vertex(mat, fx0, fy0, fz0).color(r,g,b,a).uv(0,   0  ).endVertex();
