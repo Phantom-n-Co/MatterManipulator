@@ -12,6 +12,13 @@ public class MMModConfig {
     public static final ForgeConfigSpec.ConfigValue<Integer> STATUS_EXPIRATION;
     public static final ForgeConfigSpec.ConfigValue<Boolean> HINTS_ON_TOP;
     public static final ForgeConfigSpec.ConfigValue<Boolean> DEBUG_LOGGING;
+    public static final ForgeConfigSpec.ConfigValue<Integer> PROTO_RANGE;
+    public static final ForgeConfigSpec.ConfigValue<Integer> MK1_RANGE;
+    public static final ForgeConfigSpec.ConfigValue<Integer> MK2_RANGE;
+    public static final ForgeConfigSpec.ConfigValue<Integer> MK3_RANGE;
+    public static final ForgeConfigSpec.ConfigValue<Integer> PROTO_PLACE_SPEED;
+    public static final ForgeConfigSpec.ConfigValue<Integer> MK1_PLACE_SPEED;
+    public static final ForgeConfigSpec.ConfigValue<Integer> MK2_PLACE_SPEED;
     public static final ForgeConfigSpec.ConfigValue<Integer> MK3_PLACE_SPEED;
 
     static {
@@ -42,8 +49,24 @@ public class MMModConfig {
         BUILDER.pop();
 
         BUILDER.push("building");
+        BUILDER.push("range").comment("Build range (-1 = unlimited). Server only.");
+        PROTO_RANGE = BUILDER
+                .defineInRange("protoRange", 32, -1, Integer.MAX_VALUE);
+        MK1_RANGE = BUILDER
+                .defineInRange("mk1Range", 64, -1, Integer.MAX_VALUE);
+        MK2_RANGE = BUILDER
+                .defineInRange("mk2Range", 128, -1, Integer.MAX_VALUE);
+        MK3_RANGE = BUILDER
+                .defineInRange("mk3Range", -1, -1, Integer.MAX_VALUE);
+        BUILDER.push("build-speed")
+                .comment("Blocks per tick. High values may cause world desync and lag. Server only.");
+        PROTO_PLACE_SPEED = BUILDER
+                .defineInRange("protoPlaceSpeed", 128, 1, 4096);
+        MK1_PLACE_SPEED = BUILDER
+                .defineInRange("mk1PlaceSpeed", 128, 1, 4096);
+        MK2_PLACE_SPEED = BUILDER
+                .defineInRange("mk2PlaceSpeed", 256, 1, 4096);
         MK3_PLACE_SPEED = BUILDER
-                .comment("High values may cause world desync and lag. Server only.")
                 .defineInRange("mk3PlaceSpeed", 256, 1, 4096);
         BUILDER.pop();
 
