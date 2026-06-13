@@ -1,28 +1,28 @@
 package dev.wp.matter_manipulator.common.items.manipulator;
 
-import dev.wp.matter_manipulator.common.config.MMModConfig;
+import dev.wp.matter_manipulator.common.compat.Mods;
 
 public enum MMTier {
 
     PROTO(
             "proto",
-            MMModConfig.PROTO_RANGE.get(),
-            MMModConfig.PROTO_PLACE_SPEED.get(),
+            32,
+            16,
             10_000_000L,
             MMCapability.ALLOW_GEOMETRY
     ),
     MK1(
             "mk1",
-            MMModConfig.MK1_RANGE.get(),
-            MMModConfig.MK1_PLACE_SPEED.get(),
+            64,
+            64,
             100_000_000L,
             MMCapability.ALLOW_GEOMETRY | MMCapability.ALLOW_REMOVING | MMCapability.ALLOW_EXCHANGING
                     | MMCapability.ALLOW_CONFIGURING | MMCapability.ALLOW_CABLES | MMCapability.CONNECTS_TO_AE
     ),
     MK2(
             "mk2",
-            MMModConfig.MK2_RANGE.get(),
-            MMModConfig.MK2_PLACE_SPEED.get(),
+            128,
+            256,
             1_000_000_000L,
             MMCapability.ALLOW_GEOMETRY | MMCapability.ALLOW_REMOVING | MMCapability.ALLOW_EXCHANGING
                     | MMCapability.ALLOW_CONFIGURING | MMCapability.ALLOW_CABLES | MMCapability.CONNECTS_TO_AE
@@ -30,8 +30,8 @@ public enum MMTier {
     ),
     MK3(
             "mk3",
-            MMModConfig.MK3_RANGE.get(),
-            MMModConfig.MK3_PLACE_SPEED.get(),
+            -1,
+            256,
             10_000_000_000L,
             MMCapability.ALLOW_GEOMETRY | MMCapability.ALLOW_REMOVING | MMCapability.ALLOW_EXCHANGING
                     | MMCapability.ALLOW_CONFIGURING | MMCapability.ALLOW_CABLES | MMCapability.CONNECTS_TO_AE
@@ -66,5 +66,23 @@ public enum MMTier {
 
     public boolean hasCapability(int cap) {
         return (capabilities & cap) != 0;
+    }
+
+    /**
+     * Effective energy capacity for the unit in use: full {@code maxEnergy} (EU) when GregTech is
+     * present, otherwise capped at {@link Integer#MAX_VALUE} since Forge Energy (FE) is int-based.
+     */
+    public long effectiveMaxEnergy() {
+        return Mods.GTCEU ? maxEnergy : Math.min(maxEnergy, Integer.MAX_VALUE);
+    }
+
+    /** GregTech voltage tier used for charging as an electric item (LV, MV, HV, EV by MK level). */
+    public int euTier() {
+        return ordinal() + 1;
+    }
+
+    /** Whether energy is measured in EU (GregTech present) rather than FE. */
+    public static boolean usesEU() {
+        return Mods.GTCEU;
     }
 }

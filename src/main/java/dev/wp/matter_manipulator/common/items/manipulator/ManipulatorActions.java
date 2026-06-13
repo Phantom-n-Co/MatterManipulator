@@ -102,6 +102,6 @@ public class ManipulatorActions {
     }
 
     private static Component displayName(BlockSpec block) {
-        return block.state.getBlock().getName();
+        return block.getDisplayName();
     }
 }

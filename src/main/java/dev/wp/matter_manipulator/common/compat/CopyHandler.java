@@ -1,0 +1,40 @@
+package dev.wp.matter_manipulator.common.compat;
+
+import dev.wp.matter_manipulator.common.building.MMInventory;
+import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+
+import javax.annotation.Nullable;
+
+/**
+ * A per-block-type rule for what survives a COPY. The manipulator no longer pastes a block
+ * entity's full NBT; instead each handler explicitly allows the configuration it understands.
+ * Anything no handler claims is dropped (see {@link CopyHandlers}).
+ *
+ * <p>Stored items are handled generically by {@code PendingBuild.injectContents} via the
+ * item-handler capability, so handlers only deal with configuration, covers, and parts.
+ */
+public interface CopyHandler {
+
+    /** Whether this handler applies to the given block. {@code fullTag} is the captured BE NBT. */
+    boolean matches(BlockState state, @Nullable BlockEntity be, @Nullable CompoundTag fullTag);
+
+    /**
+     * Copies the configuration keys this handler allows from the captured tag into the tag that
+     * will actually be loaded. The BE identity ({@code id}) is added by the registry, so handlers
+     * only contribute their own keys. {@code inv} is provided for handlers that gate a kept key on
+     * the player being able to pay for it (e.g. a jukebox record), consuming it when kept.
+     */
+    default void contributeNbt(CompoundTag full, CompoundTag out, MMInventory inv) {}
+
+    /**
+     * Runs after the whitelisted tag has been loaded into the placed block entity. Used to
+     * re-apply settings through mod APIs and to charge the player for covers, parts, and any
+     * single-slot items the handler kept.
+     */
+    default void afterPaste(ServerLevel level, BlockPos pos, BlockEntity be,
+                            CompoundTag full, MMInventory inv) {}
+}

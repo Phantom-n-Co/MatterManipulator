@@ -1,7 +1,11 @@
 package dev.wp.matter_manipulator.common.building;
 
+import dev.wp.matter_manipulator.common.compat.AECompat;
+import dev.wp.matter_manipulator.common.compat.GTCompat;
+import dev.wp.matter_manipulator.common.compat.Mods;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtUtils;
@@ -14,6 +18,8 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
 
 import javax.annotation.Nullable;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 public class BlockSpec {
@@ -30,10 +36,24 @@ public class BlockSpec {
     @Nullable
     public final ListTag contents;
 
-    public BlockSpec(BlockState state, @Nullable CompoundTag tileData, @Nullable ListTag contents) {
+    /**
+     * Additional items that must be supplied when pasting in COPYING mode — GT covers,
+     * AE2 parts, upgrades, and cells captured via mod-specific APIs. Derived from the
+     * world; not persisted and not part of equality.
+     */
+    @Nullable
+    public List<ItemStack> extraItems;
+
+    public BlockSpec(BlockState state, @Nullable CompoundTag tileData, @Nullable ListTag contents,
+                     @Nullable List<ItemStack> extraItems) {
         this.state = state;
         this.tileData = tileData;
         this.contents = contents;
+        this.extraItems = extraItems;
+    }
+
+    public BlockSpec(BlockState state, @Nullable CompoundTag tileData, @Nullable ListTag contents) {
+        this(state, tileData, contents, null);
     }
 
     public BlockSpec(BlockState state, @Nullable CompoundTag tileData) {
@@ -52,12 +72,17 @@ public class BlockSpec {
         BlockState state = level.getBlockState(pos);
         CompoundTag tileData = null;
         ListTag contents = null;
+        List<ItemStack> extraItems = null;
         BlockEntity be = level.getBlockEntity(pos);
         if (be != null) {
             tileData = be.saveWithFullMetadata();
             contents = captureContents(be);
+            List<ItemStack> extras = new ArrayList<>();
+            if (Mods.GTCEU && GTCompat.isGTMachine(be)) extras.addAll(GTCompat.captureCovers(be));
+            if (Mods.AE2 && AECompat.isAEBlock(be)) extras.addAll(AECompat.captureAEItems(be));
+            if (!extras.isEmpty()) extraItems = extras;
         }
-        return new BlockSpec(state, tileData, contents);
+        return new BlockSpec(state, tileData, contents, extraItems);
     }
 
     @Nullable
@@ -95,7 +120,29 @@ public class BlockSpec {
     public ItemStack toStack() {
         var item = state.getBlock().asItem();
         if (item == Items.AIR) return ItemStack.EMPTY;
+        if (isItemlessBlock()) return ItemStack.EMPTY;
         return new ItemStack(item, 1);
+    }
+
+    /**
+     * Blocks whose registered item can't be obtained or placed directly, so their real cost is
+     * carried by other items. The AE2 cable bus is a virtual host with a placeholder block item
+     * ("AE2 Cable and/or Bus"); its cable and parts are charged separately as extra items.
+     */
+    private boolean isItemlessBlock() {
+        var key = BuiltInRegistries.BLOCK.getKey(state.getBlock());
+        return key != null && key.toString().equals("ae2:cable_bus");
+    }
+
+    /**
+     * A user-facing name for this block. For an itemless host like an AE2 cable bus the block's own
+     * name is a useless placeholder, so the captured contents (cable/part) name it instead.
+     */
+    public Component getDisplayName() {
+        if (isItemlessBlock() && extraItems != null && !extraItems.isEmpty()) {
+            return extraItems.get(0).getHoverName();
+        }
+        return state.getBlock().getName();
     }
 
     public CompoundTag toNBT() {

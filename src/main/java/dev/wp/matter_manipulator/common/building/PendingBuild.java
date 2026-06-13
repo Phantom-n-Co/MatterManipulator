@@ -2,6 +2,10 @@ package dev.wp.matter_manipulator.common.building;
 
 import dev.wp.matter_manipulator.BlockTags;
 import dev.wp.matter_manipulator.MMMod;
+import dev.wp.matter_manipulator.common.compat.AECompat;
+import dev.wp.matter_manipulator.common.compat.CopyHandlers;
+import dev.wp.matter_manipulator.common.compat.GTCompat;
+import dev.wp.matter_manipulator.common.compat.Mods;
 import dev.wp.matter_manipulator.common.config.MMModConfig;
 import dev.wp.matter_manipulator.common.items.manipulator.MMCapability;
 import dev.wp.matter_manipulator.common.items.manipulator.MMState;
@@ -13,10 +17,10 @@ import dev.wp.matter_manipulator.common.networking.PacketBuildStatus;
 import dev.wp.matter_manipulator.common.utils.MMUtils;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongList;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -30,6 +34,8 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
+import net.minecraftforge.fluids.FluidStack;
+import net.minecraftforge.fluids.capability.IFluidHandler;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.IItemHandlerModifiable;
 import net.minecraftforge.network.PacketDistributor;
@@ -56,8 +62,17 @@ public class PendingBuild {
     @Nullable private final BlockPos sourceMin;
     @Nullable private final BlockPos sourceMax;
 
+    /**
+     * MOVING mode: destination positions handled by this build. When the destination
+     * overlaps the source box, these must not be cleared with the source region.
+     */
+    private final LongOpenHashSet movedPositions = new LongOpenHashSet();
+
+    /** CABLES mode: placed GT pipes are auto-connected to their neighbours after placement. */
+    private final boolean cableMode;
+
     private PendingBuild(UUID playerId, MMTier tier, List<PendingBlock> blocks, boolean moving,
-                         @Nullable BlockPos sourceMin, @Nullable BlockPos sourceMax) {
+                         @Nullable BlockPos sourceMin, @Nullable BlockPos sourceMax, boolean cableMode) {
         this.playerId = playerId;
         this.tier = tier;
         this.queue = new ArrayDeque<>(blocks);
@@ -65,6 +80,7 @@ public class PendingBuild {
         this.moving = moving;
         this.sourceMin = sourceMin;
         this.sourceMax = sourceMax;
+        this.cableMode = cableMode;
     }
 
     /**
@@ -76,17 +92,18 @@ public class PendingBuild {
      * @param moving     True for MOVING-mode builds (no item interaction).
      * @param sourceMin  Optional min corner to clear when build finishes (MOVING mode).
      * @param sourceMax  Optional max corner to clear when build finishes (MOVING mode).
+     * @param cableMode  True for CABLES-mode builds: auto-connect placed GT pipes.
      */
     public static void start(Player player, MMTier tier, List<PendingBlock> blocks,
                               BlockPos anchor, boolean moving,
-                              @Nullable BlockPos sourceMin, @Nullable BlockPos sourceMax) {
+                              @Nullable BlockPos sourceMin, @Nullable BlockPos sourceMax, boolean cableMode) {
         if (blocks.isEmpty()) return;
         var translated = new ArrayList<PendingBlock>(blocks.size());
         for (var pb : blocks) {
             translated.add(new PendingBlock(anchor.offset(pb.relPos), pb.spec, pb.buildOrder));
         }
         translated.sort(Comparator.comparingInt(pb -> pb.buildOrder));
-        ACTIVE.put(player.getUUID(), new PendingBuild(player.getUUID(), tier, translated, moving, sourceMin, sourceMax));
+        ACTIVE.put(player.getUUID(), new PendingBuild(player.getUUID(), tier, translated, moving, sourceMin, sourceMax, cableMode));
         MMUtils.sendInfoToPlayer(player, "mm.info.building", blocks.size());
     }
 
@@ -161,6 +178,7 @@ public class PendingBuild {
 
             // Skip if block is already correct (no tile data to restore)
             if (existingState.equals(pb.spec.state) && pb.spec.tileData == null) {
+                if (moving) movedPositions.add(pb.relPos.asLong());
                 placed++;
                 continue;
             }
@@ -231,11 +249,20 @@ public class PendingBuild {
 
             // Remove existing block first
             if (!existingState.isAir()) {
-                if (!dropBlacklisted(existingState)) {
+                // A MOVING destination inside the source box overwrites a block that is
+                // itself being relocated — claiming its drops would duplicate it.
+                boolean relocatedSource = moving && inSourceBox(pb.relPos);
+                if (!relocatedSource && !dropBlacklisted(existingState)) {
                     var drops = Block.getDrops(existingState, level, pb.relPos, level.getBlockEntity(pb.relPos), player, stack);
                     for (var drop : drops) {
                         inv.give(drop);
                     }
+                    reclaimContents(level.getBlockEntity(pb.relPos), inv);
+                }
+                // Remove the BE first: the block's onRemove would otherwise spill the
+                // contents on the ground (they were reclaimed or relocated above).
+                if (level.getBlockEntity(pb.relPos) != null) {
+                    level.removeBlockEntity(pb.relPos);
                 }
                 level.setBlockAndUpdate(pb.relPos, Blocks.AIR.defaultBlockState());
             }
@@ -247,25 +274,54 @@ public class PendingBuild {
             if (pb.spec.tileData != null) {
                 BlockEntity be = level.getBlockEntity(pb.relPos);
                 if (be != null) {
-                    var tileTag = pb.spec.tileData.copy();
-                    // Copying must not duplicate items: stored contents are only pasted
-                    // to the extent the player can actually supply them. Containers with
-                    // an item handler are filtered through it after loading (works for
-                    // any NBT layout); the rest get known vanilla item tags stripped.
-                    boolean viaHandler = !moving && hasItemHandler(be);
-                    if (!moving && !viaHandler) {
-                        filterStoredItems(tileTag, inv);
-                    }
+                    CompoundTag full = pb.spec.tileData;
+                    // MOVING relocates a block verbatim (state + contents travel intact).
+                    // COPYING fabricates a new block, so it keeps only the whitelisted
+                    // configuration each handler allows — positional/runtime state is dropped.
+                    CompoundTag tileTag = moving
+                            ? full.copy()
+                            : CopyHandlers.buildCopyTag(pb.spec.state, be, full, inv);
                     tileTag.putInt("x", pb.relPos.getX());
                     tileTag.putInt("y", pb.relPos.getY());
                     tileTag.putInt("z", pb.relPos.getZ());
-                    be.load(tileTag);
-                    if (viaHandler) {
-                        filterHandlerContents(be, inv);
+                    if (Mods.GTCEU && GTCompat.isGTMachine(be)) {
+                        // GT machines must initialize in chunk-load order (ctor → load →
+                        // onLoad): loading NBT into a live machine leaves its subscriptions
+                        // and multiblock state initialized against the pre-load data.
+                        BlockEntity recreated = BlockEntity.loadStatic(pb.relPos, pb.spec.state, tileTag);
+                        if (recreated != null) {
+                            level.setBlockEntity(recreated);
+                            be = recreated;
+                        } else {
+                            MMMod.LOGGER.warn("Could not recreate block entity at {} from NBT, loading in place", pb.relPos);
+                            be.load(tileTag);
+                        }
+                    } else {
+                        be.load(tileTag);
+                    }
+                    if (!moving) {
+                        // Charge for covers / AE parts / single-slot items the handlers kept.
+                        CopyHandlers.afterPaste(level, pb.relPos, be, full, inv);
+                        // Refill item-handler contents from the capture, charged from inventory.
+                        // AE2 contents live behind its own inventories (handled above), not the
+                        // item-handler cap, so skip them to avoid double handling.
+                        if (!(Mods.AE2 && AECompat.isAEBlock(be))) {
+                            injectContents(be, pb.spec.contents, inv);
+                        }
+                        // Fluids can't be paid for yet (TODO: fill from a connected AE2 network).
+                        drainFluids(be);
                     }
                     be.setChanged();
+                    if (Mods.GTCEU && GTCompat.needsClientSync(be)) {
+                        GTCompat.scheduleClientSync(level, pb.relPos);
+                    }
                 }
             }
+
+            if (moving) movedPositions.add(pb.relPos.asLong());
+
+            // Cable mode connects GT pipes to their neighbours (they don't auto-connect on place).
+            if (cableMode && Mods.GTCEU) GTCompat.connectPipe(level, pb.relPos);
 
             state.consumeCharge(feCost);
 
@@ -328,83 +384,69 @@ public class PendingBuild {
         ACTIVE.remove(playerId);
     }
 
-    private static boolean hasItemHandler(BlockEntity be) {
-        return be.getCapability(ForgeCapabilities.ITEM_HANDLER).isPresent();
-    }
-
     /**
-     * Shrinks every item-handler slot to the count the player can supply, consuming
-     * those items. Runs after the captured tag is loaded into the block entity, so it
-     * works for any container exposing the capability regardless of its NBT layout.
+     * COPYING: refills a freshly placed block entity's item-handler slots from the captured
+     * contents snapshot, charging the player and capping each slot at what they can supply.
+     * The whitelisted load tag carries no items, so this is the sole item-restore path; it is
+     * layout-independent (works for any container exposing the capability).
      */
-    private static void filterHandlerContents(BlockEntity be, MMInventory inv) {
+    private static void injectContents(BlockEntity be, @Nullable ListTag snapshot, MMInventory inv) {
+        if (snapshot == null || snapshot.isEmpty()) return;
         IItemHandler handler = be.getCapability(ForgeCapabilities.ITEM_HANDLER).resolve().orElse(null);
-        if (handler == null) return;
+        if (!(handler instanceof IItemHandlerModifiable modifiable)) return;
         boolean creative = inv.getPlayer().isCreative();
 
-        for (int slot = 0; slot < handler.getSlots(); slot++) {
-            ItemStack stack = handler.getStackInSlot(slot);
-            if (stack.isEmpty()) continue;
+        for (int i = 0; i < snapshot.size(); i++) {
+            CompoundTag slotTag = snapshot.getCompound(i);
+            int slot = slotTag.getInt("Slot");
+            ItemStack stack = ItemStack.of(slotTag);
+            if (stack.isEmpty() || slot < 0 || slot >= modifiable.getSlots()) continue;
 
             int available = creative
                     ? stack.getCount()
                     : Math.min(stack.getCount(), inv.countInInventory(stack));
-            if (available > 0) {
-                inv.consume(stack.copyWithCount(available));
-            }
+            if (available <= 0) continue;
 
-            int excess = stack.getCount() - available;
-            if (excess > 0) {
-                if (handler instanceof IItemHandlerModifiable modifiable) {
-                    modifiable.setStackInSlot(slot, available <= 0 ? ItemStack.EMPTY : stack.copyWithCount(available));
-                } else {
-                    handler.extractItem(slot, excess, false);
-                }
-            }
+            inv.consume(stack.copyWithCount(available));
+            modifiable.setStackInSlot(slot, stack.copyWithCount(available));
         }
     }
 
     /**
-     * NBT fallback for block entities without an item handler: removes stored items
-     * the player cannot supply from the captured tile tag, consuming the ones they
-     * can. Covers the standard container "Items" list plus common single-item slots
-     * (lectern books, jukebox records).
+     * Gives a replaced container's contents to the player. The block entity is removed
+     * before the block afterwards, so the block's own onRemove can't also spill them.
      */
-    private static void filterStoredItems(CompoundTag tileTag, MMInventory inv) {
-        boolean creative = inv.getPlayer().isCreative();
-
-        if (tileTag.contains("Items", Tag.TAG_LIST)) {
-            ListTag items = tileTag.getList("Items", Tag.TAG_COMPOUND);
-            ListTag kept = new ListTag();
-            for (int i = 0; i < items.size(); i++) {
-                CompoundTag slotTag = items.getCompound(i);
-                ItemStack stack = ItemStack.of(slotTag);
-                if (stack.isEmpty()) continue;
-
-                int available = creative
-                        ? stack.getCount()
-                        : Math.min(stack.getCount(), inv.countInInventory(stack));
-                if (available <= 0) continue;
-
-                inv.consume(stack.copyWithCount(available));
-                CompoundTag keptTag = slotTag.copy();
-                keptTag.putByte("Count", (byte) available);
-                kept.add(keptTag);
-            }
-            tileTag.put("Items", kept);
+    private static void reclaimContents(@Nullable BlockEntity be, MMInventory inv) {
+        if (be == null) return;
+        // Machines that save their contents into the dropped item already keep them
+        if (Mods.GTCEU && GTCompat.savesContentsToItem(be)) return;
+        IItemHandler handler = be.getCapability(ForgeCapabilities.ITEM_HANDLER).resolve().orElse(null);
+        if (handler == null) return;
+        for (int slot = 0; slot < handler.getSlots(); slot++) {
+            ItemStack stack = handler.getStackInSlot(slot);
+            if (!stack.isEmpty()) inv.give(stack.copy());
         }
+    }
 
-        for (String key : new String[]{"Book", "RecordItem"}) {
-            if (!tileTag.contains(key, Tag.TAG_COMPOUND)) continue;
-            ItemStack stack = ItemStack.of(tileTag.getCompound(key));
-            if (!stack.isEmpty() && inv.canConsume(stack)) {
-                inv.consume(stack);
-            } else {
-                tileTag.remove(key);
-                // A lectern without a book must not claim to have one
-                if (key.equals("Book")) tileTag.remove("Page");
-            }
+    /**
+     * COPYING has no way to pay for fluids, so pasted tanks are emptied rather than
+     * granting their contents for free.
+     */
+    private static void drainFluids(BlockEntity be) {
+        var handler = be.getCapability(ForgeCapabilities.FLUID_HANDLER).resolve().orElse(null);
+        if (handler == null) return;
+        // drain() removes one fluid type per call; bounded in case a handler refills itself
+        for (int i = 0; i < 64; i++) {
+            FluidStack drained = handler.drain(Integer.MAX_VALUE, IFluidHandler.FluidAction.EXECUTE);
+            if (drained.isEmpty()) break;
         }
+    }
+
+    private boolean inSourceBox(BlockPos pos) {
+        return sourceMin != null && sourceMax != null
+                && pos.getX() >= sourceMin.getX() && pos.getX() <= sourceMax.getX()
+                && pos.getY() >= sourceMin.getY() && pos.getY() <= sourceMax.getY()
+                && pos.getZ() >= sourceMin.getZ() && pos.getZ() <= sourceMax.getZ();
     }
 
     /**
@@ -433,8 +475,15 @@ public class PendingBuild {
             for (int y = sourceMin.getY(); y <= sourceMax.getY(); y++) {
                 for (int z = sourceMin.getZ(); z <= sourceMax.getZ(); z++) {
                     var pos = new BlockPos(x, y, z);
+                    // Destination overlapping the source box — already the moved block
+                    if (movedPositions.contains(pos.asLong())) continue;
                     var state = level.getBlockState(pos);
                     if (!state.isAir() && state.getDestroySpeed(level, pos) >= 0) {
+                        // Contents were relocated via NBT: remove the BE first so the
+                        // block's onRemove can't spill (and thus duplicate) them.
+                        if (level.getBlockEntity(pos) != null) {
+                            level.removeBlockEntity(pos);
+                        }
                         level.setBlockAndUpdate(pos, Blocks.AIR.defaultBlockState());
                     }
                 }

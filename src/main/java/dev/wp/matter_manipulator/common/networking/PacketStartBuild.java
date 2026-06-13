@@ -69,6 +69,7 @@ public class PacketStartBuild {
             sourceMax = new BlockPos(Math.max(a.getX(), b.getX()), Math.max(a.getY(), b.getY()), Math.max(a.getZ(), b.getZ()));
         }
 
-        PendingBuild.start(player, tier, blocks, anchor, cfg.placeMode == PlaceMode.MOVING, sourceMin, sourceMax);
+        PendingBuild.start(player, tier, blocks, anchor, cfg.placeMode == PlaceMode.MOVING, sourceMin, sourceMax,
+                cfg.placeMode == PlaceMode.CABLES);
     }
 }

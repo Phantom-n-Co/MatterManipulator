@@ -7,6 +7,8 @@ import dev.wp.matter_manipulator.client.gui.TransformScreen;
 import dev.wp.matter_manipulator.client.render.MMRenderer;
 import dev.wp.matter_manipulator.common.building.Location;
 import dev.wp.matter_manipulator.common.building.PendingBuild;
+import dev.wp.matter_manipulator.common.compat.GTCompat;
+import dev.wp.matter_manipulator.common.compat.Mods;
 import dev.wp.matter_manipulator.common.config.MMModConfig;
 import dev.wp.matter_manipulator.common.networking.*;
 import net.minecraft.ChatFormatting;
@@ -283,8 +285,9 @@ public class ItemMatterManipulator extends Item {
     public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip, TooltipFlag flag) {
         var state = MMState.of(stack);
         long charge = state.getCharge();
-        long max = tier.maxEnergy;
-        tooltip.add(Component.literal(String.format("Energy: %,d / %,d FE", charge, max)));
+        long max = tier.effectiveMaxEnergy();
+        String unit = MMTier.usesEU() ? "EU" : "FE";
+        tooltip.add(Component.literal(String.format("Energy: %,d / %,d %s", charge, max, unit)));
         tooltip.add(Component.literal("Range: " + (tier.range < 0 ? "Unlimited" : tier.range + " blocks")));
         tooltip.add(Component.literal("Speed: " + tier.placeSpeed + " blocks/tick"));
 
@@ -303,6 +306,11 @@ public class ItemMatterManipulator extends Item {
 
     @Override
     public ICapabilityProvider initCapabilities(ItemStack stack, @Nullable CompoundTag nbt) {
+        // With GregTech present the manipulator is a GT electric item (EU, up to Long.MAX_VALUE);
+        // otherwise it exposes Forge Energy (FE), which is int-capped.
+        if (Mods.GTCEU) {
+            return GTCompat.createElectricItemProvider(stack, tier);
+        }
         return new ICapabilityProvider() {
             private final LazyOptional<IEnergyStorage> energyCap =
                     LazyOptional.of(() -> new StackEnergyStorage(stack, tier));
@@ -335,8 +343,9 @@ public class ItemMatterManipulator extends Item {
         public int receiveEnergy(int maxReceive, boolean simulate) {
             var s = state();
             long current = s.getCharge();
-            long space = tier.maxEnergy - current;
+            long space = tier.effectiveMaxEnergy() - current;
             long accepted = Math.min(space, maxReceive);
+            if (accepted < 0) accepted = 0;
             if (!simulate) s.setCharge(current + accepted);
             return (int) accepted;
         }
@@ -357,7 +366,7 @@ public class ItemMatterManipulator extends Item {
 
         @Override
         public int getMaxEnergyStored() {
-            return (int) Math.min(tier.maxEnergy, Integer.MAX_VALUE);
+            return (int) Math.min(tier.effectiveMaxEnergy(), Integer.MAX_VALUE);
         }
 
         @Override

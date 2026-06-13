@@ -1,6 +1,9 @@
 package dev.wp.matter_manipulator;
 
 import com.mojang.logging.LogUtils;
+import dev.wp.matter_manipulator.common.compat.CopyHandlers;
+import dev.wp.matter_manipulator.common.compat.GTCompat;
+import dev.wp.matter_manipulator.common.compat.Mods;
 import dev.wp.matter_manipulator.common.config.MMModConfig;
 import dev.wp.matter_manipulator.common.items.MMItems;
 import dev.wp.matter_manipulator.common.networking.MMNetwork;
@@ -33,6 +36,11 @@ public class MMMod {
 
     private void commonSetup(FMLCommonSetupEvent event) {
         event.enqueueWork(MMNetwork::init);
+        event.enqueueWork(CopyHandlers::init);
+        // GregTech-only Forge event handlers; gated so GTCompat never loads without GregTech.
+        if (Mods.GTCEU) {
+            event.enqueueWork(GTCompat::registerEvents);
+        }
     }
 
     public static ResourceLocation id(String path) {

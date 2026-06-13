@@ -7,7 +7,6 @@ import dev.wp.matter_manipulator.common.items.manipulator.PlaceMode;
 import dev.wp.matter_manipulator.common.utils.MMUtils;
 import net.minecraft.ChatFormatting;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
@@ -91,6 +90,13 @@ public class PacketRequestRequiredItems {
                 } else if (pb.spec.tileData != null) {
                     mergeStoredItems(required, pb.spec.tileData);
                 }
+                if (pb.spec.extraItems != null) {
+                    for (ItemStack extra : pb.spec.extraItems) {
+                        if (!extra.isEmpty()) {
+                            required.merge(extra.getItem(), (long) extra.getCount(), Long::sum);
+                        }
+                    }
+                }
             }
 
             if (required.isEmpty()) {
@@ -118,19 +124,12 @@ public class PacketRequestRequiredItems {
     }
 
     /**
-     * Pasting only fills containers with items the player can supply, so plans must
-     * count stored contents as required items too.
+     * Counts the single-slot items a copy keeps that have no item-handler capability — lectern
+     * books and jukebox records. Container inventories are counted from the {@code contents}
+     * snapshot instead (which covers any item-handler layout), so {@code Items} is intentionally
+     * not scanned here: it would over-count blocks whose contents the whitelist won't paste.
      */
     private static void mergeStoredItems(Map<Item, Long> required, CompoundTag tileData) {
-        if (tileData.contains("Items", Tag.TAG_LIST)) {
-            ListTag items = tileData.getList("Items", Tag.TAG_COMPOUND);
-            for (int i = 0; i < items.size(); i++) {
-                ItemStack stack = ItemStack.of(items.getCompound(i));
-                if (!stack.isEmpty()) {
-                    required.merge(stack.getItem(), (long) stack.getCount(), Long::sum);
-                }
-            }
-        }
         for (String key : new String[]{"Book", "RecordItem"}) {
             if (tileData.contains(key, Tag.TAG_COMPOUND)) {
                 ItemStack stack = ItemStack.of(tileData.getCompound(key));
