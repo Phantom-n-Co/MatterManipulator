@@ -28,11 +28,12 @@ public class MMModConfig {
 
         BUILDER.push("rendering");
         MAX_HINTS = BUILDER
-                .comment("Controls how many blocks are shown in the preview. Client only.")
-                .define("maxHints", 1_000_000);
+                .comment("Max blocks shown in the preview. 0 = unlimited (still bounded by an internal "
+                        + "memory-safety cap of 131072). Lower this if the preview uses too much VRAM. Client only.")
+                .defineInRange("maxHints", 0, 0, 131072);
         STATUS_EXPIRATION = BUILDER
                 .comment("Controls the duration of the build status warning/error hints (seconds). Client only. Set to 0 to never clear hints.")
-                .define("statusExpiration", 60);
+                .defineInRange("statusExpiration", 60, 0, 3600);
         HINTS_ON_TOP = BUILDER
                 .comment("When true, hints will always be drawn on top of the terrain. Client only.")
                 .define("hintsOnTop", true);

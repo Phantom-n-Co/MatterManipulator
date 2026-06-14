@@ -75,7 +75,7 @@ public class MMRenderer {
                 case CABLES               -> renderCableMode(ps, mc, cfg);
                 case COPYING, MOVING      -> renderCopyMode(ps, mc, cfg);
             }
-            GhostBlockRenderer.render(ps, cfg.placeMode);
+            GhostBlockRenderer.render(ps, cfg.placeMode, event.getFrustum());
             GhostBlockRenderer.renderStatusBoxes(ps);
         } finally {
             ps.popPose();
@@ -252,15 +252,60 @@ public class MMRenderer {
     private static List<PendingBlock> analysisCache = Collections.emptyList();
     private static long lastAnalysisTime = 0;
     private static MMConfig lastAnalyzedConfig = null;
+    private static long analysisSignature = 0;
 
     private static void updateAnalysisCache(MMConfig cfg, ClientLevel level) {
         if (level == null) return;
         long now = System.currentTimeMillis();
-        if (now - lastAnalysisTime < 1000 && lastAnalyzedConfig != null && lastAnalyzedConfig.equals(cfg)) return;
-        
+        boolean analysisSame = lastAnalyzedConfig != null && analysisInputsEqual(lastAnalyzedConfig, cfg);
+
+        // Moving the paste anchor (coordC) leaves the analysis unchanged; skip regenerating but keep
+        // the baseline current (incl. the new coordC) so the next comparison stays stable. The new
+        // coordC still flows to GhostBlockRenderer as the render origin and re-bakes there.
+        if (analysisSame && now - lastAnalysisTime < 1000) {
+            lastAnalyzedConfig = cfg.copy();
+            return;
+        }
+
         lastAnalysisTime = now;
         lastAnalyzedConfig = cfg.copy();
-        analysisCache = BuildGenerator.generateBlocks(cfg, level);
+
+        var fresh = BuildGenerator.generateBlocks(cfg, level);
+        long sig = signatureOf(fresh);
+        // The 1s refresh exists to catch world edits, but re-baking thousands of block models is
+        // expensive. When the inputs are unchanged and the generated blocks are identical, keep the
+        // old list reference so GhostBlockRenderer's reference guard skips the rebake.
+        if (analysisSame && sig == analysisSignature && !analysisCache.isEmpty()) return;
+        analysisCache = fresh;
+        analysisSignature = sig;
+    }
+
+    /**
+     * Whether two configs produce the same {@link BuildGenerator#generateBlocks} output. For
+     * COPYING/MOVING the paste anchor (coordC) is applied downstream as a render origin and does not
+     * affect the generated (source-relative) blocks, so its value is ignored — only whether it is set
+     * matters (a null coordC yields an empty build). All other modes compare normally (e.g. cylinder
+     * geometry genuinely uses coordC).
+     */
+    private static boolean analysisInputsEqual(MMConfig a, MMConfig b) {
+        if (a.placeMode != b.placeMode) return false;
+        if (a.placeMode == PlaceMode.COPYING || a.placeMode == PlaceMode.MOVING) {
+            if ((a.coordC == null) != (b.coordC == null)) return false;
+            MMConfig norm = a.copy();
+            norm.coordC = b.coordC;
+            return norm.equals(b);
+        }
+        return a.equals(b);
+    }
+
+    /** Cheap order-sensitive hash over positions + states; far cheaper than re-baking models. */
+    private static long signatureOf(List<PendingBlock> blocks) {
+        long h = 1;
+        for (var pb : blocks) {
+            h = h * 31 + pb.relPos.asLong();
+            h = h * 31 + pb.spec.state.hashCode();
+        }
+        return h;
     }
 
     private static String dims(BlockPos a, BlockPos b) {

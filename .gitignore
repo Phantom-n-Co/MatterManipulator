@@ -23,6 +23,4 @@ run
 runs
 run-data
 
-repo
-sources
 src/generated/resources/.cache/

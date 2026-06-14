@@ -5,6 +5,8 @@ import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
 
+import java.util.Objects;
+
 /** Represents the rotation and flipping of a build region. */
 public class MMTransform {
 
@@ -81,5 +83,22 @@ public class MMTransform {
         next.forward = this.forward;
         next.up = this.up;
         return next;
+    }
+
+    // Value equality over the orientation fields only (rotation is a transient cache). Required so
+    // MMConfig.equals works across copies — otherwise the client re-analyses and re-bakes the ghost
+    // preview every frame.
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        MMTransform that = (MMTransform) o;
+        return flipX == that.flipX && flipY == that.flipY && flipZ == that.flipZ
+                && forward == that.forward && up == that.up;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(flipX, flipY, flipZ, forward, up);
     }
 }
