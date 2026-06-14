@@ -28,9 +28,9 @@ public class MMModConfig {
 
         BUILDER.push("rendering");
         MAX_HINTS = BUILDER
-                .comment("Max blocks shown in the preview. 0 = unlimited (still bounded by an internal "
-                        + "memory-safety cap of 131072). Lower this if the preview uses too much VRAM. Client only.")
-                .defineInRange("maxHints", 0, 0, 131072);
+                .comment("Max blocks shown in the preview. 0 = unlimited. Very large previews use a lot of VRAM and "
+                        + "can stutter or crash the client; lower this if needed. Client only.")
+                .defineInRange("maxHints", 1_000_000, 0, Integer.MAX_VALUE);
         STATUS_EXPIRATION = BUILDER
                 .comment("Controls the duration of the build status warning/error hints (seconds). Client only. Set to 0 to never clear hints.")
                 .defineInRange("statusExpiration", 60, 0, 3600);

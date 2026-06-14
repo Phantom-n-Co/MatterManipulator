@@ -58,7 +58,7 @@ public class BoxRenderer {
         BufferBuilder buf = tess.getBuilder();
         buf.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR_TEX);
 
-        // Each face uses UV coords that form a continuous unwrap across the whole box.
+        // Each face uses UV coords that form a continuous unwrapping across the whole box.
 
         // ── bottom (y-)  UV = (localX, localZ) ───────────────────────────────────
         buf.vertex(mat, fx0, fy0, fz0).color(r,g,b,a).uv(0,   0  ).endVertex();

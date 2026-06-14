@@ -64,7 +64,7 @@ public class MMRenderer {
         BlockPos ghostOrigin = (cfg.placeMode == PlaceMode.COPYING || cfg.placeMode == PlaceMode.MOVING)
                 && cfg.coordC != null ? cfg.coordC.pos : null;
         int tierRange = ((ItemMatterManipulator) held.getItem()).getTier().range;
-        GhostBlockRenderer.submit(analysisCache, ghostOrigin, mc.level, player, tierRange);
+        GhostBlockRenderer.submit(analysisCache, ghostOrigin, mc.level, player, tierRange, camPos);
 
         ps.pushPose();
         ps.translate(-camPos.x, -camPos.y, -camPos.z);
@@ -77,6 +77,7 @@ public class MMRenderer {
             }
             GhostBlockRenderer.render(ps, cfg.placeMode, event.getFrustum());
             GhostBlockRenderer.renderStatusBoxes(ps);
+            renderTargetRuler(ps, mc, state.getConfig(), cfg.action);
         } finally {
             ps.popPose();
         }
@@ -121,10 +122,20 @@ public class MMRenderer {
     // ── CABLES ───────────────────────────────────────────────────────────────────
 
     private static void renderCableMode(PoseStack ps, Minecraft mc, MMConfig cfg) {
-        // The cable line itself is shown as ghost-block hints
+        // The cable line itself is shown as ghost-block hints; draw the selection box around it too.
         if (cfg.coordA != null && cfg.coordB != null) {
             BlockPos a = cfg.coordA.pos;
             BlockPos b = pinToAxis(a, cfg.coordB.pos);
+
+            var bufSource = mc.renderBuffers().bufferSource();
+            var linesBuf = bufSource.getBuffer(RenderType.lines());
+
+            double x0 = Math.min(a.getX(), b.getX()), y0 = Math.min(a.getY(), b.getY()), z0 = Math.min(a.getZ(), b.getZ());
+            double x1 = Math.max(a.getX(), b.getX()) + 1, y1 = Math.max(a.getY(), b.getY()) + 1, z1 = Math.max(a.getZ(), b.getZ()) + 1;
+
+            BoxRenderer.drawFilledBox(ps, x0, y0, z0, x1, y1, z1, TR, TG, TB, 0.3f);
+            LevelRenderer.renderLineBox(ps, linesBuf, x0, y0, z0, x1, y1, z1, TR, TG, TB, TA);
+            bufSource.endBatch(RenderType.lines());
 
             int len = Math.max(Math.max(
                 Math.abs(a.getX() - b.getX()),
@@ -157,18 +168,27 @@ public class MMRenderer {
             LevelRenderer.renderLineBox(ps, linesBuf, x0, y0, z0, x1, y1, z1, TR, TG, TB, TA);
             hudText = dims(a, b);
 
-            // Paste box (orange) — transformed size, placed at coordC
+            // Paste box (orange) — covers the full stacked array, placed at coordC. Derived from the
+            // generated blocks (coordC-relative) so it matches transform + arraySpan stacking exactly.
             if (cfg.coordC != null) {
                 BlockPos c = cfg.coordC.pos;
-                Vector3i ta = cfg.transform.apply(new Vector3i(0, 0, 0));
-                Vector3i tb = cfg.transform.apply(new Vector3i(b.getX() - a.getX(), b.getY() - a.getY(), b.getZ() - a.getZ()));
+                int[] bb = pasteBounds();
 
-                double px0 = c.getX() + Math.min(ta.x(), tb.x());
-                double py0 = c.getY() + Math.min(ta.y(), tb.y());
-                double pz0 = c.getZ() + Math.min(ta.z(), tb.z());
-                double px1 = c.getX() + Math.max(ta.x(), tb.x()) + 1;
-                double py1 = c.getY() + Math.max(ta.y(), tb.y()) + 1;
-                double pz1 = c.getZ() + Math.max(ta.z(), tb.z()) + 1;
+                double px0, py0, pz0, px1, py1, pz1;
+                if (bb != null) {
+                    px0 = c.getX() + bb[0]; py0 = c.getY() + bb[1]; pz0 = c.getZ() + bb[2];
+                    px1 = c.getX() + bb[3] + 1; py1 = c.getY() + bb[4] + 1; pz1 = c.getZ() + bb[5] + 1;
+                } else {
+                    // Fallback (no analysis yet): single transformed copy.
+                    Vector3i ta = cfg.transform.apply(new Vector3i(0, 0, 0));
+                    Vector3i tb = cfg.transform.apply(new Vector3i(b.getX() - a.getX(), b.getY() - a.getY(), b.getZ() - a.getZ()));
+                    px0 = c.getX() + Math.min(ta.x(), tb.x());
+                    py0 = c.getY() + Math.min(ta.y(), tb.y());
+                    pz0 = c.getZ() + Math.min(ta.z(), tb.z());
+                    px1 = c.getX() + Math.max(ta.x(), tb.x()) + 1;
+                    py1 = c.getY() + Math.max(ta.y(), tb.y()) + 1;
+                    pz1 = c.getZ() + Math.max(ta.z(), tb.z()) + 1;
+                }
 
                 BoxRenderer.drawFilledBox(ps, px0, py0, pz0, px1, py1, pz1, OR, OG, OB, 0.3f);
                 LevelRenderer.renderLineBox(ps, linesBuf, px0, py0, pz0, px1, py1, pz1, OR, OG, OB, TA);
@@ -217,6 +237,64 @@ public class MMRenderer {
             default -> {}
         }
         return eff;
+    }
+
+    // ── Targeted-block ruler ───────────────────────────────────────────────────────
+
+    private static final int RULER_LENGTH = 128;
+
+    /** Draws axis lines through the block currently being targeted by an active action, for alignment. */
+    private static void renderTargetRuler(PoseStack ps, Minecraft mc, MMConfig cfg, @Nullable PendingAction action) {
+        if (cfg.locked || action == null) return;
+        BlockPos look = getLookingAt(mc, action);
+        if (look == null) return;
+
+        // Cable placement pins the endpoint to one axis from coordA; put the ruler's location there
+        // too (the lines themselves still span all three axes).
+        if (cfg.placeMode == PlaceMode.CABLES && cfg.coordA != null) {
+            look = pinToAxis(cfg.coordA.pos, look);
+        }
+
+        float r, g, b;
+        switch (action) {
+            case MARK_PASTE_A -> { r = OR; g = OG; b = OB; }
+            case MARK_ARRAY   -> { r = 0.4f; g = 0.75f; b = 0.15f; }
+            default           -> { r = TR; g = TG; b = TB; }
+        }
+
+        // Drawn via the standard RenderType.lines() through the level's buffer source — the same path
+        // the boxes use, which renders correct thin ruler lines.
+        var bufSource = mc.renderBuffers().bufferSource();
+        var linesBuf = bufSource.getBuffer(RenderType.lines());
+        drawRulers(ps, linesBuf, look.getX() + 0.5, look.getY() + 0.5, look.getZ() + 0.5, r, g, b, TA, RULER_LENGTH);
+        bufSource.endBatch(RenderType.lines());
+    }
+
+    /**
+     * Draws axis-aligned ruler lines extending from (cx, cy, cz) in all 6 directions.
+     * {@code linesBuf} must come from a {@code RenderType.lines()} buffer.
+     */
+    public static void drawRulers(PoseStack ps, VertexConsumer linesBuf,
+                                  double cx, double cy, double cz,
+                                  float r, float g, float b, float a, int length) {
+        float fx = (float) cx, fy = (float) cy, fz = (float) cz;
+        var pose = ps.last();
+
+        addLine(linesBuf, pose, fx, fy, fz, fx + length, fy, fz, r, g, b, a,  1,  0,  0);
+        addLine(linesBuf, pose, fx, fy, fz, fx - length, fy, fz, r, g, b, a, -1,  0,  0);
+        addLine(linesBuf, pose, fx, fy, fz, fx, fy + length, fz, r, g, b, a,  0,  1,  0);
+        addLine(linesBuf, pose, fx, fy, fz, fx, fy - length, fz, r, g, b, a,  0, -1,  0);
+        addLine(linesBuf, pose, fx, fy, fz, fx, fy, fz + length, r, g, b, a,  0,  0,  1);
+        addLine(linesBuf, pose, fx, fy, fz, fx, fy, fz - length, r, g, b, a,  0,  0, -1);
+    }
+
+    private static void addLine(VertexConsumer buf, PoseStack.Pose pose,
+                                float x1, float y1, float z1,
+                                float x2, float y2, float z2,
+                                float r, float g, float b, float a,
+                                float nx, float ny, float nz) {
+        buf.vertex(pose.pose(), x1, y1, z1).color(r, g, b, a).normal(pose.normal(), nx, ny, nz).endVertex();
+        buf.vertex(pose.pose(), x2, y2, z2).color(r, g, b, a).normal(pose.normal(), nx, ny, nz).endVertex();
     }
 
     /** Pins {@code b} to the dominant axis relative to {@code a}. */
@@ -296,6 +374,23 @@ public class MMRenderer {
             return norm.equals(b);
         }
         return a.equals(b);
+    }
+
+    /**
+     * Bounding box (coordC-relative) of the current analysis blocks, as {minX,minY,minZ,maxX,maxY,maxZ},
+     * or null when there are none. Used to size the paste box so it covers transform + arraySpan stacking.
+     */
+    @Nullable
+    private static int[] pasteBounds() {
+        if (analysisCache.isEmpty()) return null;
+        int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE;
+        int maxX = Integer.MIN_VALUE, maxY = Integer.MIN_VALUE, maxZ = Integer.MIN_VALUE;
+        for (var pb : analysisCache) {
+            var p = pb.relPos;
+            minX = Math.min(minX, p.getX()); minY = Math.min(minY, p.getY()); minZ = Math.min(minZ, p.getZ());
+            maxX = Math.max(maxX, p.getX()); maxY = Math.max(maxY, p.getY()); maxZ = Math.max(maxZ, p.getZ());
+        }
+        return new int[]{minX, minY, minZ, maxX, maxY, maxZ};
     }
 
     /** Cheap order-sensitive hash over positions + states; far cheaper than re-baking models. */

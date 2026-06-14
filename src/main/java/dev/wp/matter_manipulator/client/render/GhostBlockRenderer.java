@@ -7,33 +7,28 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexBuffer;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.vertex.VertexFormat;
+import com.mojang.blaze3d.vertex.VertexSorting;
 import dev.wp.matter_manipulator.common.building.PendingBlock;
 import dev.wp.matter_manipulator.common.config.MMModConfig;
 import dev.wp.matter_manipulator.common.items.manipulator.PlaceMode;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
-import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
-import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.GameRenderer;
+import net.minecraft.client.renderer.block.BlockRenderDispatcher;
 import net.minecraft.client.renderer.culling.Frustum;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.level.BlockAndTintGetter;
-import net.minecraft.world.level.ColorResolver;
-import net.minecraft.world.level.LightLayer;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.lighting.LevelLightEngine;
-import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.client.model.data.ModelData;
+import org.joml.Matrix3f;
+import org.joml.Matrix4f;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -41,28 +36,29 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Renders translucent ghost-block hints for all manipulator modes. The pending-block
- * list is baked into a cached VertexBuffer and redrawn each frame; rebuilds happen
- * when the analysis changes, the player moves, or status hints arrive. Blocks flagged
- * as build warnings/errors are tinted yellow/red.
+ * Renders translucent ghost-block hints for all manipulator modes.
+ *
+ * <p>All preview blocks are baked (with every face, no neighbor culling) into a single vertex buffer
+ * whose quads are sorted back-to-front from the camera — a painter's-algorithm translucent render,
+ * matching GTNH's look: front blocks read as in-front, interior blocks show through faintly, and there
+ * are no per-chunk ordering seams. The bake is time-sliced across frames (the previous preview stays
+ * visible until the new one is ready), and the buffer is cheaply re-sorted (index-only) when the
+ * camera moves. Blocks flagged as build warnings/errors are tinted yellow/red.
  */
 @OnlyIn(Dist.CLIENT)
 public class GhostBlockRenderer {
 
-    private static final float GHOST_ALPHA = 0.75f;
-    /**
-     * Memory-safety ceiling on baked block models, independent of the configurable maxHints. Caps
-     * VRAM use on pathological selections; the time-sliced bake means hitting it doesn't stall.
-     */
-    private static final int HARD_BLOCK_CAP = 131072;
+    private static final float GHOST_ALPHA = 0.5f;
+    /** Ghost models render at this fraction of full size, centered in their cell, so gaps are visible. */
+    private static final float GHOST_SCALE = 0.5f;
     private static final int MAX_REMOVAL_BOXES = 4096;
     /**
-     * Rebake when the player moves this far (blocks), for range culling. Only matters when a
-     * finite range is set; movement otherwise never changes the baked output. Kept fairly large,
-     * so normal walking doesn't trigger constant full rebakes — a few blocks of lag at the range
-     * boundary are invisible on a translucent preview.
+     * Rebake when the player moves this far (blocks), for range culling. Only matters when a finite
+     * range is set; movement otherwise never changes which blocks are baked.
      */
     private static final double REBUILD_MOVE_DIST_SQ = 8 * 8;
+    /** Re-sort the camera-distance-ordered buffer when the camera moves at least this far (blocks²). */
+    private static final double RESORT_DIST_SQ = 2.0;
 
     private static final int TINT_WARNING = 0xFFAA00;
     private static final int TINT_ERROR = 0xFF5555;
@@ -70,23 +66,31 @@ public class GhostBlockRenderer {
 
     /** Blocks scanned (grouped) per frame; cheap (world reads only), so a large slice is fine. */
     private static final int GROUP_BUDGET = 16384;
-    /** Blocks baked into VBOs per frame; renderBatched is heavy, so this slice is smaller. */
+    /** Blocks baked into the buffer per frame; renderBatched is heavy, so this slice is smaller. */
     private static final int BAKE_BUDGET = 2048;
 
-    /** A baked region: its own VBO plus the world-space AABB used for frustum culling. */
-    private record GhostChunk(VertexBuffer vbo, AABB bounds) {}
+    /** Displayed buffer: every face of the preview, sorted back-to-front for correct translucency. */
+    @Nullable
+    private static VertexBuffer vbo;
+    /** Captured after each bake/sort so the buffer can be re-sorted (index-only) on camera movement. */
+    @Nullable
+    private static BufferBuilder.SortState sortState;
+    @Nullable
+    private static AABB bounds;
+    private static BlockPos anchor = BlockPos.ZERO;
+    /** Camera position the buffer is currently sorted for. */
+    @Nullable
+    private static Vec3 lastSortPos;
 
-    /** The currently displayed (last fully baked) chunk set. */
-    private static final List<GhostChunk> chunks = new ArrayList<>();
     /**
-     * Reused across rebuilds: a BufferBuilder's backing memory is malloc native
-     * memory that is never freed, so allocating one per rebake leaks it.
+     * Reused across rebuilds: a BufferBuilder's backing memory is malloc native memory that is never
+     * freed, so allocating one per rebake leaks it. It also retains the last baked vertices, which the
+     * index-only re-sort reuses.
      */
     @Nullable
     private static BufferBuilder builder;
-    private static BlockPos anchor = BlockPos.ZERO;
 
-    /** In-progress time-sliced bake; the old {@link #chunks} stay visible until it finishes. */
+    /** In-progress time-sliced bake; the old {@link #vbo} stays visible until it finishes. */
     @Nullable
     private static BakeJob currentJob;
     /** Latest inputs awaiting a (re)build, captured by {@link #submit}. */
@@ -96,6 +100,7 @@ public class GhostBlockRenderer {
     private static ClientLevel pendingLevel = null;
     private static Player pendingPlayer = null;
     private static int pendingRange = -1;
+    private static Vec3 pendingCamPos = null;
 
     private static List<PendingBlock> lastBlocks = null;
     private static BlockPos lastOrigin = null;
@@ -129,12 +134,13 @@ public class GhostBlockRenderer {
     }
 
     /**
-     * Updates the baked buffer if needed. {@code origin} is added to each block's relPos
-     * (pass null when positions are already absolute, i.e., all modes except COPYING/MOVING).
-     * {@code range} is the tier range in blocks, or negative for unlimited.
+     * Updates the baked buffer if needed. {@code origin} is added to each block's relPos (pass null
+     * when positions are already absolute, i.e., all modes except COPYING/MOVING). {@code range} is
+     * the tier range in blocks, or negative for unlimited. {@code camPos} is the eye position, used to
+     * sort the translucent geometry.
      */
     public static void submit(List<PendingBlock> blocks, @Nullable BlockPos origin,
-                              ClientLevel level, Player player, int range) {
+                              ClientLevel level, Player player, int range, Vec3 camPos) {
         if (statusExpiresAt != 0 && System.currentTimeMillis() > statusExpiresAt) {
             errorHints.clear();
             warningHints.clear();
@@ -158,16 +164,23 @@ public class GhostBlockRenderer {
             pendingLevel = level;
             pendingPlayer = player;
             pendingRange = range;
+            pendingCamPos = camPos;
             needsRebuild = true;
         }
 
         driveBake();
+
+        // Re-sort the existing buffer when the camera has translated (rotation doesn't change
+        // distances). Skipped while a bake is running, since that owns the shared builder.
+        if (currentJob == null && vbo != null && sortState != null
+                && (lastSortPos == null || camPos.distanceToSqr(lastSortPos) > RESORT_DIST_SQ)) {
+            resort(camPos);
+        }
     }
 
     /**
      * Advances any in-progress bake by one frame's budget, and starts a new one when inputs have
-     * changed and no bake is running. The previous baked preview stays visible throughout, so a
-     * large rebuild streams in over several frames instead of stalling a single frame.
+     * changed and no bake is running. The previous baked preview stays visible throughout.
      */
     private static void driveBake() {
         if (currentJob == null) {
@@ -175,14 +188,14 @@ public class GhostBlockRenderer {
             needsRebuild = false;
 
             if (pendingBlocks == null || pendingBlocks.isEmpty()) {
-                disposeChunks();
+                disposeBuffer();
                 removalBoxes.clear();
                 return;
             }
-            currentJob = new BakeJob(pendingBlocks, pendingOrigin, pendingLevel, pendingPlayer, pendingRange);
+            currentJob = new BakeJob(pendingBlocks, pendingOrigin, pendingLevel, pendingPlayer, pendingRange, pendingCamPos);
         }
 
-        if (builder == null) builder = new BufferBuilder(786432);
+        if (builder == null) builder = new BufferBuilder(2097152);
         var brd = Minecraft.getInstance().getBlockRenderer();
         var consumer = new GhostConsumer(builder, GHOST_ALPHA);
 
@@ -194,259 +207,58 @@ public class GhostBlockRenderer {
         }
     }
 
-    /** Swaps a finished job's staged chunks in for the live ones. */
+    /** Swaps a finished job's buffer in for the live one. */
     private static void commit(BakeJob job) {
-        disposeChunks();
-        chunks.addAll(job.staging);
+        disposeBuffer();
+        vbo = job.vbo;
+        sortState = job.sortState;
+        bounds = job.bounds;
         anchor = job.jobAnchor;
+        lastSortPos = job.camPos;
         removalBoxes.clear();
         removalBoxes.addAll(job.removalBoxes);
     }
 
-    private static void disposeChunks() {
-        for (var chunk : chunks) chunk.vbo().close();
-        chunks.clear();
+    private static void disposeBuffer() {
+        if (vbo != null) {
+            vbo.close();
+            vbo = null;
+        }
+        sortState = null;
+        bounds = null;
+    }
+
+    /** Re-orders the existing buffer's quads for a new camera position without re-tessellating. */
+    private static void resort(Vec3 camPos) {
+        if (builder == null) return;
+        builder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.BLOCK);
+        builder.restoreSortState(sortState);
+        builder.setQuadSorting(VertexSorting.byDistance(
+                (float) (camPos.x - anchor.getX()),
+                (float) (camPos.y - anchor.getY()),
+                (float) (camPos.z - anchor.getZ())));
+        sortState = builder.getSortState();
+        var rb = builder.end();
+        vbo.bind();
+        vbo.upload(rb);
+        VertexBuffer.unbind();
+        lastSortPos = camPos;
     }
 
     /**
-     * A time-sliced bake. Phase 1 (grouping) scans the pending blocks, applying range/loaded/match
-     * culling and bucketing the survivors into REGION³ cells. Phase 2 (baking) turns each cell into
-     * its own VBO. Both phases consume a bounded budget per {@link #advance} call.
-     */
-    private static final class BakeJob {
-
-        private final List<PendingBlock> blocks;
-        @Nullable private final BlockPos origin;
-        private final ClientLevel level;
-        private final double rangeSq;
-        private final int maxHints;
-        final BlockPos jobAnchor;
-        private final double px, py, pz;
-
-        // Grouping phase
-        private int scanIndex = 0;
-        private int accepted = 0;
-        private boolean groupingDone = false;
-        private final Long2ObjectMap<List<PendingBlock>> byRegion = new Long2ObjectOpenHashMap<>();
-        final List<BlockPos> removalBoxes = new ArrayList<>();
-
-        // Baking phase
-        @Nullable private List<List<PendingBlock>> regions;
-        private int bakeIndex = 0;
-        final List<GhostChunk> staging = new ArrayList<>();
-
-        /** All accepted ghost target states by absolute pos, presented as neighbors for face culling. */
-        private final Long2ObjectMap<BlockState> ghostStates = new Long2ObjectOpenHashMap<>();
-        @Nullable private GhostNeighborGetter neighbors;
-
-        private final PoseStack pose = new PoseStack();
-
-        BakeJob(List<PendingBlock> blocks, @Nullable BlockPos origin,
-                ClientLevel level, Player player, int range) {
-            this.blocks = blocks;
-            this.origin = origin;
-            this.level = level;
-            this.rangeSq = range < 0 ? Double.MAX_VALUE : (double) range * range;
-            int cfg = MMModConfig.MAX_HINTS.get();
-            this.maxHints = cfg <= 0 ? HARD_BLOCK_CAP : Math.min(cfg, HARD_BLOCK_CAP);
-            this.jobAnchor = player.blockPosition();
-            var p = player.position();
-            this.px = p.x;
-            this.py = p.y;
-            this.pz = p.z;
-        }
-
-        boolean done() {
-            return groupingDone && regions != null && bakeIndex >= regions.size();
-        }
-
-        void advance(net.minecraft.client.renderer.block.BlockRenderDispatcher brd, GhostConsumer consumer) {
-            if (!groupingDone) {
-                group();
-            } else if (regions != null) {
-                bake(brd, consumer);
-            }
-        }
-
-        private void group() {
-            int budget = GROUP_BUDGET;
-            int n = blocks.size();
-            while (scanIndex < n && accepted < maxHints && budget-- > 0) {
-                var pb = blocks.get(scanIndex++);
-                BlockPos pos = origin != null ? origin.offset(pb.relPos) : pb.relPos;
-
-                if (rangeSq != Double.MAX_VALUE) {
-                    double dx = pos.getX() + 0.5 - px, dy = pos.getY() + 0.5 - py, dz = pos.getZ() + 0.5 - pz;
-                    if (dx * dx + dy * dy + dz * dz > rangeSq) continue;
-                }
-                if (!level.isLoaded(pos)) continue;
-
-                BlockState target = pb.spec.state;
-                BlockState current = level.getBlockState(pos);
-
-                if (target.isAir()) {
-                    // Removal hint: no model to draw, use a red box instead (StructureLib substitute)
-                    if (!current.isAir() && removalBoxes.size() < MAX_REMOVAL_BOXES) removalBoxes.add(pos);
-                    continue;
-                }
-                if (current == target) continue;
-
-                long regionKey = BlockPos.asLong(pos.getX() >> 4, pos.getY() >> 4, pos.getZ() >> 4);
-                byRegion.computeIfAbsent(regionKey, k -> new ArrayList<>()).add(pb);
-                ghostStates.put(pos.asLong(), target);
-                accepted++;
-            }
-
-            if (scanIndex >= n || accepted >= maxHints) {
-                groupingDone = true;
-                regions = new ArrayList<>(byRegion.values());
-                neighbors = new GhostNeighborGetter(level, ghostStates);
-            }
-        }
-
-        private void bake(net.minecraft.client.renderer.block.BlockRenderDispatcher brd, GhostConsumer consumer) {
-            int budget = BAKE_BUDGET;
-            while (bakeIndex < regions.size() && budget > 0) {
-                var regionBlocks = regions.get(bakeIndex++);
-                bakeRegion(brd, consumer, regionBlocks);
-                budget -= regionBlocks.size();
-            }
-        }
-
-        /** Bakes one region's blocks into a fresh VBO with a tight world-space AABB for culling. */
-        private void bakeRegion(net.minecraft.client.renderer.block.BlockRenderDispatcher brd, GhostConsumer consumer,
-                                List<PendingBlock> regionBlocks) {
-            builder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.BLOCK);
-            consumer.resetVertexCount();
-
-            int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE;
-            int maxX = Integer.MIN_VALUE, maxY = Integer.MIN_VALUE, maxZ = Integer.MIN_VALUE;
-
-            for (var pb : regionBlocks) {
-                BlockPos pos = origin != null ? origin.offset(pb.relPos) : pb.relPos;
-                BlockState target = pb.spec.state;
-
-                long key = pos.asLong();
-                consumer.setTint(errorHints.contains(key) ? TINT_ERROR
-                        : warningHints.contains(key) ? TINT_WARNING : TINT_NONE);
-
-                pose.pushPose();
-                pose.translate(pos.getX() - jobAnchor.getX(), pos.getY() - jobAnchor.getY(), pos.getZ() - jobAnchor.getZ());
-                // checkSides=true + the ghost-neighbor getter culls faces shared with adjacent ghost
-                // blocks; null render type = all model layers.
-                brd.renderBatched(target, pos, neighbors, pose, consumer, true, level.getRandom(), ModelData.EMPTY, null);
-                pose.popPose();
-
-                minX = Math.min(minX, pos.getX()); minY = Math.min(minY, pos.getY()); minZ = Math.min(minZ, pos.getZ());
-                maxX = Math.max(maxX, pos.getX()); maxY = Math.max(maxY, pos.getY()); maxZ = Math.max(maxZ, pos.getZ());
-            }
-
-            var rendered = builder.end();
-            if (consumer.vertexCount() == 0) {
-                rendered.release();
-                return;
-            }
-
-            var vbo = new VertexBuffer(VertexBuffer.Usage.STATIC);
-            vbo.bind();
-            vbo.upload(rendered);
-            VertexBuffer.unbind();
-            staging.add(new GhostChunk(vbo, new AABB(minX, minY, minZ, maxX + 1, maxY + 1, maxZ + 1)));
-        }
-    }
-
-    /**
-     * Block/light view used while baking. Returns the ghost target at any ghost position and AIR
-     * everywhere else, so the vanilla face-culling pass ({@code checkSides=true}) only skips faces
-     * shared between two adjacent ghost blocks — never against the real world, so shells still show
-     * regardless of what's actually there. Lighting and tint delegate to the real level so ghosts
-     * keep world-accurate shading.
-     */
-    private static final class GhostNeighborGetter implements BlockAndTintGetter {
-
-        private static final BlockState AIR = Blocks.AIR.defaultBlockState();
-
-        private final ClientLevel level;
-        private final Long2ObjectMap<BlockState> ghosts;
-
-        GhostNeighborGetter(ClientLevel level, Long2ObjectMap<BlockState> ghosts) {
-            this.level = level;
-            this.ghosts = ghosts;
-        }
-
-        @Override
-        public BlockState getBlockState(BlockPos pos) {
-            return ghosts.getOrDefault(pos.asLong(), AIR);
-        }
-
-        @Override
-        public FluidState getFluidState(BlockPos pos) {
-            return getBlockState(pos).getFluidState();
-        }
-
-        @Nullable
-        @Override
-        public BlockEntity getBlockEntity(BlockPos pos) {
-            return null;
-        }
-
-        @Override
-        public int getHeight() {
-            return level.getHeight();
-        }
-
-        @Override
-        public int getMinBuildHeight() {
-            return level.getMinBuildHeight();
-        }
-
-        @Override
-        public float getShade(Direction direction, boolean shade) {
-            return level.getShade(direction, shade);
-        }
-
-        @Override
-        public LevelLightEngine getLightEngine() {
-            return level.getLightEngine();
-        }
-
-        @Override
-        public int getBlockTint(BlockPos pos, ColorResolver resolver) {
-            return level.getBlockTint(pos, resolver);
-        }
-
-        @Override
-        public int getBrightness(LightLayer layer, BlockPos pos) {
-            return level.getBrightness(layer, pos);
-        }
-
-        @Override
-        public int getRawBrightness(BlockPos pos, int amount) {
-            return level.getRawBrightness(pos, amount);
-        }
-    }
-
-    /**
-     * Draws the baked ghosts, frustum-culling each region's VBO. The PoseStack must already be
-     * translated by -camPos. EXCHANGING always draws on top since its targets are inside existing
-     * blocks.
+     * Draws the baked, back-to-front-sorted preview. The PoseStack must already be translated by
+     * -camPos. EXCHANGING always draws on top since its targets are inside existing blocks.
      */
     public static void render(PoseStack ps, PlaceMode mode, Frustum frustum) {
-        boolean onTop = MMModConfig.HINTS_ON_TOP.get() || mode == PlaceMode.EXCHANGING;
-
-        if (!chunks.isEmpty()) {
+        if (vbo != null && (bounds == null || frustum.isVisible(bounds))) {
+            boolean onTop = MMModConfig.HINTS_ON_TOP.get() || mode == PlaceMode.EXCHANGING;
             var rt = onTop ? MMRenderTypes.GHOST_BLOCKS_ON_TOP : MMRenderTypes.GHOST_BLOCKS;
-            var shader = GameRenderer.getRendertypeTranslucentShader();
-            var proj = RenderSystem.getProjectionMatrix();
             ps.pushPose();
             ps.translate(anchor.getX(), anchor.getY(), anchor.getZ());
-            var mat = ps.last().pose();
             rt.setupRenderState();
-            for (var chunk : chunks) {
-                if (!frustum.isVisible(chunk.bounds())) continue;
-                chunk.vbo().bind();
-                chunk.vbo().drawWithShader(mat, proj, shader);
-            }
+            vbo.bind();
+            vbo.drawWithShader(ps.last().pose(), RenderSystem.getProjectionMatrix(),
+                    GameRenderer.getRendertypeTranslucentShader());
             VertexBuffer.unbind();
             rt.clearRenderState();
             ps.popPose();
@@ -479,6 +291,192 @@ public class GhostBlockRenderer {
                 r, g, b, 0.4f);
     }
 
+    /**
+     * A time-sliced bake. Phase 1 (grouping) scans the pending blocks, applying range/loaded/match
+     * culling and collecting the survivors. Phase 2 (baking) tessellates every face of each survivor
+     * into the shared builder, then sorts the quads back-to-front and uploads one buffer. Both phases
+     * consume a bounded budget per {@link #advance} call.
+     */
+    private static final class BakeJob {
+
+        private final List<PendingBlock> blocks;
+        @Nullable private final BlockPos origin;
+        private final ClientLevel level;
+        private final double rangeSq;
+        private final int maxHints;
+        final BlockPos jobAnchor;
+        final Vec3 camPos;
+        private final double px, py, pz;
+
+        // Grouping phase
+        private int scanIndex = 0;
+        private int accepted = 0;
+        private boolean groupingDone = false;
+        private final List<PendingBlock> kept = new ArrayList<>();
+        final List<BlockPos> removalBoxes = new ArrayList<>();
+
+        // Baking phase
+        private boolean baking = false;
+        private int bakeIndex = 0;
+        private int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE;
+        private int maxX = Integer.MIN_VALUE, maxY = Integer.MIN_VALUE, maxZ = Integer.MIN_VALUE;
+        private boolean done = false;
+
+        @Nullable VertexBuffer vbo;
+        @Nullable BufferBuilder.SortState sortState;
+        @Nullable AABB bounds;
+
+        private final PoseStack pose = new PoseStack();
+
+        BakeJob(List<PendingBlock> blocks, @Nullable BlockPos origin,
+                ClientLevel level, Player player, int range, Vec3 camPos) {
+            this.blocks = blocks;
+            this.origin = origin;
+            this.level = level;
+            this.rangeSq = range < 0 ? Double.MAX_VALUE : (double) range * range;
+            int cfg = MMModConfig.MAX_HINTS.get();
+            this.maxHints = cfg <= 0 ? Integer.MAX_VALUE : cfg;
+            this.jobAnchor = player.blockPosition();
+            this.camPos = camPos;
+            var p = player.position();
+            this.px = p.x;
+            this.py = p.y;
+            this.pz = p.z;
+        }
+
+        boolean done() {
+            return done;
+        }
+
+        void advance(BlockRenderDispatcher brd, GhostConsumer consumer) {
+            if (!groupingDone) {
+                group();
+            } else {
+                bake(brd, consumer);
+            }
+        }
+
+        private void group() {
+            int budget = GROUP_BUDGET;
+            int n = blocks.size();
+            while (scanIndex < n && accepted < maxHints && budget-- > 0) {
+                var pb = blocks.get(scanIndex++);
+                BlockPos pos = origin != null ? origin.offset(pb.relPos) : pb.relPos;
+
+                if (rangeSq != Double.MAX_VALUE) {
+                    double dx = pos.getX() + 0.5 - px, dy = pos.getY() + 0.5 - py, dz = pos.getZ() + 0.5 - pz;
+                    if (dx * dx + dy * dy + dz * dz > rangeSq) continue;
+                }
+                if (!level.isLoaded(pos)) continue;
+
+                BlockState target = pb.spec.state;
+                BlockState current = level.getBlockState(pos);
+
+                if (target.isAir()) {
+                    // Removal hint: no model to draw, use a red box instead (StructureLib substitute)
+                    if (!current.isAir() && removalBoxes.size() < MAX_REMOVAL_BOXES) removalBoxes.add(pos);
+                    continue;
+                }
+                if (current == target) continue;
+
+                kept.add(pb);
+                accepted++;
+            }
+
+            if (scanIndex >= n || accepted >= maxHints) {
+                groupingDone = true;
+                if (kept.isEmpty()) done = true;
+            }
+        }
+
+        private void bake(BlockRenderDispatcher brd, GhostConsumer consumer) {
+            if (!baking) {
+                builder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.BLOCK);
+                baking = true;
+            }
+
+            int budget = BAKE_BUDGET;
+            while (bakeIndex < kept.size() && budget-- > 0) {
+                var pb = kept.get(bakeIndex++);
+                BlockPos pos = origin != null ? origin.offset(pb.relPos) : pb.relPos;
+                BlockState target = pb.spec.state;
+
+                long key = pos.asLong();
+                consumer.setTint(errorHints.contains(key) ? TINT_ERROR
+                        : warningHints.contains(key) ? TINT_WARNING : TINT_NONE);
+
+                pose.pushPose();
+                pose.translate(pos.getX() - jobAnchor.getX(), pos.getY() - jobAnchor.getY(), pos.getZ() - jobAnchor.getZ());
+                // Shrink each model toward its cell centre so gaps show between blocks and placement reads clearly.
+                pose.translate(0.5, 0.5, 0.5);
+                pose.scale(GHOST_SCALE, GHOST_SCALE, GHOST_SCALE);
+                pose.translate(-0.5, -0.5, -0.5);
+                // checkSides=false bakes every face (interior included) so the translucent sort can
+                // show blocks behind others; null render type = all model layers.
+                int before = consumer.vertexCount();
+                brd.renderBatched(target, pos, level, pose, consumer, false, level.getRandom(), ModelData.EMPTY, null);
+                // Block-entity-rendered blocks (AE2 cable buses, chests, ...) bake no static geometry;
+                // fall back to a textured cube so they still appear in the preview.
+                if (consumer.vertexCount() == before) bakeFallbackCube(brd, consumer, target);
+                pose.popPose();
+
+                minX = Math.min(minX, pos.getX()); minY = Math.min(minY, pos.getY()); minZ = Math.min(minZ, pos.getZ());
+                maxX = Math.max(maxX, pos.getX()); maxY = Math.max(maxY, pos.getY()); maxZ = Math.max(maxZ, pos.getZ());
+            }
+
+            if (bakeIndex >= kept.size()) finish();
+        }
+
+        private void finish() {
+            builder.setQuadSorting(VertexSorting.byDistance(
+                    (float) (camPos.x - jobAnchor.getX()),
+                    (float) (camPos.y - jobAnchor.getY()),
+                    (float) (camPos.z - jobAnchor.getZ())));
+            sortState = builder.getSortState();
+
+            var rb = builder.endOrDiscardIfEmpty();
+            if (rb == null) {
+                sortState = null;
+                done = true;
+                return;
+            }
+
+            vbo = new VertexBuffer(VertexBuffer.Usage.STATIC);
+            vbo.bind();
+            vbo.upload(rb);
+            VertexBuffer.unbind();
+            bounds = new AABB(minX, minY, minZ, maxX + 1, maxY + 1, maxZ + 1);
+            done = true;
+        }
+
+        /** Emits a [0,1] cube textured with the block's particle sprite (the current pose scales it). */
+        private void bakeFallbackCube(BlockRenderDispatcher brd, GhostConsumer c, BlockState target) {
+            TextureAtlasSprite sprite = brd.getBlockModel(target).getParticleIcon(ModelData.EMPTY);
+            var p = pose.last();
+            Matrix4f mat = p.pose();
+            Matrix3f nm = p.normal();
+            float u0 = sprite.getU0(), u1 = sprite.getU1(), v0 = sprite.getV0(), v1 = sprite.getV1();
+
+            face(c, mat, nm, u0, u1, v0, v1, 0, -1, 0,  0, 0, 0,  1, 0, 0,  1, 0, 1,  0, 0, 1); // down
+            face(c, mat, nm, u0, u1, v0, v1, 0, 1, 0,   0, 1, 0,  0, 1, 1,  1, 1, 1,  1, 1, 0); // up
+            face(c, mat, nm, u0, u1, v0, v1, 0, 0, -1,  0, 0, 0,  0, 1, 0,  1, 1, 0,  1, 0, 0); // north
+            face(c, mat, nm, u0, u1, v0, v1, 0, 0, 1,   0, 0, 1,  1, 0, 1,  1, 1, 1,  0, 1, 1); // south
+            face(c, mat, nm, u0, u1, v0, v1, -1, 0, 0,  0, 0, 0,  0, 0, 1,  0, 1, 1,  0, 1, 0); // west
+            face(c, mat, nm, u0, u1, v0, v1, 1, 0, 0,   1, 0, 0,  1, 1, 0,  1, 1, 1,  1, 0, 1); // east
+        }
+
+        private static void face(GhostConsumer c, Matrix4f mat, Matrix3f nm,
+                                 float u0, float u1, float v0, float v1, float nx, float ny, float nz,
+                                 float ax, float ay, float az, float bx, float by, float bz,
+                                 float cx, float cy, float cz, float dx, float dy, float dz) {
+            int light = 0xF000F0;
+            c.vertex(mat, ax, ay, az).color(255, 255, 255, 255).uv(u0, v0).uv2(light).normal(nm, nx, ny, nz).endVertex();
+            c.vertex(mat, bx, by, bz).color(255, 255, 255, 255).uv(u1, v0).uv2(light).normal(nm, nx, ny, nz).endVertex();
+            c.vertex(mat, cx, cy, cz).color(255, 255, 255, 255).uv(u1, v1).uv2(light).normal(nm, nx, ny, nz).endVertex();
+            c.vertex(mat, dx, dy, dz).color(255, 255, 255, 255).uv(u0, v1).uv2(light).normal(nm, nx, ny, nz).endVertex();
+        }
+    }
+
     /** Multiplies vertex colors by a tint and forces a fixed alpha, making block models translucent. */
     private static final class GhostConsumer implements VertexConsumer {
 
@@ -492,10 +490,7 @@ public class GhostBlockRenderer {
             this.a255 = Math.max(1, Math.min(255, (int) (255f * alphaMult)));
         }
 
-        void resetVertexCount() {
-            verts = 0;
-        }
-
+        /** Running total of emitted vertices, used to detect blocks that baked no geometry. */
         int vertexCount() {
             return verts;
         }
