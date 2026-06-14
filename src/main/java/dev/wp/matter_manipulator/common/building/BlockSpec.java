@@ -44,16 +44,30 @@ public class BlockSpec {
     @Nullable
     public List<ItemStack> extraItems;
 
+    /**
+     * Fluids stored in the source block entity, captured through its Forge fluid-handler
+     * capability as {Tank, ...FluidStack} entries. Derived from the world; not persisted and
+     * not part of equality. Used by COPYING to refill tanks from a bound AE2 network.
+     */
+    @Nullable
+    public final ListTag fluids;
+
     public BlockSpec(BlockState state, @Nullable CompoundTag tileData, @Nullable ListTag contents,
-                     @Nullable List<ItemStack> extraItems) {
+                     @Nullable List<ItemStack> extraItems, @Nullable ListTag fluids) {
         this.state = state;
         this.tileData = tileData;
         this.contents = contents;
         this.extraItems = extraItems;
+        this.fluids = fluids;
+    }
+
+    public BlockSpec(BlockState state, @Nullable CompoundTag tileData, @Nullable ListTag contents,
+                     @Nullable List<ItemStack> extraItems) {
+        this(state, tileData, contents, extraItems, null);
     }
 
     public BlockSpec(BlockState state, @Nullable CompoundTag tileData, @Nullable ListTag contents) {
-        this(state, tileData, contents, null);
+        this(state, tileData, contents, null, null);
     }
 
     public BlockSpec(BlockState state, @Nullable CompoundTag tileData) {
@@ -72,17 +86,34 @@ public class BlockSpec {
         BlockState state = level.getBlockState(pos);
         CompoundTag tileData = null;
         ListTag contents = null;
+        ListTag fluids = null;
         List<ItemStack> extraItems = null;
         BlockEntity be = level.getBlockEntity(pos);
         if (be != null) {
             tileData = be.saveWithFullMetadata();
             contents = captureContents(be);
+            fluids = captureFluids(be);
             List<ItemStack> extras = new ArrayList<>();
             if (Mods.GTCEU && GTCompat.isGTMachine(be)) extras.addAll(GTCompat.captureCovers(be));
             if (Mods.AE2 && AECompat.isAEBlock(be)) extras.addAll(AECompat.captureAEItems(be));
             if (!extras.isEmpty()) extraItems = extras;
         }
-        return new BlockSpec(state, tileData, contents, extraItems);
+        return new BlockSpec(state, tileData, contents, extraItems, fluids);
+    }
+
+    @Nullable
+    private static ListTag captureFluids(BlockEntity be) {
+        var handler = be.getCapability(ForgeCapabilities.FLUID_HANDLER).resolve().orElse(null);
+        if (handler == null) return null;
+        var list = new ListTag();
+        for (int tank = 0; tank < handler.getTanks(); tank++) {
+            var fluid = handler.getFluidInTank(tank);
+            if (fluid.isEmpty()) continue;
+            var tag = fluid.writeToNBT(new CompoundTag());
+            tag.putInt("Tank", tank);
+            list.add(tag);
+        }
+        return list.isEmpty() ? null : list;
     }
 
     @Nullable

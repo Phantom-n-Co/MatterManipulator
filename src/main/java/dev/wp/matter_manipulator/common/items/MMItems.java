@@ -1,6 +1,8 @@
 package dev.wp.matter_manipulator.common.items;
 
 import dev.wp.matter_manipulator.MMMod;
+import dev.wp.matter_manipulator.common.compat.Mods;
+import dev.wp.matter_manipulator.common.compat.ae.AEUplinkRegistrar;
 import dev.wp.matter_manipulator.common.items.manipulator.ItemMatterManipulator;
 import dev.wp.matter_manipulator.common.items.manipulator.MMTier;
 import net.minecraft.core.registries.Registries;
@@ -50,6 +52,9 @@ public class MMItems {
                 output.accept(UPGRADE_MINING.get());
                 output.accept(UPGRADE_SPEED.get());
                 output.accept(UPGRADE_POWER_EFF.get());
+                if (Mods.AE2) {
+                    AEUplinkRegistrar.addToCreativeTab(output);
+                }
             })
             .build()
         );

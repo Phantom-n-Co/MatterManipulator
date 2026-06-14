@@ -6,6 +6,7 @@ public enum MMTier {
 
     PROTO(
             "proto",
+            11,
             32,
             16,
             10_000_000L,
@@ -13,6 +14,7 @@ public enum MMTier {
     ),
     MK1(
             "mk1",
+            11,
             64,
             64,
             100_000_000L,
@@ -21,6 +23,7 @@ public enum MMTier {
     ),
     MK2(
             "mk2",
+            11,
             128,
             256,
             1_000_000_000L,
@@ -30,6 +33,7 @@ public enum MMTier {
     ),
     MK3(
             "mk3",
+            11,
             -1,
             256,
             10_000_000_000L,
@@ -39,6 +43,8 @@ public enum MMTier {
     );
 
     public final String id;
+
+    public final int euTier;
     /**
      * Block range (-1 = unlimited).
      */
@@ -56,8 +62,9 @@ public enum MMTier {
      */
     public final int capabilities;
 
-    MMTier(String id, int range, int placeSpeed, long maxEnergy, int capabilities) {
+    MMTier(String id, int euTier, int range, int placeSpeed, long maxEnergy, int capabilities) {
         this.id = id;
+        this.euTier = euTier;
         this.range = range;
         this.placeSpeed = placeSpeed;
         this.maxEnergy = maxEnergy;
@@ -78,7 +85,7 @@ public enum MMTier {
 
     /** GregTech voltage tier used for charging as an electric item (LV, MV, HV, EV by MK level). */
     public int euTier() {
-        return ordinal() + 1;
+        return this.euTier;
     }
 
     /** Whether energy is measured in EU (GregTech present) rather than FE. */

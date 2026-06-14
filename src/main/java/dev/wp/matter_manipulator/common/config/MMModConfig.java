@@ -13,6 +13,8 @@ public class MMModConfig {
     public static final ForgeConfigSpec.ConfigValue<Boolean> HINTS_ON_TOP;
     public static final ForgeConfigSpec.ConfigValue<Boolean> DEBUG_LOGGING;
     public static final ForgeConfigSpec.ConfigValue<Integer> MK3_PLACE_SPEED;
+    public static final ForgeConfigSpec.ConfigValue<Double> AE_FE_PER_AE;
+    public static final ForgeConfigSpec.ConfigValue<Double> AE_FE_PER_EU;
 
     static {
         BUILDER.push("interaction");
@@ -45,6 +47,15 @@ public class MMModConfig {
         MK3_PLACE_SPEED = BUILDER
                 .comment("Blocks per tick. High values may cause world desync and lag. Server only.")
                 .defineInRange("mk3PlaceSpeed", 256, 1, 4096);
+        BUILDER.pop();
+
+        BUILDER.push("uplink");
+        AE_FE_PER_AE = BUILDER
+                .comment("Forge Energy per AE2 energy unit when drawing the manipulator's power from a bound AE2 network (Power P2P upgrade).")
+                .defineInRange("fePerAe", 2.0, 0.0001, 1_000_000.0);
+        AE_FE_PER_EU = BUILDER
+                .comment("Forge Energy per EU, used to convert AE network power into the manipulator's EU buffer when GregTech is present.")
+                .defineInRange("fePerEu", 4.0, 0.0001, 1_000_000.0);
         BUILDER.pop();
 
         SPEC = BUILDER.build();

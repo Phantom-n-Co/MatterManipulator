@@ -4,8 +4,10 @@ import com.mojang.logging.LogUtils;
 import dev.wp.matter_manipulator.common.compat.CopyHandlers;
 import dev.wp.matter_manipulator.common.compat.GTCompat;
 import dev.wp.matter_manipulator.common.compat.Mods;
+import dev.wp.matter_manipulator.common.compat.ae.AEUplinkRegistrar;
 import dev.wp.matter_manipulator.common.config.MMModConfig;
 import dev.wp.matter_manipulator.common.items.MMItems;
+import dev.wp.matter_manipulator.common.items.MMRecipes;
 import dev.wp.matter_manipulator.common.networking.MMNetwork;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.common.MinecraftForge;
@@ -26,6 +28,13 @@ public class MMMod {
 
         MMItems.ITEMS.register(modBus);
         MMItems.CREATIVE_MODE_TABS.register(modBus);
+        MMRecipes.SERIALIZERS.register(modBus);
+
+        // AE2 uplink block — registered only when AE2 is present, so its AE2-coupled classes
+        // (block/BE/logic) never load otherwise.
+        if (Mods.AE2) {
+            AEUplinkRegistrar.register(modBus);
+        }
 
         modBus.addListener(this::commonSetup);
 

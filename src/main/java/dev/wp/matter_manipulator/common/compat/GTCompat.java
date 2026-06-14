@@ -216,8 +216,7 @@ public class GTCompat {
 
         @Override
         public int getTier() {
-//            return tier.euTier();
-            return 11;
+            return tier.euTier();
         }
 
         @Override

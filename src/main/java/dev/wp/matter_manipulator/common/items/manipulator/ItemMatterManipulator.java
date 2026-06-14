@@ -197,9 +197,15 @@ public class ItemMatterManipulator extends Item {
                 .option().label(I18n.get("mm.gui.mark")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.MARK_ARRAY, null))).done()
                 .done();
 
+        boolean hasAuto = Mods.AE2 && tier.hasCapability(MMCapability.CONNECTS_TO_AE);
         b.branch().label(I18n.get("mm.gui.planning"))
                 .option().label(I18n.get("mm.gui.plan_all_manual")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketRequestRequiredItems(PacketRequestRequiredItems.PLAN_ALL))).done()
                 .option().label(I18n.get("mm.gui.plan_missing_manual")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketRequestRequiredItems(0))).done()
+                .option().label(I18n.get("mm.gui.create_plan_all")).hidden(!hasAuto).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketRequestRequiredItems(PacketRequestRequiredItems.PLAN_ALL | PacketRequestRequiredItems.PLAN_PATTERN))).done()
+                .option().label(I18n.get("mm.gui.create_plan_missing")).hidden(!hasAuto).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketRequestRequiredItems(PacketRequestRequiredItems.PLAN_PATTERN))).done()
+                .option().label(I18n.get("mm.gui.autocraft_all")).hidden(!hasAuto).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketRequestRequiredItems(PacketRequestRequiredItems.PLAN_ALL | PacketRequestRequiredItems.PLAN_AUTOCRAFT))).done()
+                .option().label(I18n.get("mm.gui.autocraft_missing")).hidden(!hasAuto).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketRequestRequiredItems(PacketRequestRequiredItems.PLAN_AUTOCRAFT))).done()
+                .option().label(I18n.get("mm.gui.clear_plan")).hidden(!hasAuto).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketClearPlan())).done()
                 .done();
 
         addEditTransformOption(b);

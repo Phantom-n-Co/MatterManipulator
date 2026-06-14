@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/cube_all",
+  "textures": {
+    "all": "matter_manipulator:block/ae2_uplink"
+  }
+}

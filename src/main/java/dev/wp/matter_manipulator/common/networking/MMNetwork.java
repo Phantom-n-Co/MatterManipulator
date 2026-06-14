@@ -85,5 +85,8 @@ public class MMNetwork {
 
         CHANNEL.registerMessage(nextId++, PacketSetCoordDirect.class,
                 PacketSetCoordDirect::encode, PacketSetCoordDirect::decode, PacketSetCoordDirect::handle);
+
+        CHANNEL.registerMessage(nextId++, PacketClearPlan.class,
+                PacketClearPlan::encode, PacketClearPlan::decode, PacketClearPlan::handle);
     }
 }

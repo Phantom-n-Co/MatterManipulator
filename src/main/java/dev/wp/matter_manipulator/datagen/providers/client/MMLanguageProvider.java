@@ -19,6 +19,12 @@ public class MMLanguageProvider extends LanguageProvider {
         add(MMItems.MANIPULATOR_MK2.get(), "Matter Manipulator MK II");
         add(MMItems.MANIPULATOR_MK3.get(), "Matter Manipulator MK III");
 
+        // AE2 uplink block (registered only with AE2; key added unconditionally so the name
+        // resolves whenever the block is present).
+        add("block.matter_manipulator.ae2_uplink", "Matter Manipulator AE2 Uplink");
+        add("item.matter_manipulator.plan_token", "Build Plan");
+        add("item.matter_manipulator.plan_token.named", "Build Plan (%s blocks)");
+
         add(guiKey("title"), "Matter Manipulator");
         add(guiKey("mode"), "Place Mode");
         add(guiKey("shape"), "Shape");
@@ -94,8 +100,14 @@ public class MMLanguageProvider extends LanguageProvider {
         add("mm.gui.reset", "Reset");
         add("mm.gui.mark", "Mark");
         add("mm.gui.planning", "Planning");
-        add("mm.gui.plan_all_manual", "Plan (All, Manual)");
-        add("mm.gui.plan_missing_manual", "Plan (Missing, Manual)");
+        add("mm.gui.plan_all_manual", "Plan (All)");
+        add("mm.gui.plan_missing_manual", "Plan (Missing)");
+        add("mm.gui.create_plan_all", "Create Plan (All)");
+        add("mm.gui.create_plan_missing", "Create Plan (Missing)");
+        add("mm.gui.autocraft_all", "Auto-Craft (All)");
+        add("mm.gui.autocraft_missing", "Auto-Craft (Missing)");
+        add("mm.gui.clear_plan", "Clear Plans");
+        add("mm.gui.link_uplink", "Link to AE2 Uplink");
         add("mm.gui.edit_transform", "Edit Transform");
         add("mm.gui.mark_cut", "Mark Cut");
         add("mm.gui.mark_paste", "Mark Paste");
@@ -130,7 +142,17 @@ public class MMLanguageProvider extends LanguageProvider {
         add("mm.info.error.must_have_copy_region", "Must have copy region marked.");
         add("mm.info.error.must_have_paste_region", "Must have paste region marked to detect missing items.");
         add("mm.info.required_items", "Required items:");
+        add("mm.info.required_fluids", "Required fluids:");
         add("mm.info.none", "None");
+        add("mm.info.uplink_bound", "Bound to AE2 uplink at %s.");
+        add("mm.info.uplink_cleared", "Cleared AE2 uplink binding.");
+        add("mm.info.error.not_an_uplink", "That isn't an AE2 uplink block.");
+        add("mm.info.error.no_uplink", "No AE2 uplink is bound.");
+        add("mm.info.plan_created", "Plan created — request the Build Plan from your ME terminal to craft it.");
+        add("mm.info.autocraft_started", "Auto-crafting the plan's materials into your ME network.");
+        add("mm.info.error.autocraft_failed", "The network could not craft the plan's materials.");
+        add("mm.info.plan_full", "The uplink has no free plan slots; clear some plans first.");
+        add("mm.info.plan_cleared", "Cleared %s plan(s) from the uplink.");
         add("mm.info.locked", "Positions are locked. Press the lock key to unlock.");
         add("mm.info.transform_reset", "Transform reset.");
         add("mm.info.coord_set", "Coord %s set to %s");

@@ -7,6 +7,7 @@ import dev.wp.matter_manipulator.common.compat.CopyHandlers;
 import dev.wp.matter_manipulator.common.compat.GTCompat;
 import dev.wp.matter_manipulator.common.compat.Mods;
 import dev.wp.matter_manipulator.common.config.MMModConfig;
+import dev.wp.matter_manipulator.common.items.MMUpgrades;
 import dev.wp.matter_manipulator.common.items.manipulator.MMCapability;
 import dev.wp.matter_manipulator.common.items.manipulator.MMState;
 import dev.wp.matter_manipulator.common.items.manipulator.MMTier;
@@ -138,8 +139,14 @@ public class PendingBuild {
     private void doTick(Player player, ItemStack stack, MMState state) {
         if (!(player.level() instanceof ServerLevel level)) return;
 
-        var inv = new MMInventory(player);
         var cfg = state.getConfig();
+        var inv = new MMInventory(player, cfg.uplink);
+
+        // Power P2P: refill the energy buffer from the bound network before spending this batch.
+        if (Mods.AE2 && cfg.uplink != null && state.hasUpgrade(MMUpgrades.POWER_P2P.bit)) {
+            topUpFromNetwork(level, cfg.uplink, state);
+        }
+
         int placed = 0;
         int shuffleCount = 0;
         boolean fullCycle = false;
@@ -308,8 +315,9 @@ public class PendingBuild {
                         if (!(Mods.AE2 && AECompat.isAEBlock(be))) {
                             injectContents(be, pb.spec.contents, inv);
                         }
-                        // Fluids can't be paid for yet (TODO: fill from a connected AE2 network).
-                        drainFluids(be);
+                        // Drain whatever the placed BE came with; refill captured amounts paid
+                        // from the bound AE2 network (nothing free when unbound).
+                        fillFluids(be, pb.spec.fluids, cfg.uplink, level);
                     }
                     be.setChanged();
                     if (Mods.GTCEU && GTCompat.needsClientSync(be)) {
@@ -429,16 +437,50 @@ public class PendingBuild {
     }
 
     /**
-     * COPYING has no way to pay for fluids, so pasted tanks are emptied rather than
-     * granting their contents for free.
+     * COPYING empties whatever fluids a freshly placed tank came with (they can't be granted for
+     * free), then — if the manipulator is bound to an AE2 uplink — refills the captured amounts,
+     * paying for them out of the network. Unbound, the tank is simply left empty.
      */
-    private static void drainFluids(BlockEntity be) {
+    private static void fillFluids(BlockEntity be, @Nullable ListTag snapshot,
+                                   @Nullable Location uplink, ServerLevel level) {
         var handler = be.getCapability(ForgeCapabilities.FLUID_HANDLER).resolve().orElse(null);
         if (handler == null) return;
         // drain() removes one fluid type per call; bounded in case a handler refills itself
         for (int i = 0; i < 64; i++) {
             FluidStack drained = handler.drain(Integer.MAX_VALUE, IFluidHandler.FluidAction.EXECUTE);
             if (drained.isEmpty()) break;
+        }
+        if (snapshot == null || snapshot.isEmpty()) return;
+        if (!(Mods.AE2 && uplink != null)) return;
+        for (int i = 0; i < snapshot.size(); i++) {
+            FluidStack want = FluidStack.loadFluidStackFromNBT(snapshot.getCompound(i));
+            if (want.isEmpty()) continue;
+            int capacity = handler.fill(want, IFluidHandler.FluidAction.SIMULATE);
+            if (capacity <= 0) continue;
+            int got = AECompat.uplinkExtractFluid(level, uplink, want, Math.min(capacity, want.getAmount()));
+            if (got <= 0) continue;
+            FluidStack give = want.copy();
+            give.setAmount(got);
+            handler.fill(give, IFluidHandler.FluidAction.EXECUTE);
+        }
+    }
+
+    /**
+     * Power P2P: draws AE power from the bound network and converts it into the manipulator's
+     * energy buffer (EU when GregTech is present, otherwise FE), capped at the tier capacity.
+     */
+    private void topUpFromNetwork(ServerLevel level, Location uplink, MMState state) {
+        long space = tier.effectiveMaxEnergy() - state.getCharge();
+        if (space <= 0) return;
+        double fePerUnit = MMTier.usesEU() ? MMModConfig.AE_FE_PER_EU.get() : 1.0;
+        double fePerAe = MMModConfig.AE_FE_PER_AE.get();
+        double aeNeeded = (space * fePerUnit) / fePerAe;
+        if (aeNeeded <= 0) return;
+        double aeGot = AECompat.uplinkDrawPowerAE(level, uplink, aeNeeded);
+        if (aeGot <= 0) return;
+        long unitsGot = (long) (aeGot * fePerAe / fePerUnit);
+        if (unitsGot > 0) {
+            state.setCharge(Math.min(tier.effectiveMaxEnergy(), state.getCharge() + unitsGot));
         }
     }
 

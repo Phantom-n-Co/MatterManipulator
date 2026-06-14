@@ -35,3 +35,17 @@ mandatory = true
 versionRange = "${mui_version_range}"
 ordering = "NONE"
 side = "BOTH"
+
+[[dependencies.${ mod_id }]]
+modId = "gtceu"
+mandatory = false
+versionRange = "${gtceu_version_range}"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.${ mod_id }]]
+modId = "ae2"
+mandatory = false
+versionRange = "${ae2_version_range}"
+ordering = "NONE"
+side = "BOTH"

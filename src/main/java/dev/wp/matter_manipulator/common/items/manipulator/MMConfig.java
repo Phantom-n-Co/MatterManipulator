@@ -58,6 +58,13 @@ public class MMConfig {
 
     public boolean locked = false;
 
+    /**
+     * AE2 uplink the manipulator is bound to (null if unbound). When set, builds source items,
+     * fluids, and (with the Power P2P upgrade) energy from that network, and planning can request
+     * auto-crafting through it.
+     */
+    public Location uplink = null;
+
     public MMConfig() {
     }
 
@@ -86,6 +93,7 @@ public class MMConfig {
         next.action = this.action;
         next.blockSelectMode = this.blockSelectMode;
         next.locked = this.locked;
+        next.uplink = this.uplink;
         return next;
     }
 

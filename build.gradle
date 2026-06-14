@@ -203,6 +203,10 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
             mod_credits            : mod_credits,
             mui_version            : mui_version,
             mui_version_range      : mui_version_range,
+            ae2_version            : ae2_version,
+            ae2_version_range      : ae2_version_range,
+            gtceu_version          : gtceu_version,
+            gtceu_version_range    : gtceu_version_range,
     ]
     inputs.properties replaceProperties
     expand replaceProperties

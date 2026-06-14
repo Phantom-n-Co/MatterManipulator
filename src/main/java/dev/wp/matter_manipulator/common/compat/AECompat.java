@@ -6,7 +6,12 @@ import appeng.api.parts.IFacadeContainer;
 import appeng.api.parts.IFacadePart;
 import appeng.api.parts.IPart;
 import appeng.api.parts.IPartHost;
+import appeng.api.stacks.AEFluidKey;
+import appeng.api.stacks.AEItemKey;
+import appeng.api.stacks.GenericStack;
+import dev.wp.matter_manipulator.common.building.Location;
 import dev.wp.matter_manipulator.common.building.MMInventory;
+import dev.wp.matter_manipulator.common.compat.ae.UplinkBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -16,10 +21,12 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraftforge.fluids.FluidStack;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 public class AECompat {
 
@@ -137,6 +144,100 @@ public class AECompat {
                 }
             }
         }
+    }
+
+    // ── Uplink network bridge ───────────────────────────────────────────────────────
+    // The manipulator stores only the bound block's Location; these resolve the live uplink and
+    // expose its network to the build/plan code, which never imports AE2 directly.
+
+    @Nullable
+    private static UplinkBlockEntity resolveUplink(ServerLevel level, @Nullable Location loc) {
+        if (loc == null) return null;
+        ServerLevel target = loc.dimension.equals(level.dimension()) ? level : level.getServer().getLevel(loc.dimension);
+        if (target == null || !target.isLoaded(loc.pos)) return null;
+        return target.getBlockEntity(loc.pos) instanceof UplinkBlockEntity u ? u : null;
+    }
+
+    /** Whether a usable uplink is bound and resolvable at {@code loc}. */
+    public static boolean hasUplink(ServerLevel level, @Nullable Location loc) {
+        return resolveUplink(level, loc) != null;
+    }
+
+    /** Whether the block at {@code pos} is an uplink (used by the bind action). */
+    public static boolean isUplinkAt(ServerLevel level, BlockPos pos) {
+        return level.getBlockEntity(pos) instanceof UplinkBlockEntity;
+    }
+
+    /** Count of an item available from the uplink (internal buffer + network storage). */
+    public static long uplinkAvailable(ServerLevel level, @Nullable Location loc, ItemStack filter) {
+        UplinkBlockEntity u = resolveUplink(level, loc);
+        if (u == null || filter.isEmpty()) return 0;
+        AEItemKey key = AEItemKey.of(filter);
+        return key == null ? 0 : u.getUplink().available(key);
+    }
+
+    /** Extracts up to {@code amount} of an item from the uplink; returns the amount obtained. */
+    public static long uplinkExtract(ServerLevel level, @Nullable Location loc, ItemStack filter, long amount) {
+        UplinkBlockEntity u = resolveUplink(level, loc);
+        if (u == null || filter.isEmpty() || amount <= 0) return 0;
+        AEItemKey key = AEItemKey.of(filter);
+        return key == null ? 0 : u.getUplink().extract(key, amount);
+    }
+
+    /** Inserts a stack into the uplink's network; returns the count that did not fit. */
+    public static int uplinkInsert(ServerLevel level, @Nullable Location loc, ItemStack stack) {
+        UplinkBlockEntity u = resolveUplink(level, loc);
+        if (u == null || stack.isEmpty()) return stack.getCount();
+        AEItemKey key = AEItemKey.of(stack);
+        if (key == null) return stack.getCount();
+        return (int) u.getUplink().insert(key, stack.getCount());
+    }
+
+    /** Fluid (mB) of one type available from the uplink network. */
+    public static long uplinkFluidAvailable(ServerLevel level, @Nullable Location loc, FluidStack filter) {
+        UplinkBlockEntity u = resolveUplink(level, loc);
+        if (u == null || filter.isEmpty()) return 0;
+        AEFluidKey key = AEFluidKey.of(filter);
+        return key == null ? 0 : u.getUplink().available(key);
+    }
+
+    /** Extracts up to {@code amount} mB of a fluid from the uplink; returns mB obtained. */
+    public static int uplinkExtractFluid(ServerLevel level, @Nullable Location loc, FluidStack want, int amount) {
+        UplinkBlockEntity u = resolveUplink(level, loc);
+        if (u == null || want.isEmpty() || amount <= 0) return 0;
+        AEFluidKey key = AEFluidKey.of(want);
+        return key == null ? 0 : (int) u.getUplink().extract(key, amount);
+    }
+
+    /** Draws power from the uplink network; {@code ae} is in AE units, returns AE obtained. */
+    public static double uplinkDrawPowerAE(ServerLevel level, @Nullable Location loc, double ae) {
+        UplinkBlockEntity u = resolveUplink(level, loc);
+        return u == null ? 0 : u.getUplink().drawPowerAE(ae);
+    }
+
+    /**
+     * Stores a plan pattern (inputs = the given blocks, output = a Plan token) on the uplink for the
+     * given player. Returns true if it was stored (false = no uplink or the plan store is full).
+     */
+    public static boolean uplinkAddPlan(ServerLevel level, @Nullable Location loc, UUID player,
+                                        List<ItemStack> blocks, boolean auto) {
+        UplinkBlockEntity u = resolveUplink(level, loc);
+        if (u == null) return false;
+        List<GenericStack> stacks = new ArrayList<>(blocks.size());
+        for (ItemStack s : blocks) {
+            if (s.isEmpty()) continue;
+            AEItemKey key = AEItemKey.of(s);
+            if (key != null) stacks.add(new GenericStack(key, s.getCount()));
+        }
+        if (stacks.isEmpty()) return false;
+        return u.getUplink().addPlan(player, stacks.toArray(GenericStack[]::new), auto);
+    }
+
+    /** Clears the given player's plan patterns from the uplink; returns how many were removed (-1 = no uplink). */
+    public static int uplinkClearPlan(ServerLevel level, @Nullable Location loc, UUID player) {
+        UplinkBlockEntity u = resolveUplink(level, loc);
+        if (u == null) return -1;
+        return u.getUplink().clearPlan(player);
     }
 
     /**

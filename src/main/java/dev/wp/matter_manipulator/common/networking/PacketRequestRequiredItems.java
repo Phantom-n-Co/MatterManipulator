@@ -2,6 +2,8 @@ package dev.wp.matter_manipulator.common.networking;
 
 import dev.wp.matter_manipulator.common.building.BuildGenerator;
 import dev.wp.matter_manipulator.common.building.MMInventory;
+import dev.wp.matter_manipulator.common.compat.AECompat;
+import dev.wp.matter_manipulator.common.compat.Mods;
 import dev.wp.matter_manipulator.common.items.manipulator.MMState;
 import dev.wp.matter_manipulator.common.items.manipulator.PlaceMode;
 import dev.wp.matter_manipulator.common.utils.MMUtils;
@@ -13,9 +15,13 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.material.Fluid;
+import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.network.NetworkEvent;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 
@@ -24,6 +30,10 @@ public class PacketRequestRequiredItems {
 
     /** Include all blocks rather than only those that don't match the world yet. */
     public static final int PLAN_ALL = 0b1;
+    /** Register a terminal-requestable plan pattern on the bound AE2 uplink. */
+    public static final int PLAN_PATTERN = 0b10;
+    /** Have the uplink itself auto-craft the plan once (RP-style auto plan). */
+    public static final int PLAN_AUTOCRAFT = 0b100;
 
     public final int flags;
 
@@ -70,7 +80,10 @@ public class PacketRequestRequiredItems {
             var level = player.serverLevel();
             var blocks = BuildGenerator.generateBlocks(eff, level);
 
+            boolean planPattern = (pkt.flags & PLAN_PATTERN) != 0;
+
             Map<Item, Long> required = new LinkedHashMap<>();
+            Map<Fluid, Long> requiredFluids = new LinkedHashMap<>();
             for (var pb : blocks) {
                 var stack = pb.spec.toStack();
                 if (stack.isEmpty()) continue;
@@ -97,18 +110,29 @@ public class PacketRequestRequiredItems {
                         }
                     }
                 }
+                if (pb.spec.fluids != null) {
+                    for (int i = 0; i < pb.spec.fluids.size(); i++) {
+                        FluidStack fs = FluidStack.loadFluidStackFromNBT(pb.spec.fluids.getCompound(i));
+                        if (!fs.isEmpty()) {
+                            requiredFluids.merge(fs.getFluid(), (long) fs.getAmount(), Long::sum);
+                        }
+                    }
+                }
             }
 
-            if (required.isEmpty()) {
+            if (required.isEmpty() && requiredFluids.isEmpty()) {
                 MMUtils.sendInfoToPlayer(player, "mm.info.none");
                 return;
             }
 
-            var inv = new MMInventory(player);
+            boolean bound = Mods.AE2 && cfg.uplink != null && AECompat.hasUplink(level, cfg.uplink);
+            var inv = new MMInventory(player, cfg.uplink);
+
             MMUtils.sendInfoToPlayer(player, "mm.info.required_items");
             for (var entry : required.entrySet()) {
                 long count = entry.getValue();
-                long available = inv.countInInventory(new ItemStack(entry.getKey()));
+                ItemStack itemStack = new ItemStack(entry.getKey());
+                long available = inv.countAvailable(itemStack);
                 long missing = Math.max(0, count - available);
 
                 var line = Component.literal("  ")
@@ -118,6 +142,39 @@ public class PacketRequestRequiredItems {
                     line.append(Component.literal(" (" + missing + " missing)").withStyle(ChatFormatting.RED));
                 }
                 MMUtils.sendInfoToPlayer(player, line);
+            }
+
+            if (!requiredFluids.isEmpty()) {
+                MMUtils.sendInfoToPlayer(player, "mm.info.required_fluids");
+                for (var entry : requiredFluids.entrySet()) {
+                    long mb = entry.getValue();
+                    FluidStack fluidStack = new FluidStack(entry.getKey(), 1);
+                    long available = bound ? AECompat.uplinkFluidAvailable(level, cfg.uplink, fluidStack) : 0;
+                    long missing = Math.max(0, mb - available);
+
+                    var line = Component.literal("  ")
+                            .append(fluidStack.getDisplayName())
+                            .append(Component.literal(": " + mb + " mB").withStyle(ChatFormatting.GOLD));
+                    if (missing > 0) {
+                        line.append(Component.literal(" (" + missing + " mB missing)").withStyle(ChatFormatting.RED));
+                    }
+                    MMUtils.sendInfoToPlayer(player, line);
+                }
+            }
+
+            boolean autocraft = (pkt.flags & PLAN_AUTOCRAFT) != 0;
+            if (planPattern || autocraft) {
+                if (!bound) {
+                    MMUtils.sendErrorToPlayer(player, "mm.info.error.no_uplink");
+                } else {
+                    List<ItemStack> planItems = new ArrayList<>(required.size());
+                    for (var entry : required.entrySet()) {
+                        planItems.add(new ItemStack(entry.getKey(), (int) Math.min(entry.getValue(), Integer.MAX_VALUE)));
+                    }
+                    boolean ok = AECompat.uplinkAddPlan(level, cfg.uplink, player.getUUID(), planItems, autocraft);
+                    MMUtils.sendInfoToPlayer(player,
+                            ok ? (autocraft ? "mm.info.autocraft_started" : "mm.info.plan_created") : "mm.info.plan_full");
+                }
             }
         });
         ctx.get().setPacketHandled(true);

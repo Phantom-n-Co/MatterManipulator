@@ -117,7 +117,7 @@ public class BuildGenerator {
             if (cfg.transform.flipX) blockState = blockState.mirror(Mirror.LEFT_RIGHT);
             if (cfg.transform.flipZ) blockState = blockState.mirror(Mirror.FRONT_BACK);
 
-            baseBlocks.add(new PendingBlock(new BlockPos(transformedRel.x(), transformedRel.y(), transformedRel.z()), new BlockSpec(blockState, pb.spec.tileData, pb.spec.contents, pb.spec.extraItems)));
+            baseBlocks.add(new PendingBlock(new BlockPos(transformedRel.x(), transformedRel.y(), transformedRel.z()), new BlockSpec(blockState, pb.spec.tileData, pb.spec.contents, pb.spec.extraItems, pb.spec.fluids)));
         }
 
         var blocks = new ArrayList<PendingBlock>();
