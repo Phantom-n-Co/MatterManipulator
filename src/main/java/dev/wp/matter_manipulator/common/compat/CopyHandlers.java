@@ -1,6 +1,7 @@
 package dev.wp.matter_manipulator.common.compat;
 
 import dev.wp.matter_manipulator.common.building.MMInventory;
+import dev.wp.matter_manipulator.common.items.manipulator.MMTransform;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
@@ -56,6 +57,18 @@ public final class CopyHandlers {
             if (handler.matches(state, be, full)) {
                 handler.contributeNbt(full, out, inv);
             }
+        }
+        return out;
+    }
+
+    /**
+     * Lets handlers rewrite captured tile NBT to follow a COPYING/MOVING rotation/flip (e.g. cover
+     * side remapping). Each handler self-guards, so this runs them all in order.
+     */
+    public static CompoundTag transformTileData(BlockState state, CompoundTag tileData, MMTransform transform) {
+        CompoundTag out = tileData;
+        for (CopyHandler handler : HANDLERS) {
+            out = handler.transformTileData(state, out, transform);
         }
         return out;
     }

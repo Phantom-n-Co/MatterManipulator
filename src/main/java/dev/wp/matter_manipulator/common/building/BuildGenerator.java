@@ -5,13 +5,17 @@ import dev.wp.matter_manipulator.common.building.shapes.ShapeCube;
 import dev.wp.matter_manipulator.common.building.shapes.ShapeCylinder;
 import dev.wp.matter_manipulator.common.building.shapes.ShapeLine;
 import dev.wp.matter_manipulator.common.building.shapes.ShapeSphere;
+import dev.wp.matter_manipulator.common.compat.CopyHandlers;
 import dev.wp.matter_manipulator.common.items.manipulator.MMConfig;
 import dev.wp.matter_manipulator.common.items.manipulator.PlaceMode;
+import net.minecraft.core.Direction;
 import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Mirror;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.Property;
 import org.joml.Vector3i;
 
 import java.util.ArrayList;
@@ -99,25 +103,35 @@ public class BuildGenerator {
         for (var pb : rawBlocks) {
             Vector3i transformedRel = cfg.transform.apply(new Vector3i(pb.relPos.getX(), pb.relPos.getY(), pb.relPos.getZ()));
             
-            BlockState blockState = pb.spec.state;
-            int rotationY = switch (cfg.transform.forward) {
-                case EAST -> 1;
-                case SOUTH -> 2;
-                case WEST -> 3;
-                default -> 0;
-            };
-            Rotation rotation = switch (rotationY) {
-                case 1 -> Rotation.CLOCKWISE_90;
-                case 2 -> Rotation.CLOCKWISE_180;
-                case 3 -> Rotation.COUNTERCLOCKWISE_90;
-                default -> Rotation.NONE;
-            };
+            BlockState original = pb.spec.state;
+            BlockState blockState = original;
 
-            if (rotation != Rotation.NONE) blockState = blockState.rotate(level, BlockPos.ZERO, rotation);
-            if (cfg.transform.flipX) blockState = blockState.mirror(Mirror.LEFT_RIGHT);
-            if (cfg.transform.flipZ) blockState = blockState.mirror(Mirror.FRONT_BACK);
+            // 1. Vanilla rotation/mirror: rotates shape/axis (logs, stairs) and horizontal facing
+            //    for both vanilla and GT blocks, consistent with how the positions are transformed.
+            var rm = cfg.transform.deriveRotationMirror();
+            if (rm.mirror() != Mirror.NONE) blockState = blockState.mirror(rm.mirror());
+            if (rm.rotation() != Rotation.NONE) blockState = blockState.rotate(rm.rotation());
 
-            baseBlocks.add(new PendingBlock(new BlockPos(transformedRel.x(), transformedRel.y(), transformedRel.z()), new BlockSpec(blockState, pb.spec.tileData, pb.spec.contents, pb.spec.extraItems, pb.spec.fluids)));
+            // 2. Override each facing property with the full transform (handles vertical facing and
+            //    guarantees facing tracks the structure), skipping values the property forbids.
+            for (Property<?> prop : original.getProperties()) {
+                if (prop.getValueClass() == Direction.class) {
+                    @SuppressWarnings("unchecked")
+                    Property<Direction> dirProp = (Property<Direction>) prop;
+                    Direction rotated = cfg.transform.apply(original.getValue(dirProp));
+                    if (dirProp.getPossibleValues().contains(rotated)) {
+                        blockState = blockState.setValue(dirProp, rotated);
+                    }
+                }
+            }
+
+            // 3. Rotate block-entity-stored orientation (e.g. GT cover sides) in the captured NBT.
+            CompoundTag tileData = pb.spec.tileData;
+            if (tileData != null && !cfg.transform.isIdentity()) {
+                tileData = CopyHandlers.transformTileData(blockState, tileData.copy(), cfg.transform);
+            }
+
+            baseBlocks.add(new PendingBlock(new BlockPos(transformedRel.x(), transformedRel.y(), transformedRel.z()), new BlockSpec(blockState, tileData, pb.spec.contents, pb.spec.extraItems, pb.spec.fluids)));
         }
 
         var blocks = new ArrayList<PendingBlock>();

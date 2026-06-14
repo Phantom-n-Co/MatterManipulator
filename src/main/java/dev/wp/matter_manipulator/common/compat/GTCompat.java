@@ -11,6 +11,7 @@ import com.lowdragmc.lowdraglib.syncdata.blockentity.IAutoSyncBlockEntity;
 import dev.wp.matter_manipulator.common.building.MMInventory;
 import dev.wp.matter_manipulator.common.items.manipulator.MMState;
 import dev.wp.matter_manipulator.common.items.manipulator.MMTier;
+import dev.wp.matter_manipulator.common.items.manipulator.MMTransform;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -301,6 +302,49 @@ public class GTCompat {
         public void afterPaste(ServerLevel level, BlockPos pos, BlockEntity be, CompoundTag full, MMInventory inv) {
             // The "cover" config we kept re-installs the covers; charge the player for them here.
             filterCovers(be, inv);
+        }
+
+        /** Single-direction auto-I/O sides stored directly in the machine NBT. */
+        private static final String[] FACING_KEYS = {
+            "outputFacingItems", "outputFacingFluids", "inputFacingItems", "inputFacingFluids",
+        };
+
+        @Override
+        public CompoundTag transformTileData(BlockState state, CompoundTag tileData, MMTransform transform) {
+            if (!tileData.getString("id").startsWith("gtceu:")) return tileData;
+
+            // Covers serialize under @Persisted(key = "cover") with one sub-tag per side; moving the
+            // whole sub-tag to the rotated side preserves the cover's settings.
+            if (tileData.contains("cover", Tag.TAG_COMPOUND)) {
+                CompoundTag covers = tileData.getCompound("cover");
+                CompoundTag rotated = covers.copy();
+                for (Direction side : Direction.values()) {
+                    rotated.remove(side.getSerializedName());
+                }
+                for (Direction side : Direction.values()) {
+                    Tag blob = covers.get(side.getSerializedName());
+                    if (blob != null) rotated.put(transform.apply(side).getSerializedName(), blob.copy());
+                }
+                tileData.put("cover", rotated);
+            }
+
+            for (String key : FACING_KEYS) {
+                rotateDirKey(tileData, key, transform);
+            }
+
+            return tileData;
+        }
+
+        /** Rotates a single Direction value stored under {@code key} (string/int/byte encodings). */
+        private static void rotateDirKey(CompoundTag tag, String key, MMTransform transform) {
+            if (tag.contains(key, Tag.TAG_STRING)) {
+                Direction d = Direction.byName(tag.getString(key));
+                if (d != null) tag.putString(key, transform.apply(d).getSerializedName());
+            } else if (tag.contains(key, Tag.TAG_INT)) {
+                tag.putInt(key, transform.apply(Direction.from3DDataValue(tag.getInt(key))).get3DDataValue());
+            } else if (tag.contains(key, Tag.TAG_BYTE)) {
+                tag.putByte(key, (byte) transform.apply(Direction.from3DDataValue(tag.getByte(key))).get3DDataValue());
+            }
         }
     }
 }

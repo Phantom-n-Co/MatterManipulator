@@ -1,6 +1,7 @@
 package dev.wp.matter_manipulator.common.compat;
 
 import dev.wp.matter_manipulator.common.building.MMInventory;
+import dev.wp.matter_manipulator.common.items.manipulator.MMTransform;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
@@ -29,6 +30,15 @@ public interface CopyHandler {
      * the player being able to pay for it (e.g. a jukebox record), consuming it when kept.
      */
     default void contributeNbt(CompoundTag full, CompoundTag out, MMInventory inv) {}
+
+    /**
+     * Rewrites the captured tile NBT to follow a COPYING/MOVING rotation/flip — e.g. moving covers
+     * to the rotated sides. Runs at build generation, so the change is reflected in both the ghost
+     * preview and the built block. Default no-op; return the (possibly mutated) tag.
+     */
+    default CompoundTag transformTileData(BlockState state, CompoundTag tileData, MMTransform transform) {
+        return tileData;
+    }
 
     /**
      * Runs after the whitelisted tag has been loaded into the placed block entity. Used to

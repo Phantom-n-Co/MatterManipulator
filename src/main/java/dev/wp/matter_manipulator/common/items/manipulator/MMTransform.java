@@ -1,6 +1,8 @@
 package dev.wp.matter_manipulator.common.items.manipulator;
 
 import net.minecraft.core.Direction;
+import net.minecraft.world.level.block.Mirror;
+import net.minecraft.world.level.block.Rotation;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
@@ -40,6 +42,45 @@ public class MMTransform {
     public Vector3i apply(Vector3i v) {
         Vector3f v2 = new Vector3f(v.x(), v.y(), v.z()).mulTransposeDirection(getRotation());
         return new Vector3i(Math.round(v2.x), Math.round(v2.y), Math.round(v2.z));
+    }
+
+    /** Rotates a facing direction by this transform, consistent with {@link #apply(Vector3i)}. */
+    public Direction apply(Direction dir) {
+        return transform(dir, getRotation());
+    }
+
+    /** True when this transform does nothing (no rotation, no flip). */
+    public boolean isIdentity() {
+        return !flipX && !flipY && !flipZ && forward == Direction.NORTH && up == Direction.UP;
+    }
+
+    private static final Direction[] HORIZONTALS = {
+        Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST
+    };
+
+    /** A vanilla rotation + mirror equivalent of this transform (for {@code BlockState.rotate/mirror}). */
+    public record RotMir(Rotation rotation, Mirror mirror) {}
+
+    /**
+     * Finds the {@link Rotation}/{@link Mirror} pair whose effect on the horizontal directions matches
+     * this transform, so vanilla block rotation (shape/axis/facing) follows the structure. Returns
+     * {@code NONE/NONE} for transforms with a vertical component vanilla can't express (facing is then
+     * handled per-property in {@code BuildGenerator}).
+     */
+    public RotMir deriveRotationMirror() {
+        for (Mirror m : Mirror.values()) {
+            for (Rotation r : Rotation.values()) {
+                boolean ok = true;
+                for (Direction d : HORIZONTALS) {
+                    if (r.rotate(m.mirror(d)) != apply(d)) {
+                        ok = false;
+                        break;
+                    }
+                }
+                if (ok) return new RotMir(r, m);
+            }
+        }
+        return new RotMir(Rotation.NONE, Mirror.NONE);
     }
 
     /** Applies the inverse transform, used to map world-space deltas back into copy space. */
