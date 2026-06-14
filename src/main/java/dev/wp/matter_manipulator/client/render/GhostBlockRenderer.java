@@ -50,7 +50,7 @@ public class GhostBlockRenderer {
 
     private static final float GHOST_ALPHA = 0.5f;
     /** Ghost models render at this fraction of full size, centered in their cell, so gaps are visible. */
-    private static final float GHOST_SCALE = 0.5f;
+    private static final float GHOST_SCALE = 0.75f;
     private static final int MAX_REMOVAL_BOXES = 4096;
     /**
      * Rebake when the player moves this far (blocks), for range culling. Only matters when a finite
@@ -415,8 +415,19 @@ public class GhostBlockRenderer {
                 // show blocks behind others; null render type = all model layers.
                 int before = consumer.vertexCount();
                 brd.renderBatched(target, pos, level, pose, consumer, false, level.getRandom(), ModelData.EMPTY, null);
-                // Block-entity-rendered blocks (AE2 cable buses, chests, ...) bake no static geometry;
-                // fall back to a textured cube so they still appear in the preview.
+
+                // Blocks with a dynamic model driven by block-entity data (e.g. AE2 cable buses) bake
+                // nothing from the default state; reconstruct a throwaway BE from the captured tile data
+                // and retry with its model data so the real parts show.
+                if (consumer.vertexCount() == before && pb.spec.tileData != null) {
+                    ModelData md = reconstructModelData(pos, target, pb.spec.tileData);
+                    if (md != ModelData.EMPTY) {
+                        brd.renderBatched(target, pos, level, pose, consumer, false, level.getRandom(), md, null);
+                    }
+                }
+
+                // Still nothing (block-entity-renderer-only blocks like chests): a textured cube so it
+                // at least appears in the preview.
                 if (consumer.vertexCount() == before) bakeFallbackCube(brd, consumer, target);
                 pose.popPose();
 
@@ -447,6 +458,22 @@ public class GhostBlockRenderer {
             VertexBuffer.unbind();
             bounds = new AABB(minX, minY, minZ, maxX + 1, maxY + 1, maxZ + 1);
             done = true;
+        }
+
+        /**
+         * Rebuilds a throwaway block entity from captured NBT and returns its model data, so blocks
+         * with block-entity-driven dynamic models (AE2 cable buses, etc.) can render their real parts.
+         * Returns {@link ModelData#EMPTY} if the block has no such data or anything goes wrong.
+         */
+        private ModelData reconstructModelData(BlockPos pos, BlockState target, net.minecraft.nbt.CompoundTag tileData) {
+            try {
+                var be = net.minecraft.world.level.block.entity.BlockEntity.loadStatic(pos, target, tileData);
+                if (be == null) return ModelData.EMPTY;
+                be.setLevel(level);
+                return be.getModelData();
+            } catch (Exception e) {
+                return ModelData.EMPTY;
+            }
         }
 
         /** Emits a [0,1] cube textured with the block's particle sprite (the current pose scales it). */

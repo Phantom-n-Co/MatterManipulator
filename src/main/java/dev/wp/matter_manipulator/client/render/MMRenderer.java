@@ -168,27 +168,14 @@ public class MMRenderer {
             LevelRenderer.renderLineBox(ps, linesBuf, x0, y0, z0, x1, y1, z1, TR, TG, TB, TA);
             hudText = dims(a, b);
 
-            // Paste box (orange) — covers the full stacked array, placed at coordC. Derived from the
-            // generated blocks (coordC-relative) so it matches transform + arraySpan stacking exactly.
+            // Paste box (orange) — covers the FULL copied region (not just occupied cells), with
+            // transform + arraySpan stacking, placed at coordC.
             if (cfg.coordC != null) {
                 BlockPos c = cfg.coordC.pos;
-                int[] bb = pasteBounds();
+                int[] bb = fullPasteBounds(cfg);
 
-                double px0, py0, pz0, px1, py1, pz1;
-                if (bb != null) {
-                    px0 = c.getX() + bb[0]; py0 = c.getY() + bb[1]; pz0 = c.getZ() + bb[2];
-                    px1 = c.getX() + bb[3] + 1; py1 = c.getY() + bb[4] + 1; pz1 = c.getZ() + bb[5] + 1;
-                } else {
-                    // Fallback (no analysis yet): single transformed copy.
-                    Vector3i ta = cfg.transform.apply(new Vector3i(0, 0, 0));
-                    Vector3i tb = cfg.transform.apply(new Vector3i(b.getX() - a.getX(), b.getY() - a.getY(), b.getZ() - a.getZ()));
-                    px0 = c.getX() + Math.min(ta.x(), tb.x());
-                    py0 = c.getY() + Math.min(ta.y(), tb.y());
-                    pz0 = c.getZ() + Math.min(ta.z(), tb.z());
-                    px1 = c.getX() + Math.max(ta.x(), tb.x()) + 1;
-                    py1 = c.getY() + Math.max(ta.y(), tb.y()) + 1;
-                    pz1 = c.getZ() + Math.max(ta.z(), tb.z()) + 1;
-                }
+                double px0 = c.getX() + bb[0], py0 = c.getY() + bb[1], pz0 = c.getZ() + bb[2];
+                double px1 = c.getX() + bb[3] + 1, py1 = c.getY() + bb[4] + 1, pz1 = c.getZ() + bb[5] + 1;
 
                 BoxRenderer.drawFilledBox(ps, px0, py0, pz0, px1, py1, pz1, OR, OG, OB, 0.3f);
                 LevelRenderer.renderLineBox(ps, linesBuf, px0, py0, pz0, px1, py1, pz1, OR, OG, OB, TA);
@@ -377,20 +364,40 @@ public class MMRenderer {
     }
 
     /**
-     * Bounding box (coordC-relative) of the current analysis blocks, as {minX,minY,minZ,maxX,maxY,maxZ},
-     * or null when there are none. Used to size the paste box so it covers transform + arraySpan stacking.
+     * Bounding box (coordC-relative, max inclusive) of the FULL copied region for the paste preview:
+     * the whole coordA→coordB volume (regardless of which cells hold blocks), with the transform and
+     * arraySpan stacking applied. Returned as {minX,minY,minZ,maxX,maxY,maxZ}.
+     *
+     * <p>The copy maps a source cell to {@code coordC + transform(relPos + arrayOffset)} where
+     * {@code relPos = world - coordA}. Since the transform only permutes/flips axes, transforming the
+     * two opposite corners of the raw (relPos + arrayOffset) box yields the result box.
      */
-    @Nullable
-    private static int[] pasteBounds() {
-        if (analysisCache.isEmpty()) return null;
-        int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE;
-        int maxX = Integer.MIN_VALUE, maxY = Integer.MIN_VALUE, maxZ = Integer.MIN_VALUE;
-        for (var pb : analysisCache) {
-            var p = pb.relPos;
-            minX = Math.min(minX, p.getX()); minY = Math.min(minY, p.getY()); minZ = Math.min(minZ, p.getZ());
-            maxX = Math.max(maxX, p.getX()); maxY = Math.max(maxY, p.getY()); maxZ = Math.max(maxZ, p.getZ());
-        }
-        return new int[]{minX, minY, minZ, maxX, maxY, maxZ};
+    private static int[] fullPasteBounds(MMConfig cfg) {
+        BlockPos a = cfg.coordA.pos, b = cfg.coordB.pos;
+        boolean moving = cfg.placeMode == PlaceMode.MOVING;
+        int[] span = cfg.arraySpan;
+        int sx = !moving && span != null ? span[0] : 0;
+        int sy = !moving && span != null ? span[1] : 0;
+        int sz = !moving && span != null ? span[2] : 0;
+
+        long[] rx = axisRange(b.getX() - a.getX(), sx);
+        long[] ry = axisRange(b.getY() - a.getY(), sy);
+        long[] rz = axisRange(b.getZ() - a.getZ(), sz);
+
+        Vector3i c0 = cfg.transform.apply(new Vector3i((int) rx[0], (int) ry[0], (int) rz[0]));
+        Vector3i c1 = cfg.transform.apply(new Vector3i((int) rx[1], (int) ry[1], (int) rz[1]));
+        return new int[]{
+            Math.min(c0.x(), c1.x()), Math.min(c0.y(), c1.y()), Math.min(c0.z(), c1.z()),
+            Math.max(c0.x(), c1.x()), Math.max(c0.y(), c1.y()), Math.max(c0.z(), c1.z()),
+        };
+    }
+
+    /** Combined min/max along one axis of (relPos + arrayOffset) for a signed region delta and span. */
+    private static long[] axisRange(int delta, int span) {
+        long relMin = Math.min(0, delta), relMax = Math.max(0, delta);
+        int step = delta + (delta < 0 ? -1 : 1);          // copy spacing = region size, signed
+        long o0 = (long) Math.min(span, 0) * step, o1 = (long) Math.max(span, 0) * step;
+        return new long[]{relMin + Math.min(o0, o1), relMax + Math.max(o0, o1)};
     }
 
     /** Cheap order-sensitive hash over positions + states; far cheaper than re-baking models. */
