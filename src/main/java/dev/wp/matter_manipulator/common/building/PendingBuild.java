@@ -24,6 +24,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -349,7 +350,7 @@ public class PendingBuild {
     private void giveUp(Player player, MMInventory inv) {
         LongList errors = new LongArrayList();
         LongList warnings = new LongArrayList();
-        Map<net.minecraft.world.item.Item, Integer> missing = new LinkedHashMap<>();
+        Map<Item, Integer> missing = new LinkedHashMap<>();
 
         for (var pb : queue) {
             var required = moving ? ItemStack.EMPTY : pb.spec.toStack();

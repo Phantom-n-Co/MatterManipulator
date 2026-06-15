@@ -31,8 +31,11 @@ import appeng.api.stacks.GenericStack;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
 
 import javax.annotation.Nullable;
 
@@ -379,8 +382,8 @@ public class AECompat {
 
     /** Moves each per-side sub-tag (keyed by {@code keyFor}) to the transform-rotated side. */
     private static void permuteSideKeys(
-            CompoundTag tag, MMTransform transform, java.util.function.Function<Direction, String> keyFor) {
-        java.util.Map<String, Tag> moved = new java.util.HashMap<>();
+            CompoundTag tag, MMTransform transform, Function<Direction, String> keyFor) {
+        Map<String, Tag> moved = new HashMap<>();
         for (Direction side : Direction.values()) {
             Tag blob = tag.get(keyFor.apply(side));
             if (blob != null) moved.put(keyFor.apply(transform.apply(side)), blob.copy());

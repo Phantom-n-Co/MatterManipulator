@@ -11,7 +11,9 @@ import net.minecraft.client.renderer.block.BlockRenderDispatcher;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -462,7 +464,7 @@ public class GhostBlockRenderer {
                 // Blocks with a dynamic model driven by block-entity data (e.g. AE2 cable buses) bake
                 // nothing from the default state; reconstruct a throwaway BE from the captured tile data
                 // and retry with its model data so the real parts show.
-                net.minecraft.nbt.CompoundTag previewTile = pb.previewTileData();
+                CompoundTag previewTile = pb.previewTileData();
                 if (consumer.vertexCount() == before && previewTile != null) {
                     ModelData md = reconstructModelData(pos, target, previewTile);
                     if (md != ModelData.EMPTY) {
@@ -512,9 +514,9 @@ public class GhostBlockRenderer {
          * Returns {@link ModelData#EMPTY} if the block has no such data or anything goes wrong.
          */
         private ModelData reconstructModelData(
-                BlockPos pos, BlockState target, net.minecraft.nbt.CompoundTag tileData) {
+                BlockPos pos, BlockState target, CompoundTag tileData) {
             try {
-                var be = net.minecraft.world.level.block.entity.BlockEntity.loadStatic(pos, target, tileData);
+                var be = BlockEntity.loadStatic(pos, target, tileData);
                 if (be == null) return ModelData.EMPTY;
                 be.setLevel(level);
                 return be.getModelData();

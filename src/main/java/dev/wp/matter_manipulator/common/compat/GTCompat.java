@@ -19,6 +19,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.capabilities.ICapabilityProvider;
 import net.minecraftforge.common.util.LazyOptional;
@@ -55,7 +56,7 @@ import javax.annotation.Nullable;
 public class GTCompat {
     /** Registers the deferred-sync Forge event handlers. Call only when GregTech is present. */
     public static void registerEvents() {
-        net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(GTCompat.class);
+        MinecraftForge.EVENT_BUS.register(GTCompat.class);
     }
 
     public static boolean isGTMachine(BlockEntity be) {

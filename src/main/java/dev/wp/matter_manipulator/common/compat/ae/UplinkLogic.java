@@ -5,6 +5,7 @@ import dev.wp.matter_manipulator.MMMod;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
@@ -442,7 +443,7 @@ public class UplinkLogic {
         if (level instanceof ServerLevel sl) {
             ServerPlayer player = sl.getServer().getPlayerList().getPlayer(owner);
             if (player != null) {
-                player.sendSystemMessage(net.minecraft.network.chat.Component.translatable(key));
+                player.sendSystemMessage(Component.translatable(key));
             }
         }
     }
