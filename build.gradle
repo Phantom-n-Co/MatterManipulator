@@ -24,6 +24,7 @@ repositories {
             includeGroup 'com.gregtechceu.gtceu'
             includeGroup 'appeng'
         }
+    }
 
         maven {
             name = "sponge"
@@ -87,7 +88,6 @@ repositories {
             url = uri("https://maven.ftb.dev/releases")
         }
         maven { url = "https://maven.bawnorton.com/releases" }
-    }
 
     exclusiveContent { // Curios
         forRepository { maven { url = "https://maven.theillusivec4.top/" } }
