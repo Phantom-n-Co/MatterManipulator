@@ -1,8 +1,12 @@
 package dev.wp.matter_manipulator.common.compat;
 
+import com.gregtechceu.gtceu.api.block.MetaMachineBlock;
+import com.gregtechceu.gtceu.api.block.property.GTBlockStateProperties;
 import com.gregtechceu.gtceu.api.blockentity.MetaMachineBlockEntity;
 import com.gregtechceu.gtceu.api.blockentity.PipeBlockEntity;
 import com.gregtechceu.gtceu.api.capability.ICoverable;
+import com.gregtechceu.gtceu.api.data.RotationState;
+import com.gregtechceu.gtceu.api.pattern.util.RelativeDirection;
 import com.gregtechceu.gtceu.api.capability.IElectricItem;
 import com.gregtechceu.gtceu.api.capability.forge.GTCapability;
 import com.gregtechceu.gtceu.api.cover.CoverBehavior;
@@ -15,6 +19,8 @@ import dev.wp.matter_manipulator.common.items.manipulator.MMTransform;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.IntTag;
+import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
@@ -58,6 +64,17 @@ public class GTCompat {
      */
     public static boolean needsClientSync(BlockEntity be) {
         return be instanceof IAutoSyncBlockEntity;
+    }
+
+    /**
+     * Re-initializes a pasted machine's covers. Loading the cover NBT restores the cover data, but
+     * the cover container must be told to load (as on a normal chunk load) or the covers won't
+     * render or open until the block is refreshed. Mirrors SpatialToolsCompatible's reinit step.
+     */
+    public static void reinitCovers(BlockEntity be) {
+        if (be instanceof MetaMachineBlockEntity mbe) {
+            mbe.metaMachine.getCoverContainer().onLoad();
+        }
     }
 
     /**
@@ -275,7 +292,7 @@ public class GTCompat {
     public static class GTCopyHandler implements CopyHandler {
 
         private static final String[] CONFIG_KEYS = {
-            "ownerUUID", "paintingColor", "cover",
+            "ownerUUID", "paintingColor", "cover", "isFlipped",
             "workingMode", "voidingMode", "batchEnabled",
             "isWorkingEnabled", "workingEnabled", "isMuffled", "isDistinct",
             "currentParallel", "durationMultiplier", "circuitInventory", "activeRecipeType",
@@ -323,7 +340,17 @@ public class GTCompat {
                 }
                 for (Direction side : Direction.values()) {
                     Tag blob = covers.get(side.getSerializedName());
-                    if (blob != null) rotated.put(transform.apply(side).getSerializedName(), blob.copy());
+                    if (blob == null) continue;
+                    Direction newSide = transform.apply(side);
+                    Tag moved = blob.copy();
+                    // GTCEu bakes the cover's attachedSide into the blob as int "side" = ordinal
+                    // (MachineCoverContainer.serializeCoverUid). Moving the blob to the rotated field is
+                    // not enough — the rebuilt cover takes its render/interaction side from this int, so
+                    // rewrite it too or the cover stays visually/functionally on the original face.
+                    if (moved instanceof CompoundTag c) {
+                        rewriteCoverSide(c, side.ordinal(), newSide.ordinal());
+                    }
+                    rotated.put(newSide.getSerializedName(), moved);
                 }
                 tileData.put("cover", rotated);
             }
@@ -332,7 +359,82 @@ public class GTCompat {
                 rotateDirKey(tileData, key, transform);
             }
 
+            // A multiblock controller's isFlipped encodes structure chirality; a mirroring transform
+            // (odd number of flips) must toggle it so the structure mirrors with the paste.
+            if (tileData.contains("isFlipped") && transform.isReflection()) {
+                tileData.putBoolean("isFlipped", !tileData.getBoolean("isFlipped"));
+            }
+
             return tileData;
+        }
+
+        /**
+         * Corrects a machine's GregTech "extended facing" after the generic facing rewrite. A machine's
+         * orientation is (front facing, upwards facing, isFlipped); only the front facing is a plain world
+         * direction the generic per-property pass gets right. Upwards facing is a horizontal "roll" whose
+         * meaning depends on the front facing (see {@link RelativeDirection}), so rotating it as if it were
+         * a world direction is wrong. Here we rebuild it: take the machine's real-world up vector, rotate
+         * that by the transform, then solve back for the upwards-facing value under the new front facing.
+         */
+        @Override
+        public BlockState transformBlockState(BlockState rotated, BlockState original, MMTransform transform) {
+            if (!(original.getBlock() instanceof MetaMachineBlock block)) return rotated;
+            RotationState rs = block.getRotationState();
+            if (rs == RotationState.NONE) return rotated;
+
+            Direction oldFront = original.getValue(rs.property);
+            // Front facing: take the generic pass's result if the machine allows it, else keep it as-is.
+            Direction newFront = transform.apply(oldFront);
+            if (rs.test(newFront) && rotated.hasProperty(rs.property)) {
+                rotated = rotated.setValue(rs.property, newFront);
+            } else {
+                newFront = rotated.getValue(rs.property);
+            }
+
+            if (block.getDefinition().isAllowExtendedFacing()
+                    && original.hasProperty(GTBlockStateProperties.UPWARDS_FACING)) {
+                Direction oldUp = original.getValue(GTBlockStateProperties.UPWARDS_FACING);
+                Direction worldUp = transform.apply(RelativeDirection.UP.getRelative(oldFront, oldUp, false));
+                Direction newUp = solveUpwardsFacing(newFront, worldUp);
+                if (newUp != null) {
+                    rotated = rotated.setValue(GTBlockStateProperties.UPWARDS_FACING, newUp);
+                }
+            }
+            return rotated;
+        }
+
+        /**
+         * Finds the horizontal upwards-facing value that, with {@code front}, yields the given real-world
+         * up direction — the inverse of {@link RelativeDirection#getRelative}. Returns null if none fits
+         * (e.g. the front facing fell back to a value the world-up is no longer perpendicular to).
+         */
+        private static Direction solveUpwardsFacing(Direction front, Direction worldUp) {
+            for (Direction candidate : Direction.values()) {
+                if (candidate.getAxis() == Direction.Axis.Y) continue; // upwards facing is horizontal
+                if (RelativeDirection.UP.getRelative(front, candidate, false) == worldUp) return candidate;
+            }
+            return null;
+        }
+
+        /**
+         * Recursively rewrites a cover blob's {@code attachedSide} (serialized as int {@code "side"}
+         * = ordinal) from one side to another. Only ints whose value matches the original ordinal are
+         * touched, so unrelated side references aren't disturbed, and it doesn't depend on where
+         * LDLib nests the cover uid.
+         */
+        private static void rewriteCoverSide(CompoundTag tag, int oldOrdinal, int newOrdinal) {
+            for (String key : new ArrayList<>(tag.getAllKeys())) {
+                Tag child = tag.get(key);
+                if ("side".equals(key) && child instanceof IntTag it && it.getAsInt() == oldOrdinal) {
+                    tag.putInt(key, newOrdinal);
+                } else if (child instanceof CompoundTag c) {
+                    rewriteCoverSide(c, oldOrdinal, newOrdinal);
+                } else if (child instanceof ListTag list) {
+                    for (Tag el : list) {
+                        if (el instanceof CompoundTag ec) rewriteCoverSide(ec, oldOrdinal, newOrdinal);
+                    }
+                }
+            }
         }
 
         /** Rotates a single Direction value stored under {@code key} (string/int/byte encodings). */

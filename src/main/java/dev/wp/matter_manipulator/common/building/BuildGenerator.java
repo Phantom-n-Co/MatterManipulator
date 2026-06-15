@@ -125,7 +125,13 @@ public class BuildGenerator {
                 }
             }
 
-            // 3. Rotate block-entity-stored orientation (e.g. GT cover sides) in the captured NBT.
+            // 3. Correct compound orientation steps 1-2 can't express (e.g. a GT multiblock's upwards
+            //    facing, a relative roll that depends on the front facing set above).
+            if (!cfg.transform.isIdentity()) {
+                blockState = CopyHandlers.transformBlockState(blockState, original, cfg.transform);
+            }
+
+            // 4. Rotate block-entity-stored orientation (e.g. GT cover sides, multiblock flip) in NBT.
             CompoundTag tileData = pb.spec.tileData;
             if (tileData != null && !cfg.transform.isIdentity()) {
                 tileData = CopyHandlers.transformTileData(blockState, tileData.copy(), cfg.transform);

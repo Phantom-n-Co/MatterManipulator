@@ -73,6 +73,19 @@ public final class CopyHandlers {
         return out;
     }
 
+    /**
+     * Lets handlers correct orientation that vanilla rotate/mirror and per-property facing can't express
+     * (e.g. a GregTech multiblock's upwards facing), after the generic transform. Each handler
+     * self-guards, so this runs them all in order.
+     */
+    public static BlockState transformBlockState(BlockState rotated, BlockState original, MMTransform transform) {
+        BlockState out = rotated;
+        for (CopyHandler handler : HANDLERS) {
+            out = handler.transformBlockState(out, original, transform);
+        }
+        return out;
+    }
+
     /** Runs every matching handler's post-load step (settings re-apply, cover/part charging). */
     public static void afterPaste(ServerLevel level, BlockPos pos, BlockEntity be,
                                   CompoundTag full, MMInventory inv) {

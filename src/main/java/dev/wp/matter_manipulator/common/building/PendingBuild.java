@@ -319,6 +319,9 @@ public class PendingBuild {
                         // from the bound AE2 network (nothing free when unbound).
                         fillFluids(be, pb.spec.fluids, cfg.uplink, level);
                     }
+                    // Covers were restored from NBT (possibly remapped to rotated sides); re-init the
+                    // cover container so they render and can be opened without a manual refresh.
+                    if (Mods.GTCEU) GTCompat.reinitCovers(be);
                     be.setChanged();
                     if (Mods.GTCEU && GTCompat.needsClientSync(be)) {
                         GTCompat.scheduleClientSync(level, pb.relPos);

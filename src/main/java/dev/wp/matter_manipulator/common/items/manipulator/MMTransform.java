@@ -54,6 +54,14 @@ public class MMTransform {
         return !flipX && !flipY && !flipZ && forward == Direction.NORTH && up == Direction.UP;
     }
 
+    /**
+     * True if this transform reverses handedness (a reflection, i.e. an odd number of flips). Used to
+     * toggle orientation flags that encode chirality, such as a GregTech multiblock's {@code isFlipped}.
+     */
+    public boolean isReflection() {
+        return getRotation().determinant3x3() < 0;
+    }
+
     private static final Direction[] HORIZONTALS = {
         Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST
     };

@@ -12,6 +12,8 @@ import appeng.api.stacks.GenericStack;
 import dev.wp.matter_manipulator.common.building.Location;
 import dev.wp.matter_manipulator.common.building.MMInventory;
 import dev.wp.matter_manipulator.common.compat.ae.UplinkBlockEntity;
+import dev.wp.matter_manipulator.common.items.manipulator.MMTransform;
+import org.apache.commons.lang3.StringUtils;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -270,6 +272,39 @@ public class AECompat {
         @Override
         public void afterPaste(ServerLevel level, BlockPos pos, BlockEntity be, CompoundTag full, MMInventory inv) {
             filterAEItems(be, inv);
+        }
+
+        /**
+         * Rotates a cable bus's parts and facades to follow a COPYING/MOVING rotation/flip.
+         *
+         * <p>A cable bus stores each side's part under that side's serialized name
+         * ({@code down/up/north/...}; the center cable is keyed {@code "cable"} and has no side) and
+         * each facade under {@code "facade" + Capitalized(side)} — both written at the root of the tile
+         * NBT by {@code CableBusContainer.writeToNBT}/{@code FacadeContainer.writeToNBT}. A part takes
+         * its side purely from which key it sits under ({@code AEBasePart.side} is not serialized; it's
+         * set from the slot on load), so moving each side blob to the transform-rotated key is all that's
+         * needed — unlike GT covers, there is no side baked inside the blob to rewrite.
+         */
+        @Override
+        public CompoundTag transformTileData(BlockState state, CompoundTag tileData, MMTransform transform) {
+            if (!tileData.getString("id").equals("ae2:cable_bus")) return tileData;
+            permuteSideKeys(tileData, transform, side -> side.getSerializedName());
+            permuteSideKeys(tileData, transform, side -> "facade" + StringUtils.capitalize(side.getSerializedName()));
+            return tileData;
+        }
+
+        /** Moves each per-side sub-tag (keyed by {@code keyFor}) to the transform-rotated side. */
+        private static void permuteSideKeys(CompoundTag tag, MMTransform transform,
+                                            java.util.function.Function<Direction, String> keyFor) {
+            java.util.Map<String, Tag> moved = new java.util.HashMap<>();
+            for (Direction side : Direction.values()) {
+                Tag blob = tag.get(keyFor.apply(side));
+                if (blob != null) moved.put(keyFor.apply(transform.apply(side)), blob.copy());
+            }
+            for (Direction side : Direction.values()) {
+                tag.remove(keyFor.apply(side));
+            }
+            moved.forEach(tag::put);
         }
     }
 }

@@ -41,6 +41,17 @@ public interface CopyHandler {
     }
 
     /**
+     * Adjusts orientation a vanilla {@code rotate/mirror} and per-property facing rewrite can't express,
+     * once the rest of the block state has already been transformed. {@code original} is the captured
+     * pre-transform state; {@code rotated} is the state so far. Used for compound orientations such as a
+     * GregTech multiblock's upwards facing (a relative roll that depends on the front facing). Runs at
+     * build generation, so it shows in the ghost preview too. Default no-op; return the new state.
+     */
+    default BlockState transformBlockState(BlockState rotated, BlockState original, MMTransform transform) {
+        return rotated;
+    }
+
+    /**
      * Runs after the whitelisted tag has been loaded into the placed block entity. Used to
      * re-apply settings through mod APIs and to charge the player for covers, parts, and any
      * single-slot items the handler kept.
