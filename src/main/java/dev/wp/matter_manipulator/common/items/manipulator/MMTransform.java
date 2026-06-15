@@ -1,13 +1,12 @@
 package dev.wp.matter_manipulator.common.items.manipulator;
 
+import java.util.Objects;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.Mirror;
 import net.minecraft.world.level.block.Rotation;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
-
-import java.util.Objects;
 
 /** Represents the rotation and flipping of a build region. */
 public class MMTransform {
@@ -62,9 +61,7 @@ public class MMTransform {
         return getRotation().determinant3x3() < 0;
     }
 
-    private static final Direction[] HORIZONTALS = {
-        Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST
-    };
+    private static final Direction[] HORIZONTALS = {Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST};
 
     /** A vanilla rotation + mirror equivalent of this transform (for {@code BlockState.rotate/mirror}). */
     public record RotMir(Rotation rotation, Mirror mirror) {}
@@ -93,15 +90,14 @@ public class MMTransform {
 
     /** Applies the inverse transform, used to map world-space deltas back into copy space. */
     public Vector3i applyInverse(Vector3i v) {
-        Vector3f v2 = new Vector3f(v.x(), v.y(), v.z())
-                .mulTransposeDirection(new Matrix4f(getRotation()).invert());
+        Vector3f v2 = new Vector3f(v.x(), v.y(), v.z()).mulTransposeDirection(new Matrix4f(getRotation()).invert());
         return new Vector3i(Math.round(v2.x), Math.round(v2.y), Math.round(v2.z));
     }
 
     public void rotate(Direction axis, int amount) {
         uncache();
         Matrix4f rot = new Matrix4f().rotate((float) (Math.PI / 2 * amount), v(axis));
-        
+
         up = transform(up, rot);
         forward = transform(forward, rot);
     }
@@ -142,8 +138,11 @@ public class MMTransform {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         MMTransform that = (MMTransform) o;
-        return flipX == that.flipX && flipY == that.flipY && flipZ == that.flipZ
-                && forward == that.forward && up == that.up;
+        return flipX == that.flipX
+                && flipY == that.flipY
+                && flipZ == that.flipZ
+                && forward == that.forward
+                && up == that.up;
     }
 
     @Override

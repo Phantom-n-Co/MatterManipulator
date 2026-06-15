@@ -21,6 +21,11 @@ import appeng.helpers.patternprovider.PatternProviderLogic;
 import appeng.helpers.patternprovider.PatternProviderLogicHost;
 import com.google.common.collect.ImmutableSet;
 import dev.wp.matter_manipulator.MMMod;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.Future;
+import javax.annotation.Nullable;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
@@ -28,12 +33,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-
-import javax.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.Future;
 
 /**
  * Host-agnostic AE2 bridge for the Matter Manipulator uplink. It exposes a network's storage,
@@ -63,19 +62,22 @@ public class UplinkLogic {
     private final IManagedGridNode mainNode;
     private final PatternProviderLogicHost logicHost;
     private final IActionHost actionHost;
+
     @Nullable
     private final ICraftingRequester requester;
+
     private final Runnable onDirty;
 
     /** Per-slot plan state (null = empty slot); the pattern itself lives in {@code logic}'s inventory. */
     private final PlanEntry[] slots = new PlanEntry[PATTERN_SLOTS];
+
     private long nextPlanId = 0;
 
     /** Manual token outputs queued by {@link #onPatternPush} to be emitted+voided on the next tick. */
     private final List<GenericStack> pendingReturns = new ArrayList<>();
 
-    public UplinkLogic(IManagedGridNode mainNode, PatternProviderLogicHost logicHost,
-                       IActionHost actionHost, Runnable onDirty) {
+    public UplinkLogic(
+            IManagedGridNode mainNode, PatternProviderLogicHost logicHost, IActionHost actionHost, Runnable onDirty) {
         this.mainNode = mainNode;
         this.logicHost = logicHost;
         this.actionHost = actionHost;
@@ -93,8 +95,12 @@ public class UplinkLogic {
         final UUID owner;
         final boolean auto;
         final ItemStack token; // pattern output; identifies the plan
-        @Nullable ICraftingLink link;          // auto: the live crafting job (transient + persisted)
-        @Nullable Future<ICraftingPlan> calc;  // auto: in-flight job calculation (transient)
+
+        @Nullable
+        ICraftingLink link; // auto: the live crafting job (transient + persisted)
+
+        @Nullable
+        Future<ICraftingPlan> calc; // auto: in-flight job calculation (transient)
 
         PlanEntry(UUID owner, boolean auto, ItemStack token) {
             this.owner = owner;
@@ -123,8 +129,13 @@ public class UplinkLogic {
         if (amount <= 0) return 0;
         IGrid grid = grid();
         if (grid == null) return 0;
-        return StorageHelper.poweredExtraction(grid.getEnergyService(), grid.getStorageService().getInventory(),
-                key, amount, src(), Actionable.MODULATE);
+        return StorageHelper.poweredExtraction(
+                grid.getEnergyService(),
+                grid.getStorageService().getInventory(),
+                key,
+                amount,
+                src(),
+                Actionable.MODULATE);
     }
 
     /** Inserts into network storage; returns the amount that did not fit. */
@@ -132,8 +143,13 @@ public class UplinkLogic {
         if (amount <= 0) return 0;
         IGrid grid = grid();
         if (grid == null) return amount;
-        long inserted = StorageHelper.poweredInsert(grid.getEnergyService(), grid.getStorageService().getInventory(),
-                key, amount, src(), Actionable.MODULATE);
+        long inserted = StorageHelper.poweredInsert(
+                grid.getEnergyService(),
+                grid.getStorageService().getInventory(),
+                key,
+                amount,
+                src(),
+                Actionable.MODULATE);
         return amount - inserted;
     }
 
@@ -161,7 +177,7 @@ public class UplinkLogic {
         for (GenericStack s : blocks) if (s != null) total += s.amount();
         ItemStack token = PlanTokenItem.create(owner, nextPlanId++, total);
         ItemStack pattern = PatternDetailsHelper.encodeProcessingPattern(
-                blocks, new GenericStack[]{new GenericStack(AEItemKey.of(token), 1)});
+                blocks, new GenericStack[] {new GenericStack(AEItemKey.of(token), 1)});
 
         logic.getPatternInv().setItemDirect(slot, pattern);
         slots[slot] = new PlanEntry(owner, auto, token);

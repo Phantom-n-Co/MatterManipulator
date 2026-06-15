@@ -3,12 +3,11 @@ package dev.wp.matter_manipulator.common.networking;
 import dev.wp.matter_manipulator.common.building.Location;
 import dev.wp.matter_manipulator.common.items.manipulator.MMState;
 import dev.wp.matter_manipulator.common.utils.MMUtils;
+import java.util.function.Supplier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
-
-import java.util.function.Supplier;
 
 /**
  * Sets a coordinate to an absolute position, bypassing the pending-action and
@@ -21,6 +20,7 @@ public class PacketSetCoordDirect {
      * 0=A, 1=B, 2=C
      */
     public final int which;
+
     public final BlockPos pos;
 
     public PacketSetCoordDirect(int which, BlockPos pos) {

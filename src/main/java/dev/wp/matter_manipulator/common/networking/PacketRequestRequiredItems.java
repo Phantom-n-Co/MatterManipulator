@@ -3,10 +3,15 @@ package dev.wp.matter_manipulator.common.networking;
 import dev.wp.matter_manipulator.common.building.BuildGenerator;
 import dev.wp.matter_manipulator.common.building.MMInventory;
 import dev.wp.matter_manipulator.common.compat.AECompat;
-import dev.wp.matter_manipulator.common.utils.Mods;
 import dev.wp.matter_manipulator.common.items.manipulator.MMState;
 import dev.wp.matter_manipulator.common.items.manipulator.PlaceMode;
 import dev.wp.matter_manipulator.common.utils.MMUtils;
+import dev.wp.matter_manipulator.common.utils.Mods;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Supplier;
 import net.minecraft.ChatFormatting;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
@@ -18,12 +23,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.network.NetworkEvent;
-
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Supplier;
 
 /** Radial menu "Planning" options: computes the material list for the current copy and prints it to chat. */
 public class PacketRequestRequiredItems {
@@ -61,8 +60,7 @@ public class PacketRequestRequiredItems {
 
             boolean planAll = (pkt.flags & PLAN_ALL) != 0;
 
-            if (cfg.coordA == null || cfg.coordB == null
-                    || !cfg.coordA.dimension.equals(cfg.coordB.dimension)) {
+            if (cfg.coordA == null || cfg.coordB == null || !cfg.coordA.dimension.equals(cfg.coordB.dimension)) {
                 MMUtils.sendErrorToPlayer(player, "mm.info.error.must_have_copy_region");
                 return;
             }
@@ -156,7 +154,8 @@ public class PacketRequestRequiredItems {
                             .append(fluidStack.getDisplayName())
                             .append(Component.literal(": " + mb + " mB").withStyle(ChatFormatting.GOLD));
                     if (missing > 0) {
-                        line.append(Component.literal(" (" + missing + " mB missing)").withStyle(ChatFormatting.RED));
+                        line.append(Component.literal(" (" + missing + " mB missing)")
+                                .withStyle(ChatFormatting.RED));
                     }
                     MMUtils.sendInfoToPlayer(player, line);
                 }
@@ -169,11 +168,15 @@ public class PacketRequestRequiredItems {
                 } else {
                     List<ItemStack> planItems = new ArrayList<>(required.size());
                     for (var entry : required.entrySet()) {
-                        planItems.add(new ItemStack(entry.getKey(), (int) Math.min(entry.getValue(), Integer.MAX_VALUE)));
+                        planItems.add(
+                                new ItemStack(entry.getKey(), (int) Math.min(entry.getValue(), Integer.MAX_VALUE)));
                     }
                     boolean ok = AECompat.uplinkAddPlan(level, cfg.uplink, player.getUUID(), planItems, autocraft);
-                    MMUtils.sendInfoToPlayer(player,
-                            ok ? (autocraft ? "mm.info.autocraft_started" : "mm.info.plan_created") : "mm.info.plan_full");
+                    MMUtils.sendInfoToPlayer(
+                            player,
+                            ok
+                                    ? (autocraft ? "mm.info.autocraft_started" : "mm.info.plan_created")
+                                    : "mm.info.plan_full");
                 }
             }
         });
@@ -187,7 +190,7 @@ public class PacketRequestRequiredItems {
      * not scanned here: it would over-count blocks whose contents the whitelist won't paste.
      */
     private static void mergeStoredItems(Map<Item, Long> required, CompoundTag tileData) {
-        for (String key : new String[]{"Book", "RecordItem"}) {
+        for (String key : new String[] {"Book", "RecordItem"}) {
             if (tileData.contains(key, Tag.TAG_COMPOUND)) {
                 ItemStack stack = ItemStack.of(tileData.getCompound(key));
                 if (!stack.isEmpty()) {

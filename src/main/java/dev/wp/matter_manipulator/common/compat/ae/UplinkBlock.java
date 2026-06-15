@@ -3,6 +3,7 @@ package dev.wp.matter_manipulator.common.compat.ae;
 import appeng.block.AEBaseEntityBlock;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.SimpleMenuProvider;
@@ -12,7 +13,6 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkHooks;
 
 /**
@@ -31,8 +31,8 @@ public class UplinkBlock extends AEBaseEntityBlock<UplinkBlockEntity> {
     }
 
     @Override
-    public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player,
-                                 InteractionHand hand, BlockHitResult hit) {
+    public InteractionResult use(
+            BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
         if (level.isClientSide) {
             return InteractionResult.SUCCESS;
         }
@@ -42,8 +42,10 @@ public class UplinkBlock extends AEBaseEntityBlock<UplinkBlockEntity> {
         if (!(level.getBlockEntity(pos) instanceof UplinkBlockEntity be)) {
             return InteractionResult.FAIL;
         }
-        NetworkHooks.openScreen(sp,
-                new SimpleMenuProvider((id, inv, p) -> new UplinkMenu(id, inv, be),
+        NetworkHooks.openScreen(
+                sp,
+                new SimpleMenuProvider(
+                        (id, inv, p) -> new UplinkMenu(id, inv, be),
                         Component.translatable("block.matter_manipulator.ae2_uplink")),
                 buf -> buf.writeBlockPos(pos));
         return InteractionResult.CONSUME;

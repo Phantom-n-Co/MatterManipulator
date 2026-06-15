@@ -3,44 +3,48 @@ package dev.wp.matter_manipulator.common.items.manipulator;
 import dev.wp.matter_manipulator.common.utils.Mods;
 
 public enum MMTier {
-
-    PROTO(
-            "proto",
-            11,
-            32,
-            16,
-            10_000_000L,
-            MMCapability.ALLOW_GEOMETRY
-    ),
+    PROTO("proto", 11, 32, 16, 10_000_000L, MMCapability.ALLOW_GEOMETRY),
     MK1(
             "mk1",
             11,
             64,
             64,
             100_000_000L,
-            MMCapability.ALLOW_GEOMETRY | MMCapability.ALLOW_REMOVING | MMCapability.ALLOW_EXCHANGING
-                    | MMCapability.ALLOW_CONFIGURING | MMCapability.ALLOW_CABLES | MMCapability.CONNECTS_TO_AE
-    ),
+            MMCapability.ALLOW_GEOMETRY
+                    | MMCapability.ALLOW_REMOVING
+                    | MMCapability.ALLOW_EXCHANGING
+                    | MMCapability.ALLOW_CONFIGURING
+                    | MMCapability.ALLOW_CABLES
+                    | MMCapability.CONNECTS_TO_AE),
     MK2(
             "mk2",
             11,
             128,
             256,
             1_000_000_000L,
-            MMCapability.ALLOW_GEOMETRY | MMCapability.ALLOW_REMOVING | MMCapability.ALLOW_EXCHANGING
-                    | MMCapability.ALLOW_CONFIGURING | MMCapability.ALLOW_CABLES | MMCapability.CONNECTS_TO_AE
-                    | MMCapability.ALLOW_COPYING | MMCapability.ALLOW_MOVING
-    ),
+            MMCapability.ALLOW_GEOMETRY
+                    | MMCapability.ALLOW_REMOVING
+                    | MMCapability.ALLOW_EXCHANGING
+                    | MMCapability.ALLOW_CONFIGURING
+                    | MMCapability.ALLOW_CABLES
+                    | MMCapability.CONNECTS_TO_AE
+                    | MMCapability.ALLOW_COPYING
+                    | MMCapability.ALLOW_MOVING),
     MK3(
             "mk3",
             11,
             -1,
             256,
             10_000_000_000L,
-            MMCapability.ALLOW_GEOMETRY | MMCapability.ALLOW_REMOVING | MMCapability.ALLOW_EXCHANGING
-                    | MMCapability.ALLOW_CONFIGURING | MMCapability.ALLOW_CABLES | MMCapability.CONNECTS_TO_AE
-                    | MMCapability.ALLOW_COPYING | MMCapability.ALLOW_MOVING | MMCapability.CONNECTS_TO_UPLINK
-    );
+            MMCapability.ALLOW_GEOMETRY
+                    | MMCapability.ALLOW_REMOVING
+                    | MMCapability.ALLOW_EXCHANGING
+                    | MMCapability.ALLOW_CONFIGURING
+                    | MMCapability.ALLOW_CABLES
+                    | MMCapability.CONNECTS_TO_AE
+                    | MMCapability.ALLOW_COPYING
+                    | MMCapability.ALLOW_MOVING
+                    | MMCapability.CONNECTS_TO_UPLINK);
 
     public final String id;
 

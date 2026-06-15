@@ -1,5 +1,7 @@
 package dev.wp.matter_manipulator.common.building;
 
+import java.util.List;
+import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
@@ -18,14 +20,10 @@ import net.minecraft.world.level.chunk.ChunkStatus;
 import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.lighting.LevelLightEngine;
-import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.shapes.VoxelShape;
-
-import javax.annotation.Nullable;
-import java.util.List;
-
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.material.Fluids;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
 public class SimulatedLevelReader implements LevelReader {
     private final LevelReader delegate;
@@ -49,19 +47,29 @@ public class SimulatedLevelReader implements LevelReader {
     }
 
     @Override
-    public boolean isClientSide() { return delegate.isClientSide(); }
+    public boolean isClientSide() {
+        return delegate.isClientSide();
+    }
 
     @Override
-    public int getSeaLevel() { return delegate.getSeaLevel(); }
+    public int getSeaLevel() {
+        return delegate.getSeaLevel();
+    }
 
     @Override
-    public DimensionType dimensionType() { return delegate.dimensionType(); }
+    public DimensionType dimensionType() {
+        return delegate.dimensionType();
+    }
 
     @Override
-    public float getShade(Direction direction, boolean b) { return delegate.getShade(direction, b); }
+    public float getShade(Direction direction, boolean b) {
+        return delegate.getShade(direction, b);
+    }
 
     @Override
-    public LevelLightEngine getLightEngine() { return delegate.getLightEngine(); }
+    public LevelLightEngine getLightEngine() {
+        return delegate.getLightEngine();
+    }
 
     @Nullable
     @Override
@@ -71,7 +79,9 @@ public class SimulatedLevelReader implements LevelReader {
     }
 
     @Override
-    public WorldBorder getWorldBorder() { return delegate.getWorldBorder(); }
+    public WorldBorder getWorldBorder() {
+        return delegate.getWorldBorder();
+    }
 
     @Override
     public List<VoxelShape> getEntityCollisions(@Nullable Entity entity, AABB aabb) {
@@ -79,10 +89,14 @@ public class SimulatedLevelReader implements LevelReader {
     }
 
     @Override
-    public RegistryAccess registryAccess() { return delegate.registryAccess(); }
+    public RegistryAccess registryAccess() {
+        return delegate.registryAccess();
+    }
 
     @Override
-    public FeatureFlagSet enabledFeatures() { return delegate.enabledFeatures(); }
+    public FeatureFlagSet enabledFeatures() {
+        return delegate.enabledFeatures();
+    }
 
     @Override
     public Holder<Biome> getUncachedNoiseBiome(int i, int i1, int i2) {
@@ -96,17 +110,24 @@ public class SimulatedLevelReader implements LevelReader {
     }
 
     @Override
-    public boolean hasChunk(int i, int i1) { return delegate.hasChunk(i, i1); }
+    public boolean hasChunk(int i, int i1) {
+        return delegate.hasChunk(i, i1);
+    }
 
     @Override
-    public int getHeight(Heightmap.Types types, int i, int i1) { return delegate.getHeight(types, i, i1); }
+    public int getHeight(Heightmap.Types types, int i, int i1) {
+        return delegate.getHeight(types, i, i1);
+    }
 
     @Override
-    public int getSkyDarken() { return delegate.getSkyDarken(); }
+    public int getSkyDarken() {
+        return delegate.getSkyDarken();
+    }
 
     @Override
-    public BiomeManager getBiomeManager() { return delegate.getBiomeManager(); }
-
+    public BiomeManager getBiomeManager() {
+        return delegate.getBiomeManager();
+    }
 
     @Override
     public boolean isWaterAt(BlockPos blockPos) {
@@ -115,15 +136,22 @@ public class SimulatedLevelReader implements LevelReader {
     }
 
     @Override
-    public int getDirectSignal(BlockPos blockPos, Direction direction) { return delegate.getDirectSignal(blockPos, direction); }
-
-
-    @Override
-    public int getMaxLightLevel() { return delegate.getMaxLightLevel(); }
+    public int getDirectSignal(BlockPos blockPos, Direction direction) {
+        return delegate.getDirectSignal(blockPos, direction);
+    }
 
     @Override
-    public int getHeight() { return delegate.getHeight(); }
+    public int getMaxLightLevel() {
+        return delegate.getMaxLightLevel();
+    }
 
     @Override
-    public int getMinBuildHeight() { return delegate.getMinBuildHeight(); }
+    public int getHeight() {
+        return delegate.getHeight();
+    }
+
+    @Override
+    public int getMinBuildHeight() {
+        return delegate.getMinBuildHeight();
+    }
 }

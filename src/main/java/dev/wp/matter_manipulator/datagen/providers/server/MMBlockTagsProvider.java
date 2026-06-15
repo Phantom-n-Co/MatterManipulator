@@ -9,7 +9,11 @@ import net.minecraftforge.data.event.GatherDataEvent;
 
 public class MMBlockTagsProvider extends BlockTagsProvider {
     public MMBlockTagsProvider(GatherDataEvent event) {
-        super(event.getGenerator().getPackOutput(), event.getLookupProvider(), MMMod.MODID, event.getExistingFileHelper());
+        super(
+                event.getGenerator().getPackOutput(),
+                event.getLookupProvider(),
+                MMMod.MODID,
+                event.getExistingFileHelper());
     }
 
     @Override

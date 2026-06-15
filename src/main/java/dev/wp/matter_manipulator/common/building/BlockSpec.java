@@ -3,12 +3,16 @@ package dev.wp.matter_manipulator.common.building;
 import dev.wp.matter_manipulator.common.compat.AECompat;
 import dev.wp.matter_manipulator.common.compat.GTCompat;
 import dev.wp.matter_manipulator.common.utils.Mods;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.network.chat.Component;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtUtils;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
@@ -17,14 +21,10 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
 
-import javax.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-
 public class BlockSpec {
 
     public final BlockState state;
+
     @Nullable
     public final CompoundTag tileData;
     /**
@@ -52,8 +52,12 @@ public class BlockSpec {
     @Nullable
     public final ListTag fluids;
 
-    public BlockSpec(BlockState state, @Nullable CompoundTag tileData, @Nullable ListTag contents,
-                     @Nullable List<ItemStack> extraItems, @Nullable ListTag fluids) {
+    public BlockSpec(
+            BlockState state,
+            @Nullable CompoundTag tileData,
+            @Nullable ListTag contents,
+            @Nullable List<ItemStack> extraItems,
+            @Nullable ListTag fluids) {
         this.state = state;
         this.tileData = tileData;
         this.contents = contents;
@@ -61,8 +65,11 @@ public class BlockSpec {
         this.fluids = fluids;
     }
 
-    public BlockSpec(BlockState state, @Nullable CompoundTag tileData, @Nullable ListTag contents,
-                     @Nullable List<ItemStack> extraItems) {
+    public BlockSpec(
+            BlockState state,
+            @Nullable CompoundTag tileData,
+            @Nullable ListTag contents,
+            @Nullable List<ItemStack> extraItems) {
         this(state, tileData, contents, extraItems, null);
     }
 
@@ -103,7 +110,8 @@ public class BlockSpec {
 
     @Nullable
     private static ListTag captureFluids(BlockEntity be) {
-        var handler = be.getCapability(ForgeCapabilities.FLUID_HANDLER).resolve().orElse(null);
+        var handler =
+                be.getCapability(ForgeCapabilities.FLUID_HANDLER).resolve().orElse(null);
         if (handler == null) return null;
         var list = new ListTag();
         for (int tank = 0; tank < handler.getTanks(); tank++) {

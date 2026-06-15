@@ -1,11 +1,19 @@
 package dev.wp.matter_manipulator.client.render;
 
-import com.mojang.blaze3d.vertex.*;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import dev.wp.matter_manipulator.common.building.BuildGenerator;
 import dev.wp.matter_manipulator.common.building.Location;
 import dev.wp.matter_manipulator.common.building.PendingBlock;
-import dev.wp.matter_manipulator.common.building.shapes.*;
-import dev.wp.matter_manipulator.common.items.manipulator.*;
+import dev.wp.matter_manipulator.common.items.manipulator.ItemMatterManipulator;
+import dev.wp.matter_manipulator.common.items.manipulator.MMConfig;
+import dev.wp.matter_manipulator.common.items.manipulator.MMState;
+import dev.wp.matter_manipulator.common.items.manipulator.PendingAction;
+import dev.wp.matter_manipulator.common.items.manipulator.PlaceMode;
+import dev.wp.matter_manipulator.common.items.manipulator.ShapeType;
+import java.util.Collections;
+import java.util.List;
+import javax.annotation.Nullable;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.LevelRenderer;
@@ -17,10 +25,6 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import org.joml.Vector3i;
-
-import javax.annotation.Nullable;
-import java.util.Collections;
-import java.util.List;
 
 /**
  * Renders translucent bounding boxes and cable line previews
@@ -61,8 +65,10 @@ public class MMRenderer {
         updateAnalysisCache(cfg, mc.level);
 
         // Ghost-block hints: positions are coordC-relative in COPYING/MOVING, absolute otherwise
-        BlockPos ghostOrigin = (cfg.placeMode == PlaceMode.COPYING || cfg.placeMode == PlaceMode.MOVING)
-                && cfg.coordC != null ? cfg.coordC.pos : null;
+        BlockPos ghostOrigin =
+                (cfg.placeMode == PlaceMode.COPYING || cfg.placeMode == PlaceMode.MOVING) && cfg.coordC != null
+                        ? cfg.coordC.pos
+                        : null;
         int tierRange = ((ItemMatterManipulator) held.getItem()).getTier().range;
         GhostBlockRenderer.submit(analysisCache, ghostOrigin, mc.level, player, tierRange, camPos);
 
@@ -72,8 +78,8 @@ public class MMRenderer {
         try {
             switch (cfg.placeMode) {
                 case GEOMETRY, EXCHANGING -> renderAreaMode(ps, mc, cfg);
-                case CABLES               -> renderCableMode(ps, mc, cfg);
-                case COPYING, MOVING      -> renderCopyMode(ps, mc, cfg);
+                case CABLES -> renderCableMode(ps, mc, cfg);
+                case COPYING, MOVING -> renderCopyMode(ps, mc, cfg);
             }
             GhostBlockRenderer.render(ps, cfg.placeMode, event.getFrustum());
             GhostBlockRenderer.renderStatusBoxes(ps);
@@ -99,7 +105,7 @@ public class MMRenderer {
                 hudText = analysisCache.size() + " blocks";
             } else {
                 var bufSource = mc.renderBuffers().bufferSource();
-                var linesBuf  = bufSource.getBuffer(RenderType.lines());
+                var linesBuf = bufSource.getBuffer(RenderType.lines());
 
                 double x0 = Math.min(a.getX(), b.getX());
                 double y0 = Math.min(a.getY(), b.getY());
@@ -130,17 +136,21 @@ public class MMRenderer {
             var bufSource = mc.renderBuffers().bufferSource();
             var linesBuf = bufSource.getBuffer(RenderType.lines());
 
-            double x0 = Math.min(a.getX(), b.getX()), y0 = Math.min(a.getY(), b.getY()), z0 = Math.min(a.getZ(), b.getZ());
-            double x1 = Math.max(a.getX(), b.getX()) + 1, y1 = Math.max(a.getY(), b.getY()) + 1, z1 = Math.max(a.getZ(), b.getZ()) + 1;
+            double x0 = Math.min(a.getX(), b.getX()),
+                    y0 = Math.min(a.getY(), b.getY()),
+                    z0 = Math.min(a.getZ(), b.getZ());
+            double x1 = Math.max(a.getX(), b.getX()) + 1,
+                    y1 = Math.max(a.getY(), b.getY()) + 1,
+                    z1 = Math.max(a.getZ(), b.getZ()) + 1;
 
             BoxRenderer.drawFilledBox(ps, x0, y0, z0, x1, y1, z1, TR, TG, TB, 0.3f);
             LevelRenderer.renderLineBox(ps, linesBuf, x0, y0, z0, x1, y1, z1, TR, TG, TB, TA);
             bufSource.endBatch(RenderType.lines());
 
-            int len = Math.max(Math.max(
-                Math.abs(a.getX() - b.getX()),
-                Math.abs(a.getY() - b.getY())),
-                Math.abs(a.getZ() - b.getZ())) + 1;
+            int len = Math.max(
+                            Math.max(Math.abs(a.getX() - b.getX()), Math.abs(a.getY() - b.getY())),
+                            Math.abs(a.getZ() - b.getZ()))
+                    + 1;
             hudText = len + " blocks";
         } else {
             hudText = "";
@@ -152,7 +162,7 @@ public class MMRenderer {
     private static void renderCopyMode(PoseStack ps, Minecraft mc, MMConfig cfg) {
         // Ghost-block previews at the paste destination are drawn by GhostBlockRenderer
         var bufSource = mc.renderBuffers().bufferSource();
-        var linesBuf  = bufSource.getBuffer(RenderType.lines());
+        var linesBuf = bufSource.getBuffer(RenderType.lines());
 
         if (cfg.coordA != null && cfg.coordB != null) {
             BlockPos a = cfg.coordA.pos, b = cfg.coordB.pos;
@@ -212,7 +222,7 @@ public class MMRenderer {
                 // Live array span preview while aiming
                 if (cfg.coordA != null && cfg.coordB != null && cfg.coordC != null) {
                     var mult = cfg.getArrayMult(look);
-                    eff.arraySpan = new int[]{mult.x, mult.y, mult.z};
+                    eff.arraySpan = new int[] {mult.x, mult.y, mult.z};
                 }
             }
             case MARK_COPY_A, MARK_CUT_A -> {
@@ -244,9 +254,21 @@ public class MMRenderer {
 
         float r, g, b;
         switch (action) {
-            case MARK_PASTE_A -> { r = OR; g = OG; b = OB; }
-            case MARK_ARRAY   -> { r = 0.4f; g = 0.75f; b = 0.15f; }
-            default           -> { r = TR; g = TG; b = TB; }
+            case MARK_PASTE_A -> {
+                r = OR;
+                g = OG;
+                b = OB;
+            }
+            case MARK_ARRAY -> {
+                r = 0.4f;
+                g = 0.75f;
+                b = 0.15f;
+            }
+            default -> {
+                r = TR;
+                g = TG;
+                b = TB;
+            }
         }
 
         // Drawn via the standard RenderType.lines() through the level's buffer source — the same path
@@ -261,27 +283,52 @@ public class MMRenderer {
      * Draws axis-aligned ruler lines extending from (cx, cy, cz) in all 6 directions.
      * {@code linesBuf} must come from a {@code RenderType.lines()} buffer.
      */
-    public static void drawRulers(PoseStack ps, VertexConsumer linesBuf,
-                                  double cx, double cy, double cz,
-                                  float r, float g, float b, float a, int length) {
+    public static void drawRulers(
+            PoseStack ps,
+            VertexConsumer linesBuf,
+            double cx,
+            double cy,
+            double cz,
+            float r,
+            float g,
+            float b,
+            float a,
+            int length) {
         float fx = (float) cx, fy = (float) cy, fz = (float) cz;
         var pose = ps.last();
 
-        addLine(linesBuf, pose, fx, fy, fz, fx + length, fy, fz, r, g, b, a,  1,  0,  0);
-        addLine(linesBuf, pose, fx, fy, fz, fx - length, fy, fz, r, g, b, a, -1,  0,  0);
-        addLine(linesBuf, pose, fx, fy, fz, fx, fy + length, fz, r, g, b, a,  0,  1,  0);
-        addLine(linesBuf, pose, fx, fy, fz, fx, fy - length, fz, r, g, b, a,  0, -1,  0);
-        addLine(linesBuf, pose, fx, fy, fz, fx, fy, fz + length, r, g, b, a,  0,  0,  1);
-        addLine(linesBuf, pose, fx, fy, fz, fx, fy, fz - length, r, g, b, a,  0,  0, -1);
+        addLine(linesBuf, pose, fx, fy, fz, fx + length, fy, fz, r, g, b, a, 1, 0, 0);
+        addLine(linesBuf, pose, fx, fy, fz, fx - length, fy, fz, r, g, b, a, -1, 0, 0);
+        addLine(linesBuf, pose, fx, fy, fz, fx, fy + length, fz, r, g, b, a, 0, 1, 0);
+        addLine(linesBuf, pose, fx, fy, fz, fx, fy - length, fz, r, g, b, a, 0, -1, 0);
+        addLine(linesBuf, pose, fx, fy, fz, fx, fy, fz + length, r, g, b, a, 0, 0, 1);
+        addLine(linesBuf, pose, fx, fy, fz, fx, fy, fz - length, r, g, b, a, 0, 0, -1);
     }
 
-    private static void addLine(VertexConsumer buf, PoseStack.Pose pose,
-                                float x1, float y1, float z1,
-                                float x2, float y2, float z2,
-                                float r, float g, float b, float a,
-                                float nx, float ny, float nz) {
-        buf.vertex(pose.pose(), x1, y1, z1).color(r, g, b, a).normal(pose.normal(), nx, ny, nz).endVertex();
-        buf.vertex(pose.pose(), x2, y2, z2).color(r, g, b, a).normal(pose.normal(), nx, ny, nz).endVertex();
+    private static void addLine(
+            VertexConsumer buf,
+            PoseStack.Pose pose,
+            float x1,
+            float y1,
+            float z1,
+            float x2,
+            float y2,
+            float z2,
+            float r,
+            float g,
+            float b,
+            float a,
+            float nx,
+            float ny,
+            float nz) {
+        buf.vertex(pose.pose(), x1, y1, z1)
+                .color(r, g, b, a)
+                .normal(pose.normal(), nx, ny, nz)
+                .endVertex();
+        buf.vertex(pose.pose(), x2, y2, z2)
+                .color(r, g, b, a)
+                .normal(pose.normal(), nx, ny, nz)
+                .endVertex();
     }
 
     /** Pins {@code b} to the dominant axis relative to {@code a}. */
@@ -386,7 +433,7 @@ public class MMRenderer {
 
         Vector3i c0 = cfg.transform.apply(new Vector3i((int) rx[0], (int) ry[0], (int) rz[0]));
         Vector3i c1 = cfg.transform.apply(new Vector3i((int) rx[1], (int) ry[1], (int) rz[1]));
-        return new int[]{
+        return new int[] {
             Math.min(c0.x(), c1.x()), Math.min(c0.y(), c1.y()), Math.min(c0.z(), c1.z()),
             Math.max(c0.x(), c1.x()), Math.max(c0.y(), c1.y()), Math.max(c0.z(), c1.z()),
         };
@@ -395,9 +442,9 @@ public class MMRenderer {
     /** Combined min/max along one axis of (relPos + arrayOffset) for a signed region delta and span. */
     private static long[] axisRange(int delta, int span) {
         long relMin = Math.min(0, delta), relMax = Math.max(0, delta);
-        int step = delta + (delta < 0 ? -1 : 1);          // copy spacing = region size, signed
+        int step = delta + (delta < 0 ? -1 : 1); // copy spacing = region size, signed
         long o0 = (long) Math.min(span, 0) * step, o1 = (long) Math.max(span, 0) * step;
-        return new long[]{relMin + Math.min(o0, o1), relMax + Math.max(o0, o1)};
+        return new long[] {relMin + Math.min(o0, o1), relMax + Math.max(o0, o1)};
     }
 
     /** Cheap order-sensitive hash over positions + states; far cheaper than re-baking models. */
@@ -412,7 +459,7 @@ public class MMRenderer {
 
     private static String dims(BlockPos a, BlockPos b) {
         return (Math.abs(a.getX() - b.getX()) + 1) + "x"
-             + (Math.abs(a.getY() - b.getY()) + 1) + "x"
-             + (Math.abs(a.getZ() - b.getZ()) + 1);
+                + (Math.abs(a.getY() - b.getY()) + 1) + "x"
+                + (Math.abs(a.getZ() - b.getZ()) + 1);
     }
 }

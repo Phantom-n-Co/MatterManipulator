@@ -1,14 +1,13 @@
 package dev.wp.matter_manipulator.common.networking;
 
 import dev.wp.matter_manipulator.common.compat.AECompat;
-import dev.wp.matter_manipulator.common.utils.Mods;
 import dev.wp.matter_manipulator.common.items.manipulator.MMState;
 import dev.wp.matter_manipulator.common.utils.MMUtils;
+import dev.wp.matter_manipulator.common.utils.Mods;
+import java.util.function.Supplier;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
-
-import java.util.function.Supplier;
 
 /** Clears the sending player's plan patterns from the uplink their held manipulator is bound to. */
 public class PacketClearPlan {

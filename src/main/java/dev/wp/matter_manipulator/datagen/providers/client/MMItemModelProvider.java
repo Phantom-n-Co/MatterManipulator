@@ -20,6 +20,7 @@ public class MMItemModelProvider extends ItemModelProvider {
     }
 
     private void handheldItem(RegistryObject<?> item) {
-        withExistingParent(item.getId().getPath(), "item/handheld").texture("layer0", MMMod.MODID + ":item/" + item.getId().getPath());
+        withExistingParent(item.getId().getPath(), "item/handheld")
+                .texture("layer0", MMMod.MODID + ":item/" + item.getId().getPath());
     }
 }

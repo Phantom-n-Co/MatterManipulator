@@ -13,6 +13,9 @@ import dev.wp.matter_manipulator.common.networking.PacketRotateTransform;
 import dev.wp.matter_manipulator.common.networking.PacketSetArraySpan;
 import dev.wp.matter_manipulator.common.networking.PacketSetCoordDirect;
 import dev.wp.matter_manipulator.common.networking.PacketToggleFlip;
+import java.util.ArrayList;
+import java.util.List;
+import javax.annotation.Nullable;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -25,10 +28,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import org.joml.Vector3i;
-
-import javax.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Transparent full-screen overlay with rotate/flip/reset controls and an info panel on
@@ -146,7 +145,8 @@ public class TransformScreen extends Screen {
         if (t.flipY) flips.add("Y");
         if (t.flipZ) flips.add("Z");
 
-        String info = I18n.get("mm.transform.info",
+        String info = I18n.get(
+                "mm.transform.info",
                 flips.isEmpty() ? "None" : String.join(", ", flips),
                 directionName(t.up),
                 directionName(t.forward));
@@ -190,8 +190,8 @@ public class TransformScreen extends Screen {
         if (minecraft != null && minecraft.getWindow().getGuiScale() <= 2) {
             // Plenty of vertical room: one column with all groups
             Coord[] groups = showStack
-                    ? new Coord[]{Coord.COPY, Coord.COPY_A, Coord.COPY_B, Coord.PASTE, Coord.STACK}
-                    : new Coord[]{Coord.COPY, Coord.COPY_A, Coord.COPY_B, Coord.PASTE};
+                    ? new Coord[] {Coord.COPY, Coord.COPY_A, Coord.COPY_B, Coord.PASTE, Coord.STACK}
+                    : new Coord[] {Coord.COPY, Coord.COPY_A, Coord.COPY_B, Coord.PASTE};
             int x = width - ROW_W - 10;
             int y = (height - GROUP_H * groups.length) / 2;
             for (Coord coord : groups) {
@@ -207,9 +207,7 @@ public class TransformScreen extends Screen {
                 y += GROUP_H;
             }
 
-            Coord[] lessRight = showStack
-                    ? new Coord[]{Coord.COPY, Coord.STACK}
-                    : new Coord[]{Coord.COPY};
+            Coord[] lessRight = showStack ? new Coord[] {Coord.COPY, Coord.STACK} : new Coord[] {Coord.COPY};
             x = width - ROW_W * 2 - 20;
             y = (height - GROUP_H * lessRight.length) / 2;
             for (Coord coord : lessRight) {
@@ -236,17 +234,20 @@ public class TransformScreen extends Screen {
     }
 
     private void addCoordRow(int x, int y, Coord coord, int axis) {
-        String axisName = switch (axis) {
-            case 0 -> "X";
-            case 1 -> "Y";
-            default -> "Z";
-        };
+        String axisName =
+                switch (axis) {
+                    case 0 -> "X";
+                    case 1 -> "Y";
+                    default -> "Z";
+                };
         StepSize step = new StepSize(coord, axis);
 
         Button minus = Button.builder(Component.empty(), b -> {
-            int i = getComponent(coord, axis) - step.getOffset();
-            setComponent(coord, axis, i);
-        }).bounds(x, y, 40, 18).build();
+                    int i = getComponent(coord, axis) - step.getOffset();
+                    setComponent(coord, axis, i);
+                })
+                .bounds(x, y, 40, 18)
+                .build();
         addRenderableWidget(minus);
         tickers.add(() -> minus.setMessage(Component.literal(axisName + " - " + step.getOffset())));
 
@@ -276,9 +277,11 @@ public class TransformScreen extends Screen {
         }
 
         Button plus = Button.builder(Component.empty(), b -> {
-            int i = getComponent(coord, axis) + step.getOffset();
-            setComponent(coord, axis, i);
-        }).bounds(x + 90, y, 40, 18).build();
+                    int i = getComponent(coord, axis) + step.getOffset();
+                    setComponent(coord, axis, i);
+                })
+                .bounds(x + 90, y, 40, 18)
+                .build();
         addRenderableWidget(plus);
         tickers.add(() -> plus.setMessage(Component.literal(axisName + " + " + step.getOffset())));
     }
@@ -333,9 +336,12 @@ public class TransformScreen extends Screen {
                     MMNetwork.CHANNEL.sendToServer(new PacketSetCoordDirect(1, cfg.coordB.pos.offset(delta)));
                 }
             }
-            case COPY_A -> MMNetwork.CHANNEL.sendToServer(new PacketSetCoordDirect(0, new BlockPos(loc.x, loc.y, loc.z)));
-            case COPY_B -> MMNetwork.CHANNEL.sendToServer(new PacketSetCoordDirect(1, new BlockPos(loc.x, loc.y, loc.z)));
-            case PASTE -> MMNetwork.CHANNEL.sendToServer(new PacketSetCoordDirect(2, new BlockPos(loc.x, loc.y, loc.z)));
+            case COPY_A ->
+                MMNetwork.CHANNEL.sendToServer(new PacketSetCoordDirect(0, new BlockPos(loc.x, loc.y, loc.z)));
+            case COPY_B ->
+                MMNetwork.CHANNEL.sendToServer(new PacketSetCoordDirect(1, new BlockPos(loc.x, loc.y, loc.z)));
+            case PASTE ->
+                MMNetwork.CHANNEL.sendToServer(new PacketSetCoordDirect(2, new BlockPos(loc.x, loc.y, loc.z)));
             case STACK -> MMNetwork.CHANNEL.sendToServer(new PacketSetArraySpan(axis, value));
         }
     }

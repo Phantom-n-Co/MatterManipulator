@@ -8,9 +8,27 @@ import dev.wp.matter_manipulator.client.render.MMRenderer;
 import dev.wp.matter_manipulator.common.building.Location;
 import dev.wp.matter_manipulator.common.building.PendingBuild;
 import dev.wp.matter_manipulator.common.compat.GTCompat;
-import dev.wp.matter_manipulator.common.utils.Mods;
 import dev.wp.matter_manipulator.common.config.MMModConfig;
-import dev.wp.matter_manipulator.common.networking.*;
+import dev.wp.matter_manipulator.common.networking.MMNetwork;
+import dev.wp.matter_manipulator.common.networking.PacketCancelBuild;
+import dev.wp.matter_manipulator.common.networking.PacketClearBlocks;
+import dev.wp.matter_manipulator.common.networking.PacketClearCoords;
+import dev.wp.matter_manipulator.common.networking.PacketClearPlan;
+import dev.wp.matter_manipulator.common.networking.PacketClearWhitelist;
+import dev.wp.matter_manipulator.common.networking.PacketMoveCoords;
+import dev.wp.matter_manipulator.common.networking.PacketRequestRequiredItems;
+import dev.wp.matter_manipulator.common.networking.PacketResetArray;
+import dev.wp.matter_manipulator.common.networking.PacketResetTransform;
+import dev.wp.matter_manipulator.common.networking.PacketSetCoord;
+import dev.wp.matter_manipulator.common.networking.PacketSetPendingAction;
+import dev.wp.matter_manipulator.common.networking.PacketSetPlaceMode;
+import dev.wp.matter_manipulator.common.networking.PacketSetRemoveMode;
+import dev.wp.matter_manipulator.common.networking.PacketSetShape;
+import dev.wp.matter_manipulator.common.networking.PacketStartBuild;
+import dev.wp.matter_manipulator.common.utils.Mods;
+import java.util.List;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.language.I18n;
@@ -34,10 +52,6 @@ import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.common.capabilities.ICapabilityProvider;
 import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.energy.IEnergyStorage;
-
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import java.util.List;
 
 public class ItemMatterManipulator extends Item {
 
@@ -76,13 +90,11 @@ public class ItemMatterManipulator extends Item {
             // Source coordinates (A/B) must be set via the Mark buttons (actions).
             int which = (cfg.placeMode == PlaceMode.COPYING || cfg.placeMode == PlaceMode.MOVING) ? 2 : 0;
 
-            MMNetwork.CHANNEL.sendToServer(
-                    new PacketSetCoord(which, new Location(level.dimension(), selectedPos)));
+            MMNetwork.CHANNEL.sendToServer(new PacketSetCoord(which, new Location(level.dimension(), selectedPos)));
             return InteractionResult.SUCCESS;
         }
         return InteractionResult.CONSUME;
     }
-
 
     /**
      * Right-click air → open the radial config menu, unless a block-selection action is active.
@@ -96,7 +108,8 @@ public class ItemMatterManipulator extends Item {
                 openRadialMenu(stack, player);
             } else if (!cfg.locked) {
                 int which = (cfg.placeMode == PlaceMode.COPYING || cfg.placeMode == PlaceMode.MOVING) ? 2 : 0;
-                MMNetwork.CHANNEL.sendToServer(new PacketSetCoord(which, new Location(level.dimension(), player.blockPosition())));
+                MMNetwork.CHANNEL.sendToServer(
+                        new PacketSetCoord(which, new Location(level.dimension(), player.blockPosition())));
             }
         }
         return InteractionResultHolder.sidedSuccess(stack, level.isClientSide);
@@ -111,8 +124,11 @@ public class ItemMatterManipulator extends Item {
     // spotless:off
     @OnlyIn(Dist.CLIENT)
     private RadialMenuBuilder buildRadialMenu(MMConfig cfg, Player player) {
-        int allModes = MMCapability.ALLOW_GEOMETRY | MMCapability.ALLOW_COPYING
-                | MMCapability.ALLOW_MOVING | MMCapability.ALLOW_EXCHANGING | MMCapability.ALLOW_CABLES;
+        int allModes = MMCapability.ALLOW_GEOMETRY
+                | MMCapability.ALLOW_COPYING
+                | MMCapability.ALLOW_MOVING
+                | MMCapability.ALLOW_EXCHANGING
+                | MMCapability.ALLOW_CABLES;
         boolean hasMultiMode = Integer.bitCount(tier.capabilities & allModes) > 1;
         boolean hasRemove = tier.hasCapability(MMCapability.ALLOW_REMOVING);
         boolean hasCopy = tier.hasCapability(MMCapability.ALLOW_COPYING);
@@ -124,23 +140,64 @@ public class ItemMatterManipulator extends Item {
 
         // "Set Mode" branch — hidden for PROTO which only has GEOMETRY
         if (hasMultiMode) {
-            b.branch().label(I18n.get("mm.gui.set_mode"))
-                    .branch().label(I18n.get("mm.gui.set_remove_mode")).hidden(!hasRemove)
-                    .option().label(I18n.get("mm.gui.remove_none")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetRemoveMode(RemoveMode.NONE))).done()
-                    .option().label(I18n.get("mm.gui.remove_replaceable")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetRemoveMode(RemoveMode.REPLACEABLE))).done()
-                    .option().label(I18n.get("mm.gui.remove_all")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetRemoveMode(RemoveMode.ALL))).done()
+            b.branch()
+                    .label(I18n.get("mm.gui.set_mode"))
+                    .branch()
+                    .label(I18n.get("mm.gui.set_remove_mode"))
+                    .hidden(!hasRemove)
+                    .option()
+                    .label(I18n.get("mm.gui.remove_none"))
+                    .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetRemoveMode(RemoveMode.NONE)))
                     .done()
-                    .option().label(I18n.get("mm.gui.geometry")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPlaceMode(PlaceMode.GEOMETRY))).done()
-                    .option().label(I18n.get("mm.gui.copying")).hidden(!hasCopy).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPlaceMode(PlaceMode.COPYING))).done()
-                    .option().label(I18n.get("mm.gui.moving")).hidden(!hasMove).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPlaceMode(PlaceMode.MOVING))).done()
-                    .option().label(I18n.get("mm.gui.exchanging")).hidden(!hasExch).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPlaceMode(PlaceMode.EXCHANGING))).done()
-                    .option().label(I18n.get("mm.gui.cables")).hidden(!hasCable).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPlaceMode(PlaceMode.CABLES))).done()
+                    .option()
+                    .label(I18n.get("mm.gui.remove_replaceable"))
+                    .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetRemoveMode(RemoveMode.REPLACEABLE)))
+                    .done()
+                    .option()
+                    .label(I18n.get("mm.gui.remove_all"))
+                    .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetRemoveMode(RemoveMode.ALL)))
+                    .done()
+                    .done()
+                    .option()
+                    .label(I18n.get("mm.gui.geometry"))
+                    .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPlaceMode(PlaceMode.GEOMETRY)))
+                    .done()
+                    .option()
+                    .label(I18n.get("mm.gui.copying"))
+                    .hidden(!hasCopy)
+                    .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPlaceMode(PlaceMode.COPYING)))
+                    .done()
+                    .option()
+                    .label(I18n.get("mm.gui.moving"))
+                    .hidden(!hasMove)
+                    .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPlaceMode(PlaceMode.MOVING)))
+                    .done()
+                    .option()
+                    .label(I18n.get("mm.gui.exchanging"))
+                    .hidden(!hasExch)
+                    .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPlaceMode(PlaceMode.EXCHANGING)))
+                    .done()
+                    .option()
+                    .label(I18n.get("mm.gui.cables"))
+                    .hidden(!hasCable)
+                    .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPlaceMode(PlaceMode.CABLES)))
+                    .done()
                     .done();
         } else if (hasRemove) {
-            b.branch().label(I18n.get("mm.gui.set_remove_mode"))
-                    .option().label(I18n.get("mm.gui.remove_none")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetRemoveMode(RemoveMode.NONE))).done()
-                    .option().label(I18n.get("mm.gui.remove_replaceable")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetRemoveMode(RemoveMode.REPLACEABLE))).done()
-                    .option().label(I18n.get("mm.gui.remove_all")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetRemoveMode(RemoveMode.ALL))).done()
+            b.branch()
+                    .label(I18n.get("mm.gui.set_remove_mode"))
+                    .option()
+                    .label(I18n.get("mm.gui.remove_none"))
+                    .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetRemoveMode(RemoveMode.NONE)))
+                    .done()
+                    .option()
+                    .label(I18n.get("mm.gui.remove_replaceable"))
+                    .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetRemoveMode(RemoveMode.REPLACEABLE)))
+                    .done()
+                    .option()
+                    .label(I18n.get("mm.gui.remove_all"))
+                    .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetRemoveMode(RemoveMode.ALL)))
+                    .done()
                     .done();
         }
 
@@ -154,27 +211,70 @@ public class ItemMatterManipulator extends Item {
         }
 
         // Universal actions
-        b.option().label(I18n.get("mm.gui.start_build")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketStartBuild())).done();
-        b.option().label(I18n.get("mm.gui.cancel_build")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketCancelBuild())).done();
+        b.option()
+                .label(I18n.get("mm.gui.start_build"))
+                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketStartBuild()))
+                .done();
+        b.option()
+                .label(I18n.get("mm.gui.cancel_build"))
+                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketCancelBuild()))
+                .done();
 
         return b;
     }
 
     @OnlyIn(Dist.CLIENT)
     private void addGeometryOptions(RadialMenuBuilder b) {
-        b.branch().label(I18n.get("mm.gui.select_blocks"))
-                .option().label(I18n.get("mm.gui.set_corners")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.GEOM_SELECTING_BLOCK, BlockSelectMode.CORNERS))).done()
-                .option().label(I18n.get("mm.gui.set_edges")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.GEOM_SELECTING_BLOCK, BlockSelectMode.EDGES))).done()
-                .option().label(I18n.get("mm.gui.set_faces")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.GEOM_SELECTING_BLOCK, BlockSelectMode.FACES))).done()
-                .option().label(I18n.get("mm.gui.set_volumes")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.GEOM_SELECTING_BLOCK, BlockSelectMode.VOLUMES))).done()
-                .option().label(I18n.get("mm.gui.set_all")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.GEOM_SELECTING_BLOCK, BlockSelectMode.ALL))).done()
-                .option().label(I18n.get("mm.gui.clear_all")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketClearBlocks())).done()
+        b.branch()
+                .label(I18n.get("mm.gui.select_blocks"))
+                .option()
+                .label(I18n.get("mm.gui.set_corners"))
+                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(
+                        new PacketSetPendingAction(PendingAction.GEOM_SELECTING_BLOCK, BlockSelectMode.CORNERS)))
+                .done()
+                .option()
+                .label(I18n.get("mm.gui.set_edges"))
+                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(
+                        new PacketSetPendingAction(PendingAction.GEOM_SELECTING_BLOCK, BlockSelectMode.EDGES)))
+                .done()
+                .option()
+                .label(I18n.get("mm.gui.set_faces"))
+                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(
+                        new PacketSetPendingAction(PendingAction.GEOM_SELECTING_BLOCK, BlockSelectMode.FACES)))
+                .done()
+                .option()
+                .label(I18n.get("mm.gui.set_volumes"))
+                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(
+                        new PacketSetPendingAction(PendingAction.GEOM_SELECTING_BLOCK, BlockSelectMode.VOLUMES)))
+                .done()
+                .option()
+                .label(I18n.get("mm.gui.set_all"))
+                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(
+                        new PacketSetPendingAction(PendingAction.GEOM_SELECTING_BLOCK, BlockSelectMode.ALL)))
+                .done()
+                .option()
+                .label(I18n.get("mm.gui.clear_all"))
+                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketClearBlocks()))
+                .done()
                 .done();
-        b.branch().label(I18n.get("mm.gui.set_shape"))
-                .option().label(I18n.get("mm.gui.line")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetShape(ShapeType.LINE))).done()
-                .option().label(I18n.get("mm.gui.cube")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetShape(ShapeType.CUBE))).done()
-                .option().label(I18n.get("mm.gui.sphere")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetShape(ShapeType.SPHERE))).done()
-                .option().label(I18n.get("mm.gui.cylinder")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetShape(ShapeType.CYLINDER))).done()
+        b.branch()
+                .label(I18n.get("mm.gui.set_shape"))
+                .option()
+                .label(I18n.get("mm.gui.line"))
+                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetShape(ShapeType.LINE)))
+                .done()
+                .option()
+                .label(I18n.get("mm.gui.cube"))
+                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetShape(ShapeType.CUBE)))
+                .done()
+                .option()
+                .label(I18n.get("mm.gui.sphere"))
+                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetShape(ShapeType.SPHERE)))
+                .done()
+                .option()
+                .label(I18n.get("mm.gui.cylinder"))
+                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetShape(ShapeType.CYLINDER)))
+                .done()
                 .done();
         addMoveCoordsOptions(b);
         addEditTransformOption(b);
@@ -182,78 +282,165 @@ public class ItemMatterManipulator extends Item {
 
     @OnlyIn(Dist.CLIENT)
     private void addCopyingOptions(RadialMenuBuilder b) {
-        b.option().label(I18n.get("mm.gui.mark_copy")).onClicked(() -> {
-            if (MMModConfig.PASTE_AUTO_CLEAR.get()) {
-                MMNetwork.CHANNEL.sendToServer(new PacketClearCoords());
-                if (MMModConfig.RESET_TRANSFORM.get()) {
-                    MMNetwork.CHANNEL.sendToServer(new PacketResetTransform());
-                }
-            }
-            MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.MARK_COPY_A, null));
-        }).done();
+        b.option()
+                .label(I18n.get("mm.gui.mark_copy"))
+                .onClicked(() -> {
+                    if (MMModConfig.PASTE_AUTO_CLEAR.get()) {
+                        MMNetwork.CHANNEL.sendToServer(new PacketClearCoords());
+                        if (MMModConfig.RESET_TRANSFORM.get()) {
+                            MMNetwork.CHANNEL.sendToServer(new PacketResetTransform());
+                        }
+                    }
+                    MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.MARK_COPY_A, null));
+                })
+                .done();
 
-        b.branch().label(I18n.get("mm.gui.edit_stack"))
-                .option().label(I18n.get("mm.gui.reset")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketResetArray())).done()
-                .option().label(I18n.get("mm.gui.mark")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.MARK_ARRAY, null))).done()
+        b.branch()
+                .label(I18n.get("mm.gui.edit_stack"))
+                .option()
+                .label(I18n.get("mm.gui.reset"))
+                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketResetArray()))
+                .done()
+                .option()
+                .label(I18n.get("mm.gui.mark"))
+                .onClicked(() ->
+                        MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.MARK_ARRAY, null)))
+                .done()
                 .done();
 
         boolean hasAuto = Mods.AE2 && tier.hasCapability(MMCapability.CONNECTS_TO_AE);
-        b.branch().label(I18n.get("mm.gui.planning"))
-                .option().label(I18n.get("mm.gui.plan_all_manual")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketRequestRequiredItems(PacketRequestRequiredItems.PLAN_ALL))).done()
-                .option().label(I18n.get("mm.gui.plan_missing_manual")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketRequestRequiredItems(0))).done()
-                .option().label(I18n.get("mm.gui.create_plan_all")).hidden(!hasAuto).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketRequestRequiredItems(PacketRequestRequiredItems.PLAN_ALL | PacketRequestRequiredItems.PLAN_PATTERN))).done()
-                .option().label(I18n.get("mm.gui.create_plan_missing")).hidden(!hasAuto).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketRequestRequiredItems(PacketRequestRequiredItems.PLAN_PATTERN))).done()
-                .option().label(I18n.get("mm.gui.autocraft_all")).hidden(!hasAuto).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketRequestRequiredItems(PacketRequestRequiredItems.PLAN_ALL | PacketRequestRequiredItems.PLAN_AUTOCRAFT))).done()
-                .option().label(I18n.get("mm.gui.autocraft_missing")).hidden(!hasAuto).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketRequestRequiredItems(PacketRequestRequiredItems.PLAN_AUTOCRAFT))).done()
-                .option().label(I18n.get("mm.gui.clear_plan")).hidden(!hasAuto).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketClearPlan())).done()
+        b.branch()
+                .label(I18n.get("mm.gui.planning"))
+                .option()
+                .label(I18n.get("mm.gui.plan_all_manual"))
+                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(
+                        new PacketRequestRequiredItems(PacketRequestRequiredItems.PLAN_ALL)))
+                .done()
+                .option()
+                .label(I18n.get("mm.gui.plan_missing_manual"))
+                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketRequestRequiredItems(0)))
+                .done()
+                .option()
+                .label(I18n.get("mm.gui.create_plan_all"))
+                .hidden(!hasAuto)
+                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketRequestRequiredItems(
+                        PacketRequestRequiredItems.PLAN_ALL | PacketRequestRequiredItems.PLAN_PATTERN)))
+                .done()
+                .option()
+                .label(I18n.get("mm.gui.create_plan_missing"))
+                .hidden(!hasAuto)
+                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(
+                        new PacketRequestRequiredItems(PacketRequestRequiredItems.PLAN_PATTERN)))
+                .done()
+                .option()
+                .label(I18n.get("mm.gui.autocraft_all"))
+                .hidden(!hasAuto)
+                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketRequestRequiredItems(
+                        PacketRequestRequiredItems.PLAN_ALL | PacketRequestRequiredItems.PLAN_AUTOCRAFT)))
+                .done()
+                .option()
+                .label(I18n.get("mm.gui.autocraft_missing"))
+                .hidden(!hasAuto)
+                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(
+                        new PacketRequestRequiredItems(PacketRequestRequiredItems.PLAN_AUTOCRAFT)))
+                .done()
+                .option()
+                .label(I18n.get("mm.gui.clear_plan"))
+                .hidden(!hasAuto)
+                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketClearPlan()))
+                .done()
                 .done();
 
         addEditTransformOption(b);
 
-        b.option().label(I18n.get("mm.gui.mark_paste")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.MARK_PASTE_A, null))).done();
+        b.option()
+                .label(I18n.get("mm.gui.mark_paste"))
+                .onClicked(() ->
+                        MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.MARK_PASTE_A, null)))
+                .done();
     }
 
     @OnlyIn(Dist.CLIENT)
     private void addMovingOptions(RadialMenuBuilder b) {
-        b.option().label(I18n.get("mm.gui.mark_cut")).onClicked(() -> {
-            if (MMModConfig.PASTE_AUTO_CLEAR.get()) {
-                MMNetwork.CHANNEL.sendToServer(new PacketClearCoords());
-                if (MMModConfig.RESET_TRANSFORM.get()) {
-                    MMNetwork.CHANNEL.sendToServer(new PacketResetTransform());
-                }
-            }
-            MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.MARK_CUT_A, null));
-        }).done();
+        b.option()
+                .label(I18n.get("mm.gui.mark_cut"))
+                .onClicked(() -> {
+                    if (MMModConfig.PASTE_AUTO_CLEAR.get()) {
+                        MMNetwork.CHANNEL.sendToServer(new PacketClearCoords());
+                        if (MMModConfig.RESET_TRANSFORM.get()) {
+                            MMNetwork.CHANNEL.sendToServer(new PacketResetTransform());
+                        }
+                    }
+                    MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.MARK_CUT_A, null));
+                })
+                .done();
         addEditTransformOption(b);
-        b.option().label(I18n.get("mm.gui.mark_paste")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.MARK_PASTE_A, null))).done();
+        b.option()
+                .label(I18n.get("mm.gui.mark_paste"))
+                .onClicked(() ->
+                        MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.MARK_PASTE_A, null)))
+                .done();
     }
 
     @OnlyIn(Dist.CLIENT)
     private void addExchangingOptions(RadialMenuBuilder b) {
-        b.branch().label(I18n.get("mm.gui.edit_replace_whitelist"))
-                .option().label(I18n.get("mm.gui.clear")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketClearWhitelist())).done()
-                .option().label(I18n.get("mm.gui.add_block")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.EXCH_ADD_REPLACE, null))).done()
-                .option().label(I18n.get("mm.gui.set_block")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.EXCH_SET_REPLACE, null))).done()
+        b.branch()
+                .label(I18n.get("mm.gui.edit_replace_whitelist"))
+                .option()
+                .label(I18n.get("mm.gui.clear"))
+                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketClearWhitelist()))
+                .done()
+                .option()
+                .label(I18n.get("mm.gui.add_block"))
+                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(
+                        new PacketSetPendingAction(PendingAction.EXCH_ADD_REPLACE, null)))
+                .done()
+                .option()
+                .label(I18n.get("mm.gui.set_block"))
+                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(
+                        new PacketSetPendingAction(PendingAction.EXCH_SET_REPLACE, null)))
+                .done()
                 .done();
-        b.option().label(I18n.get("mm.gui.set_block_to_replace_with")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.EXCH_SET_TARGET, null))).done();
+        b.option()
+                .label(I18n.get("mm.gui.set_block_to_replace_with"))
+                .onClicked(() ->
+                        MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.EXCH_SET_TARGET, null)))
+                .done();
         addMoveCoordsOptions(b);
         addEditTransformOption(b);
     }
 
     @OnlyIn(Dist.CLIENT)
     private void addCableOptions(RadialMenuBuilder b) {
-        b.option().label(I18n.get("mm.gui.set_cable")).onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.PICK_CABLE, null))).done();
+        b.option()
+                .label(I18n.get("mm.gui.set_cable"))
+                .onClicked(() ->
+                        MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.PICK_CABLE, null)))
+                .done();
         addMoveCoordsOptions(b);
         addEditTransformOption(b);
     }
 
     @OnlyIn(Dist.CLIENT)
     private void addMoveCoordsOptions(RadialMenuBuilder b) {
-        b.branch().label(I18n.get("mm.gui.move_coords"))
-                .option().label(I18n.get("mm.gui.move_coord_a")).onClicked(() -> sendMoveCoords(PacketMoveCoords.Which.A)).done()
-                .option().label(I18n.get("mm.gui.move_all")).onClicked(() -> sendMoveCoords(PacketMoveCoords.Which.ALL)).done()
-                .option().label(I18n.get("mm.gui.move_coord_b")).onClicked(() -> sendMoveCoords(PacketMoveCoords.Which.B)).done()
-                .option().label(I18n.get("mm.gui.move_here")).onClicked(() -> sendMoveCoords(PacketMoveCoords.Which.HERE)).done()
+        b.branch()
+                .label(I18n.get("mm.gui.move_coords"))
+                .option()
+                .label(I18n.get("mm.gui.move_coord_a"))
+                .onClicked(() -> sendMoveCoords(PacketMoveCoords.Which.A))
+                .done()
+                .option()
+                .label(I18n.get("mm.gui.move_all"))
+                .onClicked(() -> sendMoveCoords(PacketMoveCoords.Which.ALL))
+                .done()
+                .option()
+                .label(I18n.get("mm.gui.move_coord_b"))
+                .onClicked(() -> sendMoveCoords(PacketMoveCoords.Which.B))
+                .done()
+                .option()
+                .label(I18n.get("mm.gui.move_here"))
+                .onClicked(() -> sendMoveCoords(PacketMoveCoords.Which.HERE))
+                .done()
                 .done();
     }
 
@@ -267,7 +454,8 @@ public class ItemMatterManipulator extends Item {
     /** Opens the transform screen, deferred so the radial menu teardown can't wipe it. */
     @OnlyIn(Dist.CLIENT)
     private void addEditTransformOption(RadialMenuBuilder b) {
-        b.option().label(I18n.get("mm.gui.edit_transform"))
+        b.option()
+                .label(I18n.get("mm.gui.edit_transform"))
                 .onClicked(() -> ClientEvents.openDeferred(new TransformScreen()))
                 .done();
     }

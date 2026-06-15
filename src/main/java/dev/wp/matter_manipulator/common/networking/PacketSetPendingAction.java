@@ -3,19 +3,21 @@ package dev.wp.matter_manipulator.common.networking;
 import dev.wp.matter_manipulator.common.items.manipulator.BlockSelectMode;
 import dev.wp.matter_manipulator.common.items.manipulator.MMState;
 import dev.wp.matter_manipulator.common.items.manipulator.PendingAction;
+import java.util.function.Supplier;
+import javax.annotation.Nullable;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
 
-import javax.annotation.Nullable;
-import java.util.function.Supplier;
-
 /** Sets a pending action on the server, optionally also updating blockSelectMode. */
 public class PacketSetPendingAction {
 
-    @Nullable private final PendingAction action;
-    @Nullable private final BlockSelectMode selectMode;
+    @Nullable
+    private final PendingAction action;
+
+    @Nullable
+    private final BlockSelectMode selectMode;
 
     public PacketSetPendingAction(@Nullable PendingAction action, @Nullable BlockSelectMode selectMode) {
         this.action = action;
@@ -47,8 +49,7 @@ public class PacketSetPendingAction {
             state.saveIfDirty();
 
             if (pkt.action != null) {
-                player.sendSystemMessage(Component.literal(
-                    "Right-click a block to: " + actionDescription(pkt.action)));
+                player.sendSystemMessage(Component.literal("Right-click a block to: " + actionDescription(pkt.action)));
             }
         });
         ctx.get().setPacketHandled(true);

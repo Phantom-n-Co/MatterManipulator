@@ -1,5 +1,7 @@
 package dev.wp.matter_manipulator.client.gui;
 
+import static java.lang.Math.PI;
+
 import brachy.modularui.api.widget.Interactable;
 import brachy.modularui.screen.viewport.ModularGuiContext;
 import brachy.modularui.theme.WidgetThemeEntry;
@@ -10,6 +12,10 @@ import com.mojang.blaze3d.vertex.BufferUploader;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexFormat;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.GameRenderer;
@@ -17,13 +23,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import org.joml.Matrix4f;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.BooleanSupplier;
-import java.util.function.Supplier;
-
-import static java.lang.Math.PI;
 
 @OnlyIn(Dist.CLIENT)
 public class RadialMenu extends Widget<RadialMenu> implements Interactable {
@@ -72,8 +71,9 @@ public class RadialMenu extends Widget<RadialMenu> implements Interactable {
         for (RadialMenuOption option : options) {
             if (option.isHidden) continue;
 
-            boolean hovered = cachedMouseRadius >= innerRadius && cachedMouseRadius <= outerRadius
-                && isAngleBetween(cachedMouseTheta, option.startTheta, option.endTheta);
+            boolean hovered = cachedMouseRadius >= innerRadius
+                    && cachedMouseRadius <= outerRadius
+                    && isAngleBetween(cachedMouseTheta, option.startTheta, option.endTheta);
 
             float r = hovered ? 0.4f : 0.1f;
             float g = hovered ? 0.4f : 0.1f;
@@ -136,7 +136,11 @@ public class RadialMenu extends Widget<RadialMenu> implements Interactable {
 
         double currentAngle = 0;
         for (RadialMenuOption opt : options) {
-            if (opt.isHidden) { opt.startTheta = 0; opt.endTheta = 0; continue; }
+            if (opt.isHidden) {
+                opt.startTheta = 0;
+                opt.endTheta = 0;
+                continue;
+            }
             double slice = opt.weight / weightSum * TAU;
             opt.startTheta = currentAngle;
             currentAngle += slice;
@@ -146,7 +150,10 @@ public class RadialMenu extends Widget<RadialMenu> implements Interactable {
         // Rotate so the first visible option is centred at the top (−π/2)
         RadialMenuOption first = null;
         for (RadialMenuOption opt : options) {
-            if (!opt.isHidden) { first = opt; break; }
+            if (!opt.isHidden) {
+                first = opt;
+                break;
+            }
         }
         if (first != null) {
             double offset = (first.endTheta - first.startTheta) / 2 + PI / 2;
@@ -176,8 +183,9 @@ public class RadialMenu extends Widget<RadialMenu> implements Interactable {
 
         for (RadialMenuOption opt : options) {
             if (opt.isHidden) continue;
-            if (mouseRadius >= innerRadius && mouseRadius <= outerRadius
-                && isAngleBetween(mouseTheta, opt.startTheta, opt.endTheta)) {
+            if (mouseRadius >= innerRadius
+                    && mouseRadius <= outerRadius
+                    && isAngleBetween(mouseTheta, opt.startTheta, opt.endTheta)) {
                 if (opt.onClick != null) opt.onClick.onClick(this, opt, button);
                 if (!opt.keepOpen) getPanel().closeIfOpen();
                 return Result.SUCCESS;
@@ -190,12 +198,20 @@ public class RadialMenu extends Widget<RadialMenu> implements Interactable {
 
     // ── helpers ──────────────────────────────────────────────────────────────────
 
-    private static double modTau(double a) { return ((a % TAU) + TAU) % TAU; }
+    private static double modTau(double a) {
+        return ((a % TAU) + TAU) % TAU;
+    }
 
     private static boolean isAngleBetween(double target, double a1, double a2) {
         if (a2 < a1) return false;
-        while (a1 < 0)    { a1 += TAU; a2 += TAU; }
-        while (a1 > TAU)  { a1 -= TAU; a2 -= TAU; }
+        while (a1 < 0) {
+            a1 += TAU;
+            a2 += TAU;
+        }
+        while (a1 > TAU) {
+            a1 -= TAU;
+            a2 -= TAU;
+        }
         return modTau(target - a1) < a2 - a1;
     }
 

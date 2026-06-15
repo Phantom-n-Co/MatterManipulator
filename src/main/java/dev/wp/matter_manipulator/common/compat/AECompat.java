@@ -13,7 +13,10 @@ import dev.wp.matter_manipulator.common.building.Location;
 import dev.wp.matter_manipulator.common.building.MMInventory;
 import dev.wp.matter_manipulator.common.compat.ae.UplinkBlockEntity;
 import dev.wp.matter_manipulator.common.items.manipulator.MMTransform;
-import org.apache.commons.lang3.StringUtils;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -24,19 +27,13 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.fluids.FluidStack;
-
-import javax.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import org.apache.commons.lang3.StringUtils;
 
 public class AECompat {
 
     // Ghost/config items (ISegmentedInventory.CONFIG) are intentionally excluded — they are fake items.
     private static final ResourceLocation[] ITEM_KEYS = {
-        ISegmentedInventory.UPGRADES,
-        ISegmentedInventory.CELLS,
-        ISegmentedInventory.STORAGE
+        ISegmentedInventory.UPGRADES, ISegmentedInventory.CELLS, ISegmentedInventory.STORAGE
     };
 
     // Cable-bus part slots. null = the center (the cable itself); the rest are attached parts.
@@ -155,7 +152,9 @@ public class AECompat {
     @Nullable
     private static UplinkBlockEntity resolveUplink(ServerLevel level, @Nullable Location loc) {
         if (loc == null) return null;
-        ServerLevel target = loc.dimension.equals(level.dimension()) ? level : level.getServer().getLevel(loc.dimension);
+        ServerLevel target = loc.dimension.equals(level.dimension())
+                ? level
+                : level.getServer().getLevel(loc.dimension);
         if (target == null || !target.isLoaded(loc.pos)) return null;
         return target.getBlockEntity(loc.pos) instanceof UplinkBlockEntity u ? u : null;
     }
@@ -221,8 +220,8 @@ public class AECompat {
      * Stores a plan pattern (inputs = the given blocks, output = a Plan token) on the uplink for the
      * given player. Returns true if it was stored (false = no uplink or the plan store is full).
      */
-    public static boolean uplinkAddPlan(ServerLevel level, @Nullable Location loc, UUID player,
-                                        List<ItemStack> blocks, boolean auto) {
+    public static boolean uplinkAddPlan(
+            ServerLevel level, @Nullable Location loc, UUID player, List<ItemStack> blocks, boolean auto) {
         UplinkBlockEntity u = resolveUplink(level, loc);
         if (u == null) return false;
         List<GenericStack> stacks = new ArrayList<>(blocks.size());
@@ -294,8 +293,8 @@ public class AECompat {
         }
 
         /** Moves each per-side sub-tag (keyed by {@code keyFor}) to the transform-rotated side. */
-        private static void permuteSideKeys(CompoundTag tag, MMTransform transform,
-                                            java.util.function.Function<Direction, String> keyFor) {
+        private static void permuteSideKeys(
+                CompoundTag tag, MMTransform transform, java.util.function.Function<Direction, String> keyFor) {
             java.util.Map<String, Tag> moved = new java.util.HashMap<>();
             for (Direction side : Direction.values()) {
                 Tag blob = tag.get(keyFor.apply(side));

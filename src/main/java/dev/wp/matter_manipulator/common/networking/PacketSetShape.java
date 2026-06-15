@@ -2,17 +2,18 @@ package dev.wp.matter_manipulator.common.networking;
 
 import dev.wp.matter_manipulator.common.items.manipulator.MMState;
 import dev.wp.matter_manipulator.common.items.manipulator.ShapeType;
+import java.util.function.Supplier;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
-
-import java.util.function.Supplier;
 
 public class PacketSetShape {
 
     private final ShapeType shape;
 
-    public PacketSetShape(ShapeType shape) { this.shape = shape; }
+    public PacketSetShape(ShapeType shape) {
+        this.shape = shape;
+    }
 
     public static void encode(PacketSetShape pkt, FriendlyByteBuf buf) {
         buf.writeEnum(pkt.shape);

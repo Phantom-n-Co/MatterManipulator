@@ -19,8 +19,7 @@ public class UplinkPatternLogic extends PatternProviderLogic {
 
     private final UplinkLogic uplink;
 
-    public UplinkPatternLogic(IManagedGridNode mainNode, PatternProviderLogicHost host,
-                              UplinkLogic uplink, int slots) {
+    public UplinkPatternLogic(IManagedGridNode mainNode, PatternProviderLogicHost host, UplinkLogic uplink, int slots) {
         super(mainNode, host, slots);
         this.uplink = uplink;
         getConfigManager().putSetting(Settings.PATTERN_ACCESS_TERMINAL, YesNo.NO);

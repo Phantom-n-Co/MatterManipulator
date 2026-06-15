@@ -1,12 +1,11 @@
 package dev.wp.matter_manipulator.common.networking;
 
 import dev.wp.matter_manipulator.common.items.manipulator.MMState;
+import java.util.function.Supplier;
 import net.minecraft.core.Direction;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
-
-import java.util.function.Supplier;
 
 public class PacketRotateTransform {
 
@@ -37,7 +36,7 @@ public class PacketRotateTransform {
 
             var cfg = state.mutate();
             cfg.rotate(pkt.axis, pkt.positive ? 1 : -1);
-            
+
             state.saveIfDirty();
         });
         ctx.get().setPacketHandled(true);

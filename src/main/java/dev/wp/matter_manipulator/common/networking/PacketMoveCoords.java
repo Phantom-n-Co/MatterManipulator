@@ -7,13 +7,12 @@ import dev.wp.matter_manipulator.common.items.manipulator.PendingAction;
 import dev.wp.matter_manipulator.common.items.manipulator.PlaceMode;
 import dev.wp.matter_manipulator.common.items.manipulator.ShapeType;
 import dev.wp.matter_manipulator.common.utils.MMUtils;
+import java.util.function.Supplier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
 import org.joml.Vector3i;
-
-import java.util.function.Supplier;
 
 /**
  * Radial menu "Move Coords" options. A/B/ALL start tracking the crosshair (committed
@@ -22,7 +21,12 @@ import java.util.function.Supplier;
  */
 public class PacketMoveCoords {
 
-    public enum Which { A, B, ALL, HERE }
+    public enum Which {
+        A,
+        B,
+        ALL,
+        HERE
+    }
 
     public final Which which;
     public final BlockPos lookingAt;
@@ -91,18 +95,23 @@ public class PacketMoveCoords {
 
     private static void moveHere(ServerPlayer player, MMConfig cfg, BlockPos lookingAt) {
         boolean requiresC = (cfg.placeMode == PlaceMode.GEOMETRY && cfg.shape == ShapeType.CYLINDER)
-                || cfg.placeMode == PlaceMode.COPYING || cfg.placeMode == PlaceMode.MOVING;
+                || cfg.placeMode == PlaceMode.COPYING
+                || cfg.placeMode == PlaceMode.MOVING;
 
         if (cfg.coordA == null || cfg.coordB == null) return;
         if (!cfg.coordA.dimension.equals(cfg.coordB.dimension)) return;
 
         var dim = player.serverLevel().dimension();
         BlockPos a = cfg.coordA.pos;
-        BlockPos newB = lookingAt.offset(cfg.coordB.pos.getX() - a.getX(), cfg.coordB.pos.getY() - a.getY(), cfg.coordB.pos.getZ() - a.getZ());
+        BlockPos newB = lookingAt.offset(
+                cfg.coordB.pos.getX() - a.getX(), cfg.coordB.pos.getY() - a.getY(), cfg.coordB.pos.getZ() - a.getZ());
 
         if (requiresC) {
             if (cfg.coordC == null || !cfg.coordC.dimension.equals(cfg.coordA.dimension)) return;
-            BlockPos newC = lookingAt.offset(cfg.coordC.pos.getX() - a.getX(), cfg.coordC.pos.getY() - a.getY(), cfg.coordC.pos.getZ() - a.getZ());
+            BlockPos newC = lookingAt.offset(
+                    cfg.coordC.pos.getX() - a.getX(),
+                    cfg.coordC.pos.getY() - a.getY(),
+                    cfg.coordC.pos.getZ() - a.getZ());
             cfg.coordC = new Location(dim, newC);
         }
 

@@ -30,10 +30,12 @@ public class UplinkScreen extends AbstractContainerScreen<UplinkMenu> {
     protected void init() {
         super.init();
         addRenderableWidget(Button.builder(Component.literal("Unlink"), b -> {
-            if (minecraft != null && minecraft.gameMode != null) {
-                minecraft.gameMode.handleInventoryButtonClick(menu.containerId, UplinkMenu.UNLINK_BUTTON);
-            }
-        }).bounds(leftPos + 108, topPos + 31, 56, 20).build());
+                    if (minecraft != null && minecraft.gameMode != null) {
+                        minecraft.gameMode.handleInventoryButtonClick(menu.containerId, UplinkMenu.UNLINK_BUTTON);
+                    }
+                })
+                .bounds(leftPos + 108, topPos + 31, 56, 20)
+                .build());
     }
 
     @Override

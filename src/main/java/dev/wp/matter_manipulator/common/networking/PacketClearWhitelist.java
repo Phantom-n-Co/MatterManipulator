@@ -2,11 +2,10 @@ package dev.wp.matter_manipulator.common.networking;
 
 import dev.wp.matter_manipulator.common.data.WeightedSpecList;
 import dev.wp.matter_manipulator.common.items.manipulator.MMState;
+import java.util.function.Supplier;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
-
-import java.util.function.Supplier;
 
 /** Clears the exchange-mode replace whitelist. */
 public class PacketClearWhitelist {

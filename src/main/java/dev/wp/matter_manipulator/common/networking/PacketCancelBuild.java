@@ -1,12 +1,11 @@
 package dev.wp.matter_manipulator.common.networking;
 
 import dev.wp.matter_manipulator.common.building.PendingBuild;
+import java.util.function.Supplier;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
-
-import java.util.function.Supplier;
 
 public class PacketCancelBuild {
 

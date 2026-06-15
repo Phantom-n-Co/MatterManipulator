@@ -1,10 +1,9 @@
 package dev.wp.matter_manipulator.common.networking;
 
 import dev.wp.matter_manipulator.common.items.manipulator.MMState;
+import java.util.function.Supplier;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
-
-import java.util.function.Supplier;
 
 public class PacketSetArraySpan {
     private final int index;

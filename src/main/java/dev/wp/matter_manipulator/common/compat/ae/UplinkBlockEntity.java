@@ -11,6 +11,7 @@ import appeng.blockentity.grid.AENetworkBlockEntity;
 import appeng.helpers.patternprovider.PatternProviderLogic;
 import appeng.helpers.patternprovider.PatternProviderLogicHost;
 import com.google.common.collect.ImmutableSet;
+import java.util.EnumSet;
 import lombok.Getter;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -19,8 +20,6 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-
-import java.util.EnumSet;
 
 /**
  * AE2 grid device that hosts a {@link UplinkLogic}. It joins the network through ME cables, exposes
@@ -32,8 +31,7 @@ import java.util.EnumSet;
  * host adds none of its own. Modeled on SpatialToolsCompatible's {@code CraftingBufferBlockEntity}.
  */
 @Getter
-public class UplinkBlockEntity extends AENetworkBlockEntity
-        implements PatternProviderLogicHost, ICraftingRequester {
+public class UplinkBlockEntity extends AENetworkBlockEntity implements PatternProviderLogicHost, ICraftingRequester {
 
     private final UplinkLogic uplink;
 
@@ -45,7 +43,8 @@ public class UplinkBlockEntity extends AENetworkBlockEntity
         getMainNode()
                 .setIdlePowerUsage(2.0)
                 .addService(ICraftingRequester.class, this)
-                .setVisualRepresentation(new ItemStack(AEUplinkRegistrar.UPLINK_BLOCK.get().asItem()));
+                .setVisualRepresentation(
+                        new ItemStack(AEUplinkRegistrar.UPLINK_BLOCK.get().asItem()));
     }
 
     public IGrid getGrid() {

@@ -11,11 +11,10 @@ import dev.wp.matter_manipulator.common.items.MMUpgrades;
 import dev.wp.matter_manipulator.common.persist.BlockSpecAdapter;
 import dev.wp.matter_manipulator.common.persist.LocationAdapter;
 import dev.wp.matter_manipulator.common.persist.WeightedSpecListAdapter;
+import java.util.BitSet;
+import javax.annotation.Nullable;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
-
-import javax.annotation.Nullable;
-import java.util.BitSet;
 
 public class MMState {
 
@@ -26,10 +25,10 @@ public class MMState {
     private static final String KEY_JSON_VER = "jsonVersion";
 
     public static final Gson GSON = new GsonBuilder()
-        .registerTypeAdapter(BlockSpec.class, new BlockSpecAdapter())
-        .registerTypeAdapter(Location.class, new LocationAdapter())
-        .registerTypeAdapter(WeightedSpecList.class, new WeightedSpecListAdapter())
-        .create();
+            .registerTypeAdapter(BlockSpec.class, new BlockSpecAdapter())
+            .registerTypeAdapter(Location.class, new LocationAdapter())
+            .registerTypeAdapter(WeightedSpecList.class, new WeightedSpecListAdapter())
+            .create();
 
     private final ItemStack stack;
     private MMConfig config;

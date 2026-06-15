@@ -1,13 +1,12 @@
 package dev.wp.matter_manipulator.common.compat;
 
 import dev.wp.matter_manipulator.common.building.MMInventory;
+import javax.annotation.Nullable;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-
-import javax.annotation.Nullable;
 
 /**
  * Whitelists vanilla block-entity configuration that has no item-handler capability path, so it
@@ -37,8 +36,8 @@ public class VanillaMiscHandler implements CopyHandler {
         keepChargeableItem(full, out, inv, "Book", "Page");
     }
 
-    private static void keepChargeableItem(CompoundTag full, CompoundTag out, MMInventory inv,
-                                           String itemKey, String... companionKeys) {
+    private static void keepChargeableItem(
+            CompoundTag full, CompoundTag out, MMInventory inv, String itemKey, String... companionKeys) {
         if (!full.contains(itemKey, Tag.TAG_COMPOUND)) return;
         ItemStack stack = ItemStack.of(full.getCompound(itemKey));
         if (stack.isEmpty()) return;

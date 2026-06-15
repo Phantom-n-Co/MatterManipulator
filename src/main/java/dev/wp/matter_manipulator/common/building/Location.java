@@ -1,5 +1,7 @@
 package dev.wp.matter_manipulator.common.building;
 
+import java.util.Objects;
+import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
@@ -8,9 +10,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraftforge.server.ServerLifecycleHooks;
-
-import javax.annotation.Nullable;
-import java.util.Objects;
 
 public class Location {
 
@@ -58,10 +57,7 @@ public class Location {
     }
 
     public static Location fromNBT(CompoundTag tag) {
-        var dimKey = ResourceKey.create(
-                Registries.DIMENSION,
-                ResourceLocation.parse(tag.getString("dim"))
-        );
+        var dimKey = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(tag.getString("dim")));
         return new Location(dimKey, new BlockPos(tag.getInt("x"), tag.getInt("y"), tag.getInt("z")));
     }
 

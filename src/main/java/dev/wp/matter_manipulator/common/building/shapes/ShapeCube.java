@@ -1,10 +1,9 @@
 package dev.wp.matter_manipulator.common.building.shapes;
 
 import dev.wp.matter_manipulator.common.items.manipulator.SlotType;
-import net.minecraft.core.BlockPos;
-
 import java.util.ArrayList;
 import java.util.List;
+import net.minecraft.core.BlockPos;
 
 public class ShapeCube {
 
@@ -27,12 +26,13 @@ public class ShapeCube {
                     boolean onZ = (z == minZ || z == maxZ);
 
                     int faceCount = (onX ? 1 : 0) + (onY ? 1 : 0) + (onZ ? 1 : 0);
-                    SlotType slot = switch (faceCount) {
-                        case 3 -> SlotType.CORNER;
-                        case 2 -> SlotType.EDGE;
-                        case 1 -> SlotType.FACE;
-                        default -> SlotType.VOLUME;
-                    };
+                    SlotType slot =
+                            switch (faceCount) {
+                                case 3 -> SlotType.CORNER;
+                                case 2 -> SlotType.EDGE;
+                                case 1 -> SlotType.FACE;
+                                default -> SlotType.VOLUME;
+                            };
                     result.add(new ShapeBlock(new BlockPos(x, y, z), slot));
                 }
             }

@@ -6,6 +6,7 @@ public class PendingBlock {
 
     /** Position relative to paste anchor. */
     public final BlockPos relPos;
+
     public final BlockSpec spec;
     /** Lower = placed first (solid blocks before attachments). */
     public final int buildOrder;

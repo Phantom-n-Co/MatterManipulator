@@ -1,11 +1,6 @@
 package dev.wp.matter_manipulator.client;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.resources.ResourceLocation;
-import org.joml.Vector2f;
-import org.joml.Vector3f;
-import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL20;
+import static dev.wp.matter_manipulator.MMMod.LOGGER;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -13,8 +8,12 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
-
-import static dev.wp.matter_manipulator.MMMod.LOGGER;
+import net.minecraft.client.Minecraft;
+import net.minecraft.resources.ResourceLocation;
+import org.joml.Vector2f;
+import org.joml.Vector3f;
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL20;
 
 @SuppressWarnings("unused")
 public class ShaderProgram implements AutoCloseable {
@@ -70,10 +69,7 @@ public class ShaderProgram implements AutoCloseable {
 
         if (shader == 0) {
             LOGGER.error(
-                    "Could not create shader of type {} from {}: {}",
-                    shaderType,
-                    filename,
-                    getProgramLogInfo(program));
+                    "Could not create shader of type {} from {}: {}", shaderType, filename, getProgramLogInfo(program));
             return 0;
         }
 
@@ -157,8 +153,11 @@ public class ShaderProgram implements AutoCloseable {
     private static String loadFile(ResourceLocation resourceLocation) {
         try {
             final StringBuilder code = new StringBuilder();
-            final InputStream inputStream = Minecraft.getInstance().getResourceManager().getResource(resourceLocation)
-                    .get().open();
+            final InputStream inputStream = Minecraft.getInstance()
+                    .getResourceManager()
+                    .getResource(resourceLocation)
+                    .get()
+                    .open();
             final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
 
             String line;

@@ -3,14 +3,13 @@ package dev.wp.matter_manipulator.common.items.manipulator;
 import dev.wp.matter_manipulator.common.building.BlockSpec;
 import dev.wp.matter_manipulator.common.building.Location;
 import dev.wp.matter_manipulator.common.data.WeightedSpecList;
+import java.util.Arrays;
+import java.util.Objects;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.Level;
 import org.joml.Vector3i;
-
-import java.util.Arrays;
-import java.util.Objects;
 
 public class MMConfig {
 
@@ -35,7 +34,7 @@ public class MMConfig {
     public WeightedSpecList replaceWith = new WeightedSpecList();
     public BlockSpec cables = BlockSpec.air();
 
-    public int[] arraySpan = new int[]{0, 0, 0};
+    public int[] arraySpan = new int[] {0, 0, 0};
     public MMTransform transform = new MMTransform();
 
     /**
@@ -65,8 +64,7 @@ public class MMConfig {
      */
     public Location uplink = null;
 
-    public MMConfig() {
-    }
+    public MMConfig() {}
 
     public MMConfig copy() {
         MMConfig next = new MMConfig();
@@ -228,12 +226,38 @@ public class MMConfig {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         MMConfig mmConfig = (MMConfig) o;
-        return locked == mmConfig.locked && placeMode == mmConfig.placeMode && removeMode == mmConfig.removeMode && shape == mmConfig.shape && Objects.equals(coordA, mmConfig.coordA) && Objects.equals(coordB, mmConfig.coordB) && Objects.equals(coordC, mmConfig.coordC) && Objects.equals(coordAOffset, mmConfig.coordAOffset) && Objects.equals(coordBOffset, mmConfig.coordBOffset) && Objects.equals(coordCOffset, mmConfig.coordCOffset) && Arrays.equals(arraySpan, mmConfig.arraySpan) && Objects.equals(transform, mmConfig.transform) && action == mmConfig.action && blockSelectMode == mmConfig.blockSelectMode;
+        return locked == mmConfig.locked
+                && placeMode == mmConfig.placeMode
+                && removeMode == mmConfig.removeMode
+                && shape == mmConfig.shape
+                && Objects.equals(coordA, mmConfig.coordA)
+                && Objects.equals(coordB, mmConfig.coordB)
+                && Objects.equals(coordC, mmConfig.coordC)
+                && Objects.equals(coordAOffset, mmConfig.coordAOffset)
+                && Objects.equals(coordBOffset, mmConfig.coordBOffset)
+                && Objects.equals(coordCOffset, mmConfig.coordCOffset)
+                && Arrays.equals(arraySpan, mmConfig.arraySpan)
+                && Objects.equals(transform, mmConfig.transform)
+                && action == mmConfig.action
+                && blockSelectMode == mmConfig.blockSelectMode;
     }
 
     @Override
     public int hashCode() {
-        int result = Objects.hash(placeMode, removeMode, shape, coordA, coordB, coordC, coordAOffset, coordBOffset, coordCOffset, transform, action, blockSelectMode, locked);
+        int result = Objects.hash(
+                placeMode,
+                removeMode,
+                shape,
+                coordA,
+                coordB,
+                coordC,
+                coordAOffset,
+                coordBOffset,
+                coordCOffset,
+                transform,
+                action,
+                blockSelectMode,
+                locked);
         result = 31 * result + Arrays.hashCode(arraySpan);
         return result;
     }

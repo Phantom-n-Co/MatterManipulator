@@ -1,10 +1,9 @@
 package dev.wp.matter_manipulator.common.compat.ae;
 
+import java.util.UUID;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-
-import java.util.UUID;
 
 /**
  * The synthetic output of an uplink plan pattern. Requesting it from an AE terminal makes the

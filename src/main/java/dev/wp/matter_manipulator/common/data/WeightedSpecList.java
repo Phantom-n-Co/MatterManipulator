@@ -1,14 +1,13 @@
 package dev.wp.matter_manipulator.common.data;
 
 import dev.wp.matter_manipulator.common.building.BlockSpec;
+import java.util.ArrayList;
+import java.util.List;
+import javax.annotation.Nullable;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
-
-import javax.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.List;
 
 public class WeightedSpecList {
 

@@ -3,6 +3,7 @@ package dev.wp.matter_manipulator.common.compat.ae;
 import dev.wp.matter_manipulator.common.building.Location;
 import dev.wp.matter_manipulator.common.items.manipulator.ItemMatterManipulator;
 import dev.wp.matter_manipulator.common.items.manipulator.MMState;
+import javax.annotation.Nullable;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
@@ -10,8 +11,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
-
-import javax.annotation.Nullable;
 
 /**
  * Menu for the uplink's linking GUI: a single slot that binds a dropped-in Matter Manipulator to
@@ -23,6 +22,7 @@ public class UplinkMenu extends AbstractContainerMenu {
 
     @Nullable
     private final UplinkBlockEntity be;
+
     private final SimpleContainer linkContainer = new SimpleContainer(1);
 
     /** Server constructor. */

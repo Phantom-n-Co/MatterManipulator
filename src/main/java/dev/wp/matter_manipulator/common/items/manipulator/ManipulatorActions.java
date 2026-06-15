@@ -17,16 +17,18 @@ public class ManipulatorActions {
      * Sets or adds (when {@code add}) a block in the palette list(s) chosen by
      * {@code selectMode}.
      */
-    public static void pickBlock(ServerPlayer player, MMConfig cfg, BlockSelectMode selectMode, BlockPos pos, boolean add) {
+    public static void pickBlock(
+            ServerPlayer player, MMConfig cfg, BlockSelectMode selectMode, BlockPos pos, boolean add) {
         BlockSpec block = BlockSpec.fromWorld(player.serverLevel(), pos);
 
-        String what = switch (selectMode) {
-            case CORNERS -> "corners";
-            case EDGES -> "edges";
-            case FACES -> "faces";
-            case VOLUMES -> "volumes";
-            case ALL -> "all blocks";
-        };
+        String what =
+                switch (selectMode) {
+                    case CORNERS -> "corners";
+                    case EDGES -> "edges";
+                    case FACES -> "faces";
+                    case VOLUMES -> "volumes";
+                    case ALL -> "all blocks";
+                };
 
         switch (selectMode) {
             case CORNERS -> {

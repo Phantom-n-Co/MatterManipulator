@@ -8,8 +8,11 @@ import dev.wp.matter_manipulator.common.building.shapes.ShapeSphere;
 import dev.wp.matter_manipulator.common.compat.CopyHandlers;
 import dev.wp.matter_manipulator.common.items.manipulator.MMConfig;
 import dev.wp.matter_manipulator.common.items.manipulator.PlaceMode;
-import net.minecraft.core.Direction;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Mirror;
@@ -18,45 +21,42 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
 import org.joml.Vector3i;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Random;
-
 public class BuildGenerator {
 
     public static List<PendingBlock> generateBlocks(MMConfig cfg, Level level) {
         return switch (cfg.placeMode) {
-            case GEOMETRY   -> generateGeometry(cfg, level);
+            case GEOMETRY -> generateGeometry(cfg, level);
             case EXCHANGING -> generateExchanging(cfg, level);
             case COPYING, MOVING -> generateCopyMove(cfg, level, cfg.placeMode == PlaceMode.MOVING);
-            case CABLES     -> generateCables(cfg, level);
+            case CABLES -> generateCables(cfg, level);
             default -> Collections.emptyList();
         };
     }
 
     private static List<PendingBlock> generateGeometry(MMConfig cfg, Level level) {
         if (cfg.coordA == null || cfg.coordB == null) return Collections.emptyList();
-        
-        List<ShapeBlock> shapeBlocks = switch (cfg.shape) {
-            case LINE     -> ShapeLine.generate(cfg.coordA.pos, cfg.coordB.pos);
-            case CUBE     -> ShapeCube.generate(cfg.coordA.pos, cfg.coordB.pos);
-            case SPHERE   -> ShapeSphere.generate(cfg.coordA.pos, cfg.coordB.pos);
-            case CYLINDER -> {
-                if (cfg.coordC == null) yield Collections.emptyList();
-                yield ShapeCylinder.generate(cfg.coordA.pos, cfg.coordB.pos, cfg.coordC.pos);
-            }
-        };
+
+        List<ShapeBlock> shapeBlocks =
+                switch (cfg.shape) {
+                    case LINE -> ShapeLine.generate(cfg.coordA.pos, cfg.coordB.pos);
+                    case CUBE -> ShapeCube.generate(cfg.coordA.pos, cfg.coordB.pos);
+                    case SPHERE -> ShapeSphere.generate(cfg.coordA.pos, cfg.coordB.pos);
+                    case CYLINDER -> {
+                        if (cfg.coordC == null) yield Collections.emptyList();
+                        yield ShapeCylinder.generate(cfg.coordA.pos, cfg.coordB.pos, cfg.coordC.pos);
+                    }
+                };
 
         var rng = level.getRandom();
         var blocks = new ArrayList<PendingBlock>();
         for (var sb : shapeBlocks) {
-            var palette = switch (sb.slot()) {
-                case CORNER -> cfg.corners;
-                case EDGE   -> cfg.edges;
-                case FACE   -> cfg.faces;
-                case VOLUME -> cfg.volumes;
-            };
+            var palette =
+                    switch (sb.slot()) {
+                        case CORNER -> cfg.corners;
+                        case EDGE -> cfg.edges;
+                        case FACE -> cfg.faces;
+                        case VOLUME -> cfg.volumes;
+                    };
             var picked = palette.pick(rng);
             if (picked != null) {
                 blocks.add(new PendingBlock(sb.pos(), picked));
@@ -67,7 +67,7 @@ public class BuildGenerator {
 
     private static List<PendingBlock> generateExchanging(MMConfig cfg, Level level) {
         if (cfg.coordA == null || cfg.coordB == null) return Collections.emptyList();
-        
+
         var a = cfg.coordA.pos;
         var b = cfg.coordB.pos;
         int x0 = Math.min(a.getX(), b.getX()), x1 = Math.max(a.getX(), b.getX());
@@ -101,8 +101,9 @@ public class BuildGenerator {
 
         var baseBlocks = new ArrayList<PendingBlock>();
         for (var pb : rawBlocks) {
-            Vector3i transformedRel = cfg.transform.apply(new Vector3i(pb.relPos.getX(), pb.relPos.getY(), pb.relPos.getZ()));
-            
+            Vector3i transformedRel =
+                    cfg.transform.apply(new Vector3i(pb.relPos.getX(), pb.relPos.getY(), pb.relPos.getZ()));
+
             BlockState original = pb.spec.state;
             BlockState blockState = original;
 
@@ -137,7 +138,9 @@ public class BuildGenerator {
                 tileData = CopyHandlers.transformTileData(blockState, tileData.copy(), cfg.transform);
             }
 
-            baseBlocks.add(new PendingBlock(new BlockPos(transformedRel.x(), transformedRel.y(), transformedRel.z()), new BlockSpec(blockState, tileData, pb.spec.contents, pb.spec.extraItems, pb.spec.fluids)));
+            baseBlocks.add(new PendingBlock(
+                    new BlockPos(transformedRel.x(), transformedRel.y(), transformedRel.z()),
+                    new BlockSpec(blockState, tileData, pb.spec.contents, pb.spec.extraItems, pb.spec.fluids)));
         }
 
         var blocks = new ArrayList<PendingBlock>();
@@ -153,7 +156,7 @@ public class BuildGenerator {
                         int offsetX = x * (dx + (dx < 0 ? -1 : 1));
                         int offsetY = y * (dy + (dy < 0 ? -1 : 1));
                         int offsetZ = z * (dz + (dz < 0 ? -1 : 1));
-                        
+
                         Vector3i offset = cfg.transform.apply(new Vector3i(offsetX, offsetY, offsetZ));
                         for (var pb : baseBlocks) {
                             blocks.add(new PendingBlock(pb.relPos.offset(offset.x, offset.y, offset.z), pb.spec));
@@ -173,10 +176,11 @@ public class BuildGenerator {
 
     private static List<PendingBlock> generateCables(MMConfig cfg, Level level) {
         if (cfg.coordA == null || cfg.coordB == null || cfg.cables.isAir()) return Collections.emptyList();
-        
+
         var a = cfg.coordA.pos;
         var b = cfg.coordB.pos;
-        Vector3i pinnedB = MMConfig.pinToAxes(new Vector3i(a.getX(), a.getY(), a.getZ()), new Vector3i(b.getX(), b.getY(), b.getZ()));
+        Vector3i pinnedB = MMConfig.pinToAxes(
+                new Vector3i(a.getX(), a.getY(), a.getZ()), new Vector3i(b.getX(), b.getY(), b.getZ()));
 
         var line = ShapeLine.generate(a, new BlockPos(pinnedB.x, pinnedB.y, pinnedB.z));
         var blocks = new ArrayList<PendingBlock>();

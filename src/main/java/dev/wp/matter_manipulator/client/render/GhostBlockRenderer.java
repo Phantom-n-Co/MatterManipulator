@@ -13,6 +13,10 @@ import dev.wp.matter_manipulator.common.config.MMModConfig;
 import dev.wp.matter_manipulator.common.items.manipulator.PlaceMode;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import javax.annotation.Nullable;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.GameRenderer;
@@ -30,11 +34,6 @@ import net.minecraftforge.client.model.data.ModelData;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 
-import javax.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-
 /**
  * Renders translucent ghost-block hints for all manipulator modes.
  *
@@ -51,6 +50,7 @@ public class GhostBlockRenderer {
     private static final float GHOST_ALPHA = 0.5f;
     /** Ghost models render at this fraction of full size, centered in their cell, so gaps are visible. */
     private static final float GHOST_SCALE = 0.75f;
+
     private static final int MAX_REMOVAL_BOXES = 4096;
     /**
      * Rebake when the player moves this far (blocks), for range culling. Only matters when a finite
@@ -75,8 +75,10 @@ public class GhostBlockRenderer {
     /** Captured after each bake/sort so the buffer can be re-sorted (index-only) on camera movement. */
     @Nullable
     private static BufferBuilder.SortState sortState;
+
     @Nullable
     private static AABB bounds;
+
     private static BlockPos anchor = BlockPos.ZERO;
     /** Camera position the buffer is currently sorted for. */
     @Nullable
@@ -95,6 +97,7 @@ public class GhostBlockRenderer {
     private static BakeJob currentJob;
     /** Latest inputs awaiting a (re)build, captured by {@link #submit}. */
     private static boolean needsRebuild = false;
+
     private static List<PendingBlock> pendingBlocks = null;
     private static BlockPos pendingOrigin = null;
     private static ClientLevel pendingLevel = null;
@@ -109,6 +112,7 @@ public class GhostBlockRenderer {
 
     /** Positions (BlockPos.asLong) flagged by the last build's status packet. */
     private static final LongSet errorHints = new LongOpenHashSet();
+
     private static final LongSet warningHints = new LongOpenHashSet();
     private static long statusExpiresAt = 0;
 
@@ -139,8 +143,13 @@ public class GhostBlockRenderer {
      * the tier range in blocks, or negative for unlimited. {@code camPos} is the eye position, used to
      * sort the translucent geometry.
      */
-    public static void submit(List<PendingBlock> blocks, @Nullable BlockPos origin,
-                              ClientLevel level, Player player, int range, Vec3 camPos) {
+    public static void submit(
+            List<PendingBlock> blocks,
+            @Nullable BlockPos origin,
+            ClientLevel level,
+            Player player,
+            int range,
+            Vec3 camPos) {
         if (statusExpiresAt != 0 && System.currentTimeMillis() > statusExpiresAt) {
             errorHints.clear();
             warningHints.clear();
@@ -150,8 +159,8 @@ public class GhostBlockRenderer {
 
         // Movement only changes the baked output when a finite range culls blocks; with unlimited
         // range, walking around must not force a rebake of every model.
-        boolean moved = range >= 0 && (lastPlayerPos == null
-                || player.position().distanceToSqr(lastPlayerPos) > REBUILD_MOVE_DIST_SQ);
+        boolean moved = range >= 0
+                && (lastPlayerPos == null || player.position().distanceToSqr(lastPlayerPos) > REBUILD_MOVE_DIST_SQ);
         if (dirty || blocks != lastBlocks || !Objects.equals(origin, lastOrigin) || moved) {
             lastBlocks = blocks;
             lastOrigin = origin;
@@ -172,7 +181,9 @@ public class GhostBlockRenderer {
 
         // Re-sort the existing buffer when the camera has translated (rotation doesn't change
         // distances). Skipped while a bake is running, since that owns the shared builder.
-        if (currentJob == null && vbo != null && sortState != null
+        if (currentJob == null
+                && vbo != null
+                && sortState != null
                 && (lastSortPos == null || camPos.distanceToSqr(lastSortPos) > RESORT_DIST_SQ)) {
             resort(camPos);
         }
@@ -192,7 +203,8 @@ public class GhostBlockRenderer {
                 removalBoxes.clear();
                 return;
             }
-            currentJob = new BakeJob(pendingBlocks, pendingOrigin, pendingLevel, pendingPlayer, pendingRange, pendingCamPos);
+            currentJob =
+                    new BakeJob(pendingBlocks, pendingOrigin, pendingLevel, pendingPlayer, pendingRange, pendingCamPos);
         }
 
         if (builder == null) builder = new BufferBuilder(2097152);
@@ -233,10 +245,9 @@ public class GhostBlockRenderer {
         if (builder == null) return;
         builder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.BLOCK);
         builder.restoreSortState(sortState);
-        builder.setQuadSorting(VertexSorting.byDistance(
-                (float) (camPos.x - anchor.getX()),
-                (float) (camPos.y - anchor.getY()),
-                (float) (camPos.z - anchor.getZ())));
+        builder.setQuadSorting(
+                VertexSorting.byDistance((float) (camPos.x - anchor.getX()), (float) (camPos.y - anchor.getY()), (float)
+                        (camPos.z - anchor.getZ())));
         sortState = builder.getSortState();
         var rb = builder.end();
         vbo.bind();
@@ -257,7 +268,9 @@ public class GhostBlockRenderer {
             ps.translate(anchor.getX(), anchor.getY(), anchor.getZ());
             rt.setupRenderState();
             vbo.bind();
-            vbo.drawWithShader(ps.last().pose(), RenderSystem.getProjectionMatrix(),
+            vbo.drawWithShader(
+                    ps.last().pose(),
+                    RenderSystem.getProjectionMatrix(),
                     GameRenderer.getRendertypeTranslucentShader());
             VertexBuffer.unbind();
             rt.clearRenderState();
@@ -266,10 +279,18 @@ public class GhostBlockRenderer {
 
         for (var pos : removalBoxes) {
             if (!frustum.isVisible(new AABB(pos))) continue;
-            BoxRenderer.drawFilledBox(ps,
-                    pos.getX() + 0.05, pos.getY() + 0.05, pos.getZ() + 0.05,
-                    pos.getX() + 0.95, pos.getY() + 0.95, pos.getZ() + 0.95,
-                    1f, 0.33f, 0.33f, 0.35f);
+            BoxRenderer.drawFilledBox(
+                    ps,
+                    pos.getX() + 0.05,
+                    pos.getY() + 0.05,
+                    pos.getZ() + 0.05,
+                    pos.getX() + 0.95,
+                    pos.getY() + 0.95,
+                    pos.getZ() + 0.95,
+                    1f,
+                    0.33f,
+                    0.33f,
+                    0.35f);
         }
     }
 
@@ -285,10 +306,18 @@ public class GhostBlockRenderer {
 
     private static void drawStatusBox(PoseStack ps, long packed, float r, float g, float b) {
         BlockPos pos = BlockPos.of(packed);
-        BoxRenderer.drawFilledBox(ps,
-                pos.getX() + 0.1, pos.getY() + 0.1, pos.getZ() + 0.1,
-                pos.getX() + 0.9, pos.getY() + 0.9, pos.getZ() + 0.9,
-                r, g, b, 0.4f);
+        BoxRenderer.drawFilledBox(
+                ps,
+                pos.getX() + 0.1,
+                pos.getY() + 0.1,
+                pos.getZ() + 0.1,
+                pos.getX() + 0.9,
+                pos.getY() + 0.9,
+                pos.getZ() + 0.9,
+                r,
+                g,
+                b,
+                0.4f);
     }
 
     /**
@@ -300,7 +329,10 @@ public class GhostBlockRenderer {
     private static final class BakeJob {
 
         private final List<PendingBlock> blocks;
-        @Nullable private final BlockPos origin;
+
+        @Nullable
+        private final BlockPos origin;
+
         private final ClientLevel level;
         private final double rangeSq;
         private final int maxHints;
@@ -322,14 +354,24 @@ public class GhostBlockRenderer {
         private int maxX = Integer.MIN_VALUE, maxY = Integer.MIN_VALUE, maxZ = Integer.MIN_VALUE;
         private boolean done = false;
 
-        @Nullable VertexBuffer vbo;
-        @Nullable BufferBuilder.SortState sortState;
-        @Nullable AABB bounds;
+        @Nullable
+        VertexBuffer vbo;
+
+        @Nullable
+        BufferBuilder.SortState sortState;
+
+        @Nullable
+        AABB bounds;
 
         private final PoseStack pose = new PoseStack();
 
-        BakeJob(List<PendingBlock> blocks, @Nullable BlockPos origin,
-                ClientLevel level, Player player, int range, Vec3 camPos) {
+        BakeJob(
+                List<PendingBlock> blocks,
+                @Nullable BlockPos origin,
+                ClientLevel level,
+                Player player,
+                int range,
+                Vec3 camPos) {
             this.blocks = blocks;
             this.origin = origin;
             this.level = level;
@@ -402,11 +444,12 @@ public class GhostBlockRenderer {
                 BlockState target = pb.spec.state;
 
                 long key = pos.asLong();
-                consumer.setTint(errorHints.contains(key) ? TINT_ERROR
-                        : warningHints.contains(key) ? TINT_WARNING : TINT_NONE);
+                consumer.setTint(
+                        errorHints.contains(key) ? TINT_ERROR : warningHints.contains(key) ? TINT_WARNING : TINT_NONE);
 
                 pose.pushPose();
-                pose.translate(pos.getX() - jobAnchor.getX(), pos.getY() - jobAnchor.getY(), pos.getZ() - jobAnchor.getZ());
+                pose.translate(
+                        pos.getX() - jobAnchor.getX(), pos.getY() - jobAnchor.getY(), pos.getZ() - jobAnchor.getZ());
                 // Shrink each model toward its cell centre so gaps show between blocks and placement reads clearly.
                 pose.translate(0.5, 0.5, 0.5);
                 pose.scale(GHOST_SCALE, GHOST_SCALE, GHOST_SCALE);
@@ -431,8 +474,12 @@ public class GhostBlockRenderer {
                 if (consumer.vertexCount() == before) bakeFallbackCube(brd, consumer, target);
                 pose.popPose();
 
-                minX = Math.min(minX, pos.getX()); minY = Math.min(minY, pos.getY()); minZ = Math.min(minZ, pos.getZ());
-                maxX = Math.max(maxX, pos.getX()); maxY = Math.max(maxY, pos.getY()); maxZ = Math.max(maxZ, pos.getZ());
+                minX = Math.min(minX, pos.getX());
+                minY = Math.min(minY, pos.getY());
+                minZ = Math.min(minZ, pos.getZ());
+                maxX = Math.max(maxX, pos.getX());
+                maxY = Math.max(maxY, pos.getY());
+                maxZ = Math.max(maxZ, pos.getZ());
             }
 
             if (bakeIndex >= kept.size()) finish();
@@ -440,9 +487,8 @@ public class GhostBlockRenderer {
 
         private void finish() {
             builder.setQuadSorting(VertexSorting.byDistance(
-                    (float) (camPos.x - jobAnchor.getX()),
-                    (float) (camPos.y - jobAnchor.getY()),
-                    (float) (camPos.z - jobAnchor.getZ())));
+                    (float) (camPos.x - jobAnchor.getX()), (float) (camPos.y - jobAnchor.getY()), (float)
+                            (camPos.z - jobAnchor.getZ())));
             sortState = builder.getSortState();
 
             var rb = builder.endOrDiscardIfEmpty();
@@ -465,7 +511,8 @@ public class GhostBlockRenderer {
          * with block-entity-driven dynamic models (AE2 cable buses, etc.) can render their real parts.
          * Returns {@link ModelData#EMPTY} if the block has no such data or anything goes wrong.
          */
-        private ModelData reconstructModelData(BlockPos pos, BlockState target, net.minecraft.nbt.CompoundTag tileData) {
+        private ModelData reconstructModelData(
+                BlockPos pos, BlockState target, net.minecraft.nbt.CompoundTag tileData) {
             try {
                 var be = net.minecraft.world.level.block.entity.BlockEntity.loadStatic(pos, target, tileData);
                 if (be == null) return ModelData.EMPTY;
@@ -484,23 +531,62 @@ public class GhostBlockRenderer {
             Matrix3f nm = p.normal();
             float u0 = sprite.getU0(), u1 = sprite.getU1(), v0 = sprite.getV0(), v1 = sprite.getV1();
 
-            face(c, mat, nm, u0, u1, v0, v1, 0, -1, 0,  0, 0, 0,  1, 0, 0,  1, 0, 1,  0, 0, 1); // down
-            face(c, mat, nm, u0, u1, v0, v1, 0, 1, 0,   0, 1, 0,  0, 1, 1,  1, 1, 1,  1, 1, 0); // up
-            face(c, mat, nm, u0, u1, v0, v1, 0, 0, -1,  0, 0, 0,  0, 1, 0,  1, 1, 0,  1, 0, 0); // north
-            face(c, mat, nm, u0, u1, v0, v1, 0, 0, 1,   0, 0, 1,  1, 0, 1,  1, 1, 1,  0, 1, 1); // south
-            face(c, mat, nm, u0, u1, v0, v1, -1, 0, 0,  0, 0, 0,  0, 0, 1,  0, 1, 1,  0, 1, 0); // west
-            face(c, mat, nm, u0, u1, v0, v1, 1, 0, 0,   1, 0, 0,  1, 1, 0,  1, 1, 1,  1, 0, 1); // east
+            face(c, mat, nm, u0, u1, v0, v1, 0, -1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1); // down
+            face(c, mat, nm, u0, u1, v0, v1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0); // up
+            face(c, mat, nm, u0, u1, v0, v1, 0, 0, -1, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0); // north
+            face(c, mat, nm, u0, u1, v0, v1, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1); // south
+            face(c, mat, nm, u0, u1, v0, v1, -1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 0); // west
+            face(c, mat, nm, u0, u1, v0, v1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1); // east
         }
 
-        private static void face(GhostConsumer c, Matrix4f mat, Matrix3f nm,
-                                 float u0, float u1, float v0, float v1, float nx, float ny, float nz,
-                                 float ax, float ay, float az, float bx, float by, float bz,
-                                 float cx, float cy, float cz, float dx, float dy, float dz) {
+        private static void face(
+                GhostConsumer c,
+                Matrix4f mat,
+                Matrix3f nm,
+                float u0,
+                float u1,
+                float v0,
+                float v1,
+                float nx,
+                float ny,
+                float nz,
+                float ax,
+                float ay,
+                float az,
+                float bx,
+                float by,
+                float bz,
+                float cx,
+                float cy,
+                float cz,
+                float dx,
+                float dy,
+                float dz) {
             int light = 0xF000F0;
-            c.vertex(mat, ax, ay, az).color(255, 255, 255, 255).uv(u0, v0).uv2(light).normal(nm, nx, ny, nz).endVertex();
-            c.vertex(mat, bx, by, bz).color(255, 255, 255, 255).uv(u1, v0).uv2(light).normal(nm, nx, ny, nz).endVertex();
-            c.vertex(mat, cx, cy, cz).color(255, 255, 255, 255).uv(u1, v1).uv2(light).normal(nm, nx, ny, nz).endVertex();
-            c.vertex(mat, dx, dy, dz).color(255, 255, 255, 255).uv(u0, v1).uv2(light).normal(nm, nx, ny, nz).endVertex();
+            c.vertex(mat, ax, ay, az)
+                    .color(255, 255, 255, 255)
+                    .uv(u0, v0)
+                    .uv2(light)
+                    .normal(nm, nx, ny, nz)
+                    .endVertex();
+            c.vertex(mat, bx, by, bz)
+                    .color(255, 255, 255, 255)
+                    .uv(u1, v0)
+                    .uv2(light)
+                    .normal(nm, nx, ny, nz)
+                    .endVertex();
+            c.vertex(mat, cx, cy, cz)
+                    .color(255, 255, 255, 255)
+                    .uv(u1, v1)
+                    .uv2(light)
+                    .normal(nm, nx, ny, nz)
+                    .endVertex();
+            c.vertex(mat, dx, dy, dz)
+                    .color(255, 255, 255, 255)
+                    .uv(u0, v1)
+                    .uv2(light)
+                    .normal(nm, nx, ny, nz)
+                    .endVertex();
         }
     }
 

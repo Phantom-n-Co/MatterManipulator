@@ -1,10 +1,9 @@
 package dev.wp.matter_manipulator.common.building.shapes;
 
 import dev.wp.matter_manipulator.common.items.manipulator.SlotType;
-import net.minecraft.core.BlockPos;
-
 import java.util.ArrayList;
 import java.util.List;
+import net.minecraft.core.BlockPos;
 
 public class ShapeLine {
 
@@ -24,8 +23,14 @@ public class ShapeLine {
             int p1 = 2 * dy - dx, p2 = 2 * dz - dx;
             while (x0 != x1) {
                 x0 += sx;
-                if (p1 >= 0) { y0 += sy; p1 -= 2 * dx; }
-                if (p2 >= 0) { z0 += sz; p2 -= 2 * dx; }
+                if (p1 >= 0) {
+                    y0 += sy;
+                    p1 -= 2 * dx;
+                }
+                if (p2 >= 0) {
+                    z0 += sz;
+                    p2 -= 2 * dx;
+                }
                 p1 += 2 * dy;
                 p2 += 2 * dz;
                 result.add(new ShapeBlock(new BlockPos(x0, y0, z0), SlotType.EDGE));
@@ -34,8 +39,14 @@ public class ShapeLine {
             int p1 = 2 * dx - dy, p2 = 2 * dz - dy;
             while (y0 != y1) {
                 y0 += sy;
-                if (p1 >= 0) { x0 += sx; p1 -= 2 * dy; }
-                if (p2 >= 0) { z0 += sz; p2 -= 2 * dy; }
+                if (p1 >= 0) {
+                    x0 += sx;
+                    p1 -= 2 * dy;
+                }
+                if (p2 >= 0) {
+                    z0 += sz;
+                    p2 -= 2 * dy;
+                }
                 p1 += 2 * dx;
                 p2 += 2 * dz;
                 result.add(new ShapeBlock(new BlockPos(x0, y0, z0), SlotType.EDGE));
@@ -44,8 +55,14 @@ public class ShapeLine {
             int p1 = 2 * dy - dz, p2 = 2 * dx - dz;
             while (z0 != z1) {
                 z0 += sz;
-                if (p1 >= 0) { y0 += sy; p1 -= 2 * dz; }
-                if (p2 >= 0) { x0 += sx; p2 -= 2 * dz; }
+                if (p1 >= 0) {
+                    y0 += sy;
+                    p1 -= 2 * dz;
+                }
+                if (p2 >= 0) {
+                    x0 += sx;
+                    p2 -= 2 * dz;
+                }
                 p1 += 2 * dy;
                 p2 += 2 * dx;
                 result.add(new ShapeBlock(new BlockPos(x0, y0, z0), SlotType.EDGE));

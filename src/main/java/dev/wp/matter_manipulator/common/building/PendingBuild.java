@@ -5,7 +5,6 @@ import dev.wp.matter_manipulator.MMMod;
 import dev.wp.matter_manipulator.common.compat.AECompat;
 import dev.wp.matter_manipulator.common.compat.CopyHandlers;
 import dev.wp.matter_manipulator.common.compat.GTCompat;
-import dev.wp.matter_manipulator.common.utils.Mods;
 import dev.wp.matter_manipulator.common.config.MMModConfig;
 import dev.wp.matter_manipulator.common.items.MMUpgrades;
 import dev.wp.matter_manipulator.common.items.manipulator.MMCapability;
@@ -16,9 +15,20 @@ import dev.wp.matter_manipulator.common.items.manipulator.RemoveMode;
 import dev.wp.matter_manipulator.common.networking.MMNetwork;
 import dev.wp.matter_manipulator.common.networking.PacketBuildStatus;
 import dev.wp.matter_manipulator.common.utils.MMUtils;
+import dev.wp.matter_manipulator.common.utils.Mods;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongList;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -41,9 +51,6 @@ import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.IItemHandlerModifiable;
 import net.minecraftforge.network.PacketDistributor;
 
-import javax.annotation.Nullable;
-import java.util.*;
-
 public class PendingBuild {
 
     private static final Map<UUID, PendingBuild> ACTIVE = new HashMap<>();
@@ -60,8 +67,11 @@ public class PendingBuild {
     private final boolean moving;
 
     /** Non-null in MOVING mode: source region cleared after build completes. */
-    @Nullable private final BlockPos sourceMin;
-    @Nullable private final BlockPos sourceMax;
+    @Nullable
+    private final BlockPos sourceMin;
+
+    @Nullable
+    private final BlockPos sourceMax;
 
     /**
      * MOVING mode: destination positions handled by this build. When the destination
@@ -72,8 +82,14 @@ public class PendingBuild {
     /** CABLES mode: placed GT pipes are auto-connected to their neighbours after placement. */
     private final boolean cableMode;
 
-    private PendingBuild(UUID playerId, MMTier tier, List<PendingBlock> blocks, boolean moving,
-                         @Nullable BlockPos sourceMin, @Nullable BlockPos sourceMax, boolean cableMode) {
+    private PendingBuild(
+            UUID playerId,
+            MMTier tier,
+            List<PendingBlock> blocks,
+            boolean moving,
+            @Nullable BlockPos sourceMin,
+            @Nullable BlockPos sourceMax,
+            boolean cableMode) {
         this.playerId = playerId;
         this.tier = tier;
         this.queue = new ArrayDeque<>(blocks);
@@ -95,16 +111,24 @@ public class PendingBuild {
      * @param sourceMax  Optional max corner to clear when build finishes (MOVING mode).
      * @param cableMode  True for CABLES-mode builds: auto-connect placed GT pipes.
      */
-    public static void start(Player player, MMTier tier, List<PendingBlock> blocks,
-                              BlockPos anchor, boolean moving,
-                              @Nullable BlockPos sourceMin, @Nullable BlockPos sourceMax, boolean cableMode) {
+    public static void start(
+            Player player,
+            MMTier tier,
+            List<PendingBlock> blocks,
+            BlockPos anchor,
+            boolean moving,
+            @Nullable BlockPos sourceMin,
+            @Nullable BlockPos sourceMax,
+            boolean cableMode) {
         if (blocks.isEmpty()) return;
         var translated = new ArrayList<PendingBlock>(blocks.size());
         for (var pb : blocks) {
             translated.add(new PendingBlock(anchor.offset(pb.relPos), pb.spec, pb.buildOrder));
         }
         translated.sort(Comparator.comparingInt(pb -> pb.buildOrder));
-        ACTIVE.put(player.getUUID(), new PendingBuild(player.getUUID(), tier, translated, moving, sourceMin, sourceMax, cableMode));
+        ACTIVE.put(
+                player.getUUID(),
+                new PendingBuild(player.getUUID(), tier, translated, moving, sourceMin, sourceMax, cableMode));
         MMUtils.sendInfoToPlayer(player, "mm.info.building", blocks.size());
     }
 
@@ -120,7 +144,8 @@ public class PendingBuild {
 
     private static void sendStatus(Player player, LongList errors, LongList warnings) {
         if (player instanceof ServerPlayer sp) {
-            MMNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> sp),
+            MMNetwork.CHANNEL.send(
+                    PacketDistributor.PLAYER.with(() -> sp),
                     new PacketBuildStatus(errors.toLongArray(), warnings.toLongArray()));
         }
     }
@@ -260,7 +285,8 @@ public class PendingBuild {
                 // itself being relocated — claiming its drops would duplicate it.
                 boolean relocatedSource = moving && inSourceBox(pb.relPos);
                 if (!relocatedSource && !dropBlacklisted(existingState)) {
-                    var drops = Block.getDrops(existingState, level, pb.relPos, level.getBlockEntity(pb.relPos), player, stack);
+                    var drops = Block.getDrops(
+                            existingState, level, pb.relPos, level.getBlockEntity(pb.relPos), player, stack);
                     for (var drop : drops) {
                         inv.give(drop);
                     }
@@ -285,9 +311,8 @@ public class PendingBuild {
                     // MOVING relocates a block verbatim (state + contents travel intact).
                     // COPYING fabricates a new block, so it keeps only the whitelisted
                     // configuration each handler allows — positional/runtime state is dropped.
-                    CompoundTag tileTag = moving
-                            ? full.copy()
-                            : CopyHandlers.buildCopyTag(pb.spec.state, be, full, inv);
+                    CompoundTag tileTag =
+                            moving ? full.copy() : CopyHandlers.buildCopyTag(pb.spec.state, be, full, inv);
                     tileTag.putInt("x", pb.relPos.getX());
                     tileTag.putInt("y", pb.relPos.getY());
                     tileTag.putInt("z", pb.relPos.getZ());
@@ -300,7 +325,8 @@ public class PendingBuild {
                             level.setBlockEntity(recreated);
                             be = recreated;
                         } else {
-                            MMMod.LOGGER.warn("Could not recreate block entity at {} from NBT, loading in place", pb.relPos);
+                            MMMod.LOGGER.warn(
+                                    "Could not recreate block entity at {} from NBT, loading in place", pb.relPos);
                             be.load(tileTag);
                         }
                     } else {
@@ -385,9 +411,11 @@ public class PendingBuild {
         if (!missing.isEmpty()) {
             MMUtils.sendWarningToPlayer(player, "mm.info.warning.could_not_find", warnings.size());
             for (var entry : missing.entrySet()) {
-                MMUtils.sendWarningToPlayer(player, Component.literal("  ")
-                        .append(entry.getKey().getDescription())
-                        .append(" x " + entry.getValue()));
+                MMUtils.sendWarningToPlayer(
+                        player,
+                        Component.literal("  ")
+                                .append(entry.getKey().getDescription())
+                                .append(" x " + entry.getValue()));
             }
         }
 
@@ -403,7 +431,8 @@ public class PendingBuild {
      */
     private static void injectContents(BlockEntity be, @Nullable ListTag snapshot, MMInventory inv) {
         if (snapshot == null || snapshot.isEmpty()) return;
-        IItemHandler handler = be.getCapability(ForgeCapabilities.ITEM_HANDLER).resolve().orElse(null);
+        IItemHandler handler =
+                be.getCapability(ForgeCapabilities.ITEM_HANDLER).resolve().orElse(null);
         if (!(handler instanceof IItemHandlerModifiable modifiable)) return;
         boolean creative = inv.getPlayer().isCreative();
 
@@ -413,9 +442,7 @@ public class PendingBuild {
             ItemStack stack = ItemStack.of(slotTag);
             if (stack.isEmpty() || slot < 0 || slot >= modifiable.getSlots()) continue;
 
-            int available = creative
-                    ? stack.getCount()
-                    : Math.min(stack.getCount(), inv.countInInventory(stack));
+            int available = creative ? stack.getCount() : Math.min(stack.getCount(), inv.countInInventory(stack));
             if (available <= 0) continue;
 
             inv.consume(stack.copyWithCount(available));
@@ -431,7 +458,8 @@ public class PendingBuild {
         if (be == null) return;
         // Machines that save their contents into the dropped item already keep them
         if (Mods.GTCEU && GTCompat.savesContentsToItem(be)) return;
-        IItemHandler handler = be.getCapability(ForgeCapabilities.ITEM_HANDLER).resolve().orElse(null);
+        IItemHandler handler =
+                be.getCapability(ForgeCapabilities.ITEM_HANDLER).resolve().orElse(null);
         if (handler == null) return;
         for (int slot = 0; slot < handler.getSlots(); slot++) {
             ItemStack stack = handler.getStackInSlot(slot);
@@ -444,9 +472,10 @@ public class PendingBuild {
      * free), then — if the manipulator is bound to an AE2 uplink — refills the captured amounts,
      * paying for them out of the network. Unbound, the tank is simply left empty.
      */
-    private static void fillFluids(BlockEntity be, @Nullable ListTag snapshot,
-                                   @Nullable Location uplink, ServerLevel level) {
-        var handler = be.getCapability(ForgeCapabilities.FLUID_HANDLER).resolve().orElse(null);
+    private static void fillFluids(
+            BlockEntity be, @Nullable ListTag snapshot, @Nullable Location uplink, ServerLevel level) {
+        var handler =
+                be.getCapability(ForgeCapabilities.FLUID_HANDLER).resolve().orElse(null);
         if (handler == null) return;
         // drain() removes one fluid type per call; bounded in case a handler refills itself
         for (int i = 0; i < 64; i++) {
@@ -488,18 +517,22 @@ public class PendingBuild {
     }
 
     private boolean inSourceBox(BlockPos pos) {
-        return sourceMin != null && sourceMax != null
-                && pos.getX() >= sourceMin.getX() && pos.getX() <= sourceMax.getX()
-                && pos.getY() >= sourceMin.getY() && pos.getY() <= sourceMax.getY()
-                && pos.getZ() >= sourceMin.getZ() && pos.getZ() <= sourceMax.getZ();
+        return sourceMin != null
+                && sourceMax != null
+                && pos.getX() >= sourceMin.getX()
+                && pos.getX() <= sourceMax.getX()
+                && pos.getY() >= sourceMin.getY()
+                && pos.getY() <= sourceMax.getY()
+                && pos.getZ() >= sourceMin.getZ()
+                && pos.getZ() <= sourceMax.getZ();
     }
 
     /**
      * Returns true if the existing block may be overwritten given the current remove mode.
      * Bedrock-like blocks with hardness &lt; 0 are never allowed.
      */
-    private static boolean canReplace(ServerLevel level, BlockPos pos, BlockState existing,
-                                      RemoveMode removeMode, PlaceMode placeMode) {
+    private static boolean canReplace(
+            ServerLevel level, BlockPos pos, BlockState existing, RemoveMode removeMode, PlaceMode placeMode) {
         // Bedrock etc. are never replaceable
         if (existing.getDestroySpeed(level, pos) < 0) return false;
 
@@ -507,9 +540,9 @@ public class PendingBuild {
         if (placeMode == PlaceMode.EXCHANGING) return true;
 
         return switch (removeMode) {
-            case NONE        -> false;
+            case NONE -> false;
             case REPLACEABLE -> existing.canBeReplaced();
-            case ALL         -> true;
+            case ALL -> true;
         };
     }
 

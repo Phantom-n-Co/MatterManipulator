@@ -1,10 +1,9 @@
 package dev.wp.matter_manipulator.common.building.shapes;
 
 import dev.wp.matter_manipulator.common.items.manipulator.SlotType;
-import net.minecraft.core.BlockPos;
-
 import java.util.ArrayList;
 import java.util.List;
+import net.minecraft.core.BlockPos;
 
 public class ShapeSphere {
 
@@ -47,8 +46,10 @@ public class ShapeSphere {
 
                     boolean onSurface = false;
                     if (rx > 1 && (!present[x][y + 1][z + 1] || !present[x + 2][y + 1][z + 1])) onSurface = true;
-                    if (!onSurface && ry > 1 && (!present[x + 1][y][z + 1] || !present[x + 1][y + 2][z + 1])) onSurface = true;
-                    if (!onSurface && rz > 1 && (!present[x + 1][y + 1][z] || !present[x + 1][y + 1][z + 2])) onSurface = true;
+                    if (!onSurface && ry > 1 && (!present[x + 1][y][z + 1] || !present[x + 1][y + 2][z + 1]))
+                        onSurface = true;
+                    if (!onSurface && rz > 1 && (!present[x + 1][y + 1][z] || !present[x + 1][y + 1][z + 2]))
+                        onSurface = true;
 
                     SlotType slot = onSurface ? SlotType.FACE : SlotType.VOLUME;
                     result.add(new ShapeBlock(new BlockPos(x + minX, y + minY, z + minZ), slot));

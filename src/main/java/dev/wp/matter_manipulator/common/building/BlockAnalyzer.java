@@ -1,10 +1,9 @@
 package dev.wp.matter_manipulator.common.building;
 
-import net.minecraft.core.BlockPos;
-import net.minecraft.world.level.Level;
-
 import java.util.ArrayList;
 import java.util.List;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.Level;
 
 public class BlockAnalyzer {
 

@@ -2,11 +2,10 @@ package dev.wp.matter_manipulator.common.networking;
 
 import dev.wp.matter_manipulator.common.items.manipulator.MMState;
 import dev.wp.matter_manipulator.common.items.manipulator.MMTransform;
+import java.util.function.Supplier;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
-
-import java.util.function.Supplier;
 
 public class PacketToggleFlip {
 
@@ -37,7 +36,7 @@ public class PacketToggleFlip {
             if ((pkt.flipMask & MMTransform.FLIP_Y) != 0) cfg.transform.flipY = !cfg.transform.flipY;
             if ((pkt.flipMask & MMTransform.FLIP_Z) != 0) cfg.transform.flipZ = !cfg.transform.flipZ;
             cfg.transform.uncache();
-            
+
             state.saveIfDirty();
         });
         ctx.get().setPacketHandled(true);

@@ -1,12 +1,13 @@
 package dev.wp.matter_manipulator.common.networking;
 
 import dev.wp.matter_manipulator.common.building.Location;
-import dev.wp.matter_manipulator.common.items.manipulator.ManipulatorActions;
 import dev.wp.matter_manipulator.common.items.manipulator.MMConfig;
 import dev.wp.matter_manipulator.common.items.manipulator.MMState;
+import dev.wp.matter_manipulator.common.items.manipulator.ManipulatorActions;
 import dev.wp.matter_manipulator.common.items.manipulator.PendingAction;
 import dev.wp.matter_manipulator.common.items.manipulator.PlaceMode;
 import dev.wp.matter_manipulator.common.utils.MMUtils;
+import java.util.function.Supplier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.FriendlyByteBuf;
@@ -17,14 +18,13 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.network.NetworkEvent;
 import org.joml.Vector3i;
 
-import java.util.function.Supplier;
-
 public class PacketSetCoord {
 
     /**
      * 0=A, 1=B, 2=C
      */
     public final int which;
+
     public final Location loc;
 
     public PacketSetCoord(int which, Location loc) {
@@ -56,7 +56,8 @@ public class PacketSetCoord {
             var cfg = state.mutate();
 
             if (cfg.locked) {
-                player.sendSystemMessage(Component.literal("Matter Manipulator positions are LOCKED. Toggle to change."));
+                player.sendSystemMessage(
+                        Component.literal("Matter Manipulator positions are LOCKED. Toggle to change."));
                 return;
             }
 
@@ -78,13 +79,14 @@ public class PacketSetCoord {
                 }
 
                 setCoord(cfg, effectiveWhich, pkt.loc);
-                String label = switch (effectiveWhich) {
-                    case 0 -> "A";
-                    case 1 -> "B";
-                    default -> "C";
-                };
-                player.sendSystemMessage(Component.literal(
-                        "Coord " + label + " set to " + pkt.loc.pos.toShortString()));
+                String label =
+                        switch (effectiveWhich) {
+                            case 0 -> "A";
+                            case 1 -> "B";
+                            default -> "C";
+                        };
+                player.sendSystemMessage(
+                        Component.literal("Coord " + label + " set to " + pkt.loc.pos.toShortString()));
             }
 
             state.saveIfDirty();
@@ -107,15 +109,14 @@ public class PacketSetCoord {
         }
     }
 
-    private static void handlePendingAction(ServerPlayer player, ItemStack held,
-                                            MMState state, MMConfig cfg, Location loc) {
+    private static void handlePendingAction(
+            ServerPlayer player, ItemStack held, MMState state, MMConfig cfg, Location loc) {
         switch (cfg.action) {
             case SELECTING_CORNER_B -> {
                 // Second click: confirm corner B
                 cfg.coordB = loc;
                 cfg.action = null;
-                player.sendSystemMessage(Component.literal(
-                        "Corner B set at " + loc.pos.toShortString() + "."));
+                player.sendSystemMessage(Component.literal("Corner B set at " + loc.pos.toShortString() + "."));
             }
             case MOVING_COORDS -> {
                 // Commit: coords with non-null offsets have been tracking the crosshair
@@ -133,14 +134,13 @@ public class PacketSetCoord {
                 MMUtils.sendInfoToPlayer(player, "mm.info.coords_moved");
             }
             case MARK_ARRAY -> {
-                if (cfg.coordA == null || cfg.coordB == null
-                        || !cfg.coordA.dimension.equals(cfg.coordB.dimension)) {
+                if (cfg.coordA == null || cfg.coordB == null || !cfg.coordA.dimension.equals(cfg.coordB.dimension)) {
                     MMUtils.sendErrorToPlayer(player, "mm.info.error.cannot_mark_copy");
                 } else if (cfg.coordC == null || !cfg.coordC.dimension.equals(cfg.coordA.dimension)) {
                     MMUtils.sendErrorToPlayer(player, "mm.info.error.cannot_mark_paste");
                 } else {
                     Vector3i mult = cfg.getArrayMult(loc.pos);
-                    cfg.arraySpan = new int[]{mult.x, mult.y, mult.z};
+                    cfg.arraySpan = new int[] {mult.x, mult.y, mult.z};
                     MMUtils.sendInfoToPlayer(player, "mm.info.array_marked", mult.x, mult.y, mult.z);
                 }
                 cfg.action = null;

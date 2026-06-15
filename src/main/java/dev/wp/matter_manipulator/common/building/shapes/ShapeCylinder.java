@@ -2,17 +2,16 @@ package dev.wp.matter_manipulator.common.building.shapes;
 
 import dev.wp.matter_manipulator.common.items.manipulator.MMConfig;
 import dev.wp.matter_manipulator.common.items.manipulator.SlotType;
-import net.minecraft.core.BlockPos;
-import org.joml.Vector3i;
-
 import java.util.ArrayList;
 import java.util.List;
+import net.minecraft.core.BlockPos;
+import org.joml.Vector3i;
 
 public class ShapeCylinder {
 
     public static List<ShapeBlock> generate(BlockPos a, BlockPos b, BlockPos c) {
         var result = new ArrayList<ShapeBlock>();
-        
+
         Vector3i va = new Vector3i(a.getX(), a.getY(), a.getZ());
         Vector3i vb = new Vector3i(b.getX(), b.getY(), b.getZ());
         Vector3i vc = new Vector3i(c.getX(), c.getY(), c.getZ());
@@ -30,25 +29,40 @@ public class ShapeCylinder {
 
         int minComp = -1;
         int minVal = Integer.MAX_VALUE;
-        if (Math.abs(delta.x) < minVal) { minVal = Math.abs(delta.x); minComp = 0; }
-        if (Math.abs(delta.y) < minVal) { minVal = Math.abs(delta.y); minComp = 1; }
-        if (Math.abs(delta.z) < minVal) { minVal = Math.abs(delta.z); minComp = 2; }
+        if (Math.abs(delta.x) < minVal) {
+            minVal = Math.abs(delta.x);
+            minComp = 0;
+        }
+        if (Math.abs(delta.y) < minVal) {
+            minVal = Math.abs(delta.y);
+            minComp = 1;
+        }
+        if (Math.abs(delta.z) < minVal) {
+            minVal = Math.abs(delta.z);
+            minComp = 2;
+        }
 
         switch (minComp) {
             case 0 -> {
-                dA = delta.y; dB = delta.z; dH = height.x;
+                dA = delta.y;
+                dB = delta.z;
+                dH = height.x;
                 vecA = new Vector3i(0, (int) Math.signum(delta.y), 0);
                 vecB = new Vector3i(0, 0, (int) Math.signum(delta.z));
                 vecH = new Vector3i((int) Math.signum(height.x), 0, 0);
             }
             case 1 -> {
-                dA = delta.x; dB = delta.z; dH = height.y;
+                dA = delta.x;
+                dB = delta.z;
+                dH = height.y;
                 vecA = new Vector3i((int) Math.signum(delta.x), 0, 0);
                 vecB = new Vector3i(0, 0, (int) Math.signum(delta.z));
                 vecH = new Vector3i(0, (int) Math.signum(height.y), 0);
             }
             case 2 -> {
-                dA = delta.x; dB = delta.y; dH = height.z;
+                dA = delta.x;
+                dB = delta.y;
+                dH = height.z;
                 vecA = new Vector3i((int) Math.signum(delta.x), 0, 0);
                 vecB = new Vector3i(0, (int) Math.signum(delta.y), 0);
                 vecH = new Vector3i(0, 0, (int) Math.signum(height.z));
@@ -97,8 +111,7 @@ public class ShapeCylinder {
                     BlockPos pos = new BlockPos(
                             aIdx * vecA.x + bIdx * vecB.x + hIdx * vecH.x + a.getX(),
                             aIdx * vecA.y + bIdx * vecB.y + hIdx * vecH.y + a.getY(),
-                            aIdx * vecA.z + bIdx * vecB.z + hIdx * vecH.z + a.getZ()
-                    );
+                            aIdx * vecA.z + bIdx * vecB.z + hIdx * vecH.z + a.getZ());
                     result.add(new ShapeBlock(pos, slot));
                 }
             }

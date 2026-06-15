@@ -1,14 +1,21 @@
 package dev.wp.matter_manipulator.client;
 
 import dev.wp.matter_manipulator.MMMod;
+import dev.wp.matter_manipulator.client.gui.RadialMenuScreen;
 import dev.wp.matter_manipulator.client.render.MMRenderer;
 import dev.wp.matter_manipulator.common.config.MMModConfig;
 import dev.wp.matter_manipulator.common.items.manipulator.ItemMatterManipulator;
 import dev.wp.matter_manipulator.common.items.manipulator.MMState;
 import dev.wp.matter_manipulator.common.items.manipulator.PendingAction;
 import dev.wp.matter_manipulator.common.items.manipulator.PlaceMode;
-import dev.wp.matter_manipulator.common.networking.*;
-import dev.wp.matter_manipulator.client.gui.RadialMenuScreen;
+import dev.wp.matter_manipulator.common.networking.MMNetwork;
+import dev.wp.matter_manipulator.common.networking.PacketClearCoords;
+import dev.wp.matter_manipulator.common.networking.PacketMMBPressed;
+import dev.wp.matter_manipulator.common.networking.PacketResetTransform;
+import dev.wp.matter_manipulator.common.networking.PacketSetPendingAction;
+import dev.wp.matter_manipulator.common.networking.PacketSetPlaceMode;
+import dev.wp.matter_manipulator.common.networking.PacketToggleLock;
+import javax.annotation.Nullable;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
@@ -22,8 +29,6 @@ import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
-
-import javax.annotation.Nullable;
 
 @Mod.EventBusSubscriber(modid = MMMod.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
 public class ClientEvents {

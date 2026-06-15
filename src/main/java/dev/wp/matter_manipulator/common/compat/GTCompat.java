@@ -5,18 +5,23 @@ import com.gregtechceu.gtceu.api.block.property.GTBlockStateProperties;
 import com.gregtechceu.gtceu.api.blockentity.MetaMachineBlockEntity;
 import com.gregtechceu.gtceu.api.blockentity.PipeBlockEntity;
 import com.gregtechceu.gtceu.api.capability.ICoverable;
-import com.gregtechceu.gtceu.api.data.RotationState;
-import com.gregtechceu.gtceu.api.pattern.util.RelativeDirection;
 import com.gregtechceu.gtceu.api.capability.IElectricItem;
 import com.gregtechceu.gtceu.api.capability.forge.GTCapability;
 import com.gregtechceu.gtceu.api.cover.CoverBehavior;
+import com.gregtechceu.gtceu.api.data.RotationState;
 import com.gregtechceu.gtceu.api.machine.feature.IDropSaveMachine;
+import com.gregtechceu.gtceu.api.pattern.util.RelativeDirection;
 import com.lowdragmc.lowdraglib.syncdata.blockentity.IAutoSyncBlockEntity;
 import dev.wp.matter_manipulator.common.building.MMInventory;
 import dev.wp.matter_manipulator.common.items.manipulator.MMState;
 import dev.wp.matter_manipulator.common.items.manipulator.MMTier;
 import dev.wp.matter_manipulator.common.items.manipulator.MMTransform;
 import dev.wp.matter_manipulator.common.utils.Mods;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -33,12 +38,6 @@ import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.level.LevelEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
 
 /**
  * GregTech soft-dependency compat. This class imports GregTech types, so it must only be loaded
@@ -107,7 +106,8 @@ public class GTCompat {
 
     @SubscribeEvent
     public static void onLevelTick(TickEvent.LevelTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || PENDING_SYNCS.isEmpty()
+        if (event.phase != TickEvent.Phase.END
+                || PENDING_SYNCS.isEmpty()
                 || !(event.level instanceof ServerLevel level)) return;
         Iterator<PendingSync> it = PENDING_SYNCS.iterator();
         while (it.hasNext()) {
@@ -117,8 +117,7 @@ public class GTCompat {
             // flush only once a full tick has passed so the client BE exists.
             if (level.getGameTime() <= sync.queuedAt) continue;
             it.remove();
-            if (level.isLoaded(sync.pos)
-                    && level.getBlockEntity(sync.pos) instanceof IAutoSyncBlockEntity syncBE) {
+            if (level.isLoaded(sync.pos) && level.getBlockEntity(sync.pos) instanceof IAutoSyncBlockEntity syncBE) {
                 syncBE.syncNow(true);
             }
         }
@@ -187,11 +186,11 @@ public class GTCompat {
      */
     public static ICapabilityProvider createElectricItemProvider(ItemStack stack, MMTier tier) {
         return new ICapabilityProvider() {
-            private final LazyOptional<IElectricItem> cap =
-                    LazyOptional.of(() -> new MMElectricItem(stack, tier));
+            private final LazyOptional<IElectricItem> cap = LazyOptional.of(() -> new MMElectricItem(stack, tier));
 
             @Override
-            public @Nonnull <T> LazyOptional<T> getCapability(@Nonnull Capability<T> capability, @Nullable Direction side) {
+            public @Nonnull <T> LazyOptional<T> getCapability(
+                    @Nonnull Capability<T> capability, @Nullable Direction side) {
                 return GTCapability.CAPABILITY_ELECTRIC_ITEM.orEmpty(capability, cap);
             }
         };
@@ -254,8 +253,8 @@ public class GTCompat {
         }
 
         @Override
-        public long discharge(long amount, int chargerTier, boolean ignoreTransferLimit, boolean externally,
-                              boolean simulate) {
+        public long discharge(
+                long amount, int chargerTier, boolean ignoreTransferLimit, boolean externally, boolean simulate) {
             // Block external dischargers from draining the tool; it only spends energy on its builds.
             if (externally || stack.getCount() != 1 || amount <= 0 || chargerTier < getTier()) return 0;
             if (!ignoreTransferLimit) amount = Math.min(amount, getTransferLimit());
@@ -292,13 +291,29 @@ public class GTCompat {
     public static class GTCopyHandler implements CopyHandler {
 
         private static final String[] CONFIG_KEYS = {
-            "ownerUUID", "paintingColor", "cover", "isFlipped",
-            "workingMode", "voidingMode", "batchEnabled",
-            "isWorkingEnabled", "workingEnabled", "isMuffled", "isDistinct",
-            "currentParallel", "durationMultiplier", "circuitInventory", "activeRecipeType",
-            "outputFacingItems", "outputFacingFluids", "inputFacingItems", "inputFacingFluids",
-            "autoOutputItems", "autoOutputFluids",
-            "allowInputFromOutputSideItems", "allowInputFromOutputSideFluids",
+            "ownerUUID",
+            "paintingColor",
+            "cover",
+            "isFlipped",
+            "workingMode",
+            "voidingMode",
+            "batchEnabled",
+            "isWorkingEnabled",
+            "workingEnabled",
+            "isMuffled",
+            "isDistinct",
+            "currentParallel",
+            "durationMultiplier",
+            "circuitInventory",
+            "activeRecipeType",
+            "outputFacingItems",
+            "outputFacingFluids",
+            "inputFacingItems",
+            "inputFacingFluids",
+            "autoOutputItems",
+            "autoOutputFluids",
+            "allowInputFromOutputSideItems",
+            "allowInputFromOutputSideFluids",
         };
 
         @Override
@@ -443,9 +458,15 @@ public class GTCompat {
                 Direction d = Direction.byName(tag.getString(key));
                 if (d != null) tag.putString(key, transform.apply(d).getSerializedName());
             } else if (tag.contains(key, Tag.TAG_INT)) {
-                tag.putInt(key, transform.apply(Direction.from3DDataValue(tag.getInt(key))).get3DDataValue());
+                tag.putInt(
+                        key,
+                        transform
+                                .apply(Direction.from3DDataValue(tag.getInt(key)))
+                                .get3DDataValue());
             } else if (tag.contains(key, Tag.TAG_BYTE)) {
-                tag.putByte(key, (byte) transform.apply(Direction.from3DDataValue(tag.getByte(key))).get3DDataValue());
+                tag.putByte(key, (byte) transform
+                        .apply(Direction.from3DDataValue(tag.getByte(key)))
+                        .get3DDataValue());
             }
         }
     }

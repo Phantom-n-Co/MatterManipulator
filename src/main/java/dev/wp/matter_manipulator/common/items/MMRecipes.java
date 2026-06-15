@@ -15,6 +15,6 @@ public class MMRecipes {
             DeferredRegister.create(ForgeRegistries.RECIPE_SERIALIZERS, MMMod.MODID);
 
     public static final RegistryObject<SimpleCraftingRecipeSerializer<UpgradeInstallRecipe>> UPGRADE_INSTALL =
-            SERIALIZERS.register("upgrade_install",
-                    () -> new SimpleCraftingRecipeSerializer<>(UpgradeInstallRecipe::new));
+            SERIALIZERS.register(
+                    "upgrade_install", () -> new SimpleCraftingRecipeSerializer<>(UpgradeInstallRecipe::new));
 }

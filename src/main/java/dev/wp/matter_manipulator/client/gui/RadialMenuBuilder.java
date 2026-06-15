@@ -2,13 +2,12 @@ package dev.wp.matter_manipulator.client.gui;
 
 import dev.wp.matter_manipulator.client.gui.RadialMenu.RadialMenuClickHandler;
 import dev.wp.matter_manipulator.client.gui.RadialMenu.RadialMenuOption;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 
 /**
  * Builder that helps constructing radial menus with options and nested sub-menus.
@@ -20,9 +19,15 @@ public class RadialMenuBuilder {
     public float innerRadius = 0.25f, outerRadius = 0.60f;
 
     /** Sets the inner radius (fraction of the screen's shortest dimension). */
-    public RadialMenuBuilder innerRadius(float r) { this.innerRadius = r; return this; }
+    public RadialMenuBuilder innerRadius(float r) {
+        this.innerRadius = r;
+        return this;
+    }
     /** Sets the outer radius. */
-    public RadialMenuBuilder outerRadius(float r) { this.outerRadius = r; return this; }
+    public RadialMenuBuilder outerRadius(float r) {
+        this.outerRadius = r;
+        return this;
+    }
 
     /** Adds a leaf option. Call {@link RadialMenuOptionBuilderLeaf#done()} to return here. */
     public RadialMenuOptionBuilderLeaf<RadialMenuBuilder> option() {
@@ -49,19 +54,23 @@ public class RadialMenuBuilder {
 
     // ── option builder base ────────────────────────────────────────────────────
 
-    public static abstract class RadialMenuOptionBuilder<Parent> {
+    public abstract static class RadialMenuOptionBuilder<Parent> {
 
         final Parent parent;
         Supplier<String> label = () -> "?";
         double weight = 1;
         BooleanSupplier hidden = () -> false;
 
-        RadialMenuOptionBuilder(Parent parent) { this.parent = parent; }
+        RadialMenuOptionBuilder(Parent parent) {
+            this.parent = parent;
+        }
 
         public abstract void apply(RadialMenu menu);
 
         /** Returns to the parent builder. */
-        public Parent done() { return parent; }
+        public Parent done() {
+            return parent;
+        }
     }
 
     // ── leaf option ────────────────────────────────────────────────────────────
@@ -70,7 +79,9 @@ public class RadialMenuBuilder {
 
         private RadialMenuClickHandler onClicked;
 
-        RadialMenuOptionBuilderLeaf(Parent parent) { super(parent); }
+        RadialMenuOptionBuilderLeaf(Parent parent) {
+            super(parent);
+        }
 
         public RadialMenuOptionBuilderLeaf<Parent> label(String s) {
             this.label = () -> s;
@@ -124,10 +135,11 @@ public class RadialMenuBuilder {
 
     public static class RadialMenuOptionBuilderBranch<Parent> extends RadialMenuOptionBuilder<Parent> {
 
-        private final List<RadialMenuOptionBuilder<RadialMenuOptionBuilderBranch<Parent>>> children
-            = new ArrayList<>();
+        private final List<RadialMenuOptionBuilder<RadialMenuOptionBuilderBranch<Parent>>> children = new ArrayList<>();
 
-        RadialMenuOptionBuilderBranch(Parent parent) { super(parent); }
+        RadialMenuOptionBuilderBranch(Parent parent) {
+            super(parent);
+        }
 
         public RadialMenuOptionBuilderBranch<Parent> label(String s) {
             this.label = () -> s;

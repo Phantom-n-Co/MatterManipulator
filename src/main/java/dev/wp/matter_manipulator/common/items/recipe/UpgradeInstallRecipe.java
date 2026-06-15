@@ -4,6 +4,7 @@ import dev.wp.matter_manipulator.common.items.MMRecipes;
 import dev.wp.matter_manipulator.common.items.MMUpgrades;
 import dev.wp.matter_manipulator.common.items.manipulator.ItemMatterManipulator;
 import dev.wp.matter_manipulator.common.items.manipulator.MMState;
+import java.util.BitSet;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.inventory.CraftingContainer;
@@ -12,8 +13,6 @@ import net.minecraft.world.item.crafting.CraftingBookCategory;
 import net.minecraft.world.item.crafting.CustomRecipe;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.level.Level;
-
-import java.util.BitSet;
 
 /**
  * Custom crafting recipe that installs Matter Manipulator upgrade items onto a manipulator,
