@@ -8,7 +8,7 @@ import dev.wp.matter_manipulator.client.render.MMRenderer;
 import dev.wp.matter_manipulator.common.building.Location;
 import dev.wp.matter_manipulator.common.building.PendingBuild;
 import dev.wp.matter_manipulator.common.compat.GTCompat;
-import dev.wp.matter_manipulator.common.compat.Mods;
+import dev.wp.matter_manipulator.common.utils.Mods;
 import dev.wp.matter_manipulator.common.config.MMModConfig;
 import dev.wp.matter_manipulator.common.networking.*;
 import net.minecraft.ChatFormatting;

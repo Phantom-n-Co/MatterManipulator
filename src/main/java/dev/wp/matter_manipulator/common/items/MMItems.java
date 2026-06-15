@@ -1,7 +1,7 @@
 package dev.wp.matter_manipulator.common.items;
 
 import dev.wp.matter_manipulator.MMMod;
-import dev.wp.matter_manipulator.common.compat.Mods;
+import dev.wp.matter_manipulator.common.utils.Mods;
 import dev.wp.matter_manipulator.common.compat.ae.AEUplinkRegistrar;
 import dev.wp.matter_manipulator.common.items.manipulator.ItemMatterManipulator;
 import dev.wp.matter_manipulator.common.items.manipulator.MMTier;

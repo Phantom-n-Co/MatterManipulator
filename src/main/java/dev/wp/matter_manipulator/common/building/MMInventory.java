@@ -1,7 +1,7 @@
 package dev.wp.matter_manipulator.common.building;
 
 import dev.wp.matter_manipulator.common.compat.AECompat;
-import dev.wp.matter_manipulator.common.compat.Mods;
+import dev.wp.matter_manipulator.common.utils.Mods;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;

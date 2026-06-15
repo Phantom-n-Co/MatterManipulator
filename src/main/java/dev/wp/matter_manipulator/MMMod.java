@@ -3,7 +3,7 @@ package dev.wp.matter_manipulator;
 import com.mojang.logging.LogUtils;
 import dev.wp.matter_manipulator.common.compat.CopyHandlers;
 import dev.wp.matter_manipulator.common.compat.GTCompat;
-import dev.wp.matter_manipulator.common.compat.Mods;
+import dev.wp.matter_manipulator.common.utils.Mods;
 import dev.wp.matter_manipulator.common.compat.ae.AEUplinkRegistrar;
 import dev.wp.matter_manipulator.common.config.MMModConfig;
 import dev.wp.matter_manipulator.common.items.MMItems;

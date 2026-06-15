@@ -5,7 +5,7 @@ import dev.wp.matter_manipulator.MMMod;
 import dev.wp.matter_manipulator.common.compat.AECompat;
 import dev.wp.matter_manipulator.common.compat.CopyHandlers;
 import dev.wp.matter_manipulator.common.compat.GTCompat;
-import dev.wp.matter_manipulator.common.compat.Mods;
+import dev.wp.matter_manipulator.common.utils.Mods;
 import dev.wp.matter_manipulator.common.config.MMModConfig;
 import dev.wp.matter_manipulator.common.items.MMUpgrades;
 import dev.wp.matter_manipulator.common.items.manipulator.MMCapability;

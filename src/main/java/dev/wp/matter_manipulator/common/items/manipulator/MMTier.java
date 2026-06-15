@@ -1,6 +1,6 @@
 package dev.wp.matter_manipulator.common.items.manipulator;
 
-import dev.wp.matter_manipulator.common.compat.Mods;
+import dev.wp.matter_manipulator.common.utils.Mods;
 
 public enum MMTier {
 

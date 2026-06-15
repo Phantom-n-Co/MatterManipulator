@@ -3,7 +3,7 @@ package dev.wp.matter_manipulator.client;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import dev.wp.matter_manipulator.MMMod;
 import dev.wp.matter_manipulator.client.render.BoxRenderer;
-import dev.wp.matter_manipulator.common.compat.Mods;
+import dev.wp.matter_manipulator.common.utils.Mods;
 import dev.wp.matter_manipulator.common.compat.ae.AEUplinkRegistrar;
 import dev.wp.matter_manipulator.common.compat.ae.UplinkScreen;
 import net.minecraft.client.gui.screens.MenuScreens;
