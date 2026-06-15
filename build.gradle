@@ -4,7 +4,6 @@ plugins {
     id 'maven-publish'
     id 'net.neoforged.moddev.legacyforge' version '2.0.91'
     id 'io.freefair.lombok' version '8.14'
-    id 'com.diffplug.spotless' version '7.0.2'
 }
 
 tasks.named('wrapper', Wrapper).configure {
@@ -175,39 +174,38 @@ dependencies {
     compileOnly('org.projectlombok:lombok:1.18.24')
     annotationProcessor('org.projectlombok:lombok:1.18.24')
 }
+/*
+mixin {
+    add sourceSets.main, "${mod_id}.refmap.json"
+    config "${mod_id}.mixins.json"
+}
 
-//mixin {
-//    add sourceSets.main, "${mod_id}.refmap.json"
-//    config "${mod_id}.mixins.json"
-//}
-//
-//jar {
-//    manifest.attributes([
-//            "MixinConfigs": "${mod_id}.mixins.json"
-//    ])
-//}
+jar {
+    manifest.attributes([
+            "MixinConfigs": "${mod_id}.mixins.json"
+    ])
+}
+*/
 
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
-    var replaceProperties = [
-            minecraft_version      : minecraft_version,
-            minecraft_version_range: minecraft_version_range,
-            forge_version          : forge_version,
-            forge_version_range    : forge_version_range,
-            loader_version_range   : loader_version_range,
-            mod_id                 : mod_id,
-            mod_name               : mod_name,
-            mod_license            : mod_license,
-            mod_version            : mod_version,
-            mod_authors            : mod_authors,
-            mod_description        : mod_description,
-            mod_credits            : mod_credits,
-            mui_version            : mui_version,
-            mui_version_range      : mui_version_range,
-            ae2_version            : ae2_version,
-            ae2_version_range      : ae2_version_range,
-            gtceu_version          : gtceu_version,
-            gtceu_version_range    : gtceu_version_range,
-    ]
+    var replaceProperties = [minecraft_version      : minecraft_version,
+                             minecraft_version_range: minecraft_version_range,
+                             forge_version          : forge_version,
+                             forge_version_range    : forge_version_range,
+                             loader_version_range   : loader_version_range,
+                             mod_id                 : mod_id,
+                             mod_name               : mod_name,
+                             mod_license            : mod_license,
+                             mod_version            : mod_version,
+                             mod_authors            : mod_authors,
+                             mod_description        : mod_description,
+                             mod_credits            : mod_credits,
+                             mui_version            : mui_version,
+                             mui_version_range      : mui_version_range,
+                             ae2_version            : ae2_version,
+                             ae2_version_range      : ae2_version_range,
+                             gtceu_version          : gtceu_version,
+                             gtceu_version_range    : gtceu_version_range,]
     inputs.properties replaceProperties
     expand replaceProperties
     from "src/main/templates"
