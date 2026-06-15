@@ -11,7 +11,7 @@ public class BlockAnalyzer {
      * Reads all non-air blocks in the AABB from cornerA to cornerB (inclusive).
      * Returned blocks have positions relative to cornerA.
      */
-    public static List<PendingBlock> analyzeRegion(Level level, BlockPos cornerA, BlockPos cornerB) {
+    public static List<PendingBlock> analyzeRegion(Level level, BlockPos cornerA, BlockPos cornerB, boolean moving) {
         var result = new ArrayList<PendingBlock>();
 
         int minX = Math.min(cornerA.getX(), cornerB.getX());
@@ -28,7 +28,9 @@ public class BlockAnalyzer {
                     var spec = BlockSpec.fromWorld(level, worldPos);
                     if (spec.skipWhenCopying()) continue;
                     var relPos = new BlockPos(x - cornerA.getX(), y - cornerA.getY(), z - cornerA.getZ());
-                    result.add(new PendingBlock(relPos, spec));
+                    var pb = new PendingBlock(relPos, spec);
+                    pb.analyze(level, worldPos, moving);
+                    result.add(pb);
                 }
             }
         }

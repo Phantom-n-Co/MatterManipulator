@@ -2,8 +2,8 @@ package dev.wp.matter_manipulator.common.building;
 
 import dev.wp.matter_manipulator.BlockTags;
 import dev.wp.matter_manipulator.MMMod;
+import dev.wp.matter_manipulator.common.building.analysis.BlockApplyContext;
 import dev.wp.matter_manipulator.common.compat.AECompat;
-import dev.wp.matter_manipulator.common.compat.CopyHandlers;
 import dev.wp.matter_manipulator.common.compat.GTCompat;
 import dev.wp.matter_manipulator.common.config.MMModConfig;
 import dev.wp.matter_manipulator.common.items.MMUpgrades;
@@ -18,8 +18,6 @@ import dev.wp.matter_manipulator.common.utils.MMUtils;
 import dev.wp.matter_manipulator.common.utils.Mods;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -33,10 +31,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.capability.IFluidHandler;
 import net.minecraftforge.items.IItemHandler;
-import net.minecraftforge.items.IItemHandlerModifiable;
 import net.minecraftforge.network.PacketDistributor;
 
 import it.unimi.dsi.fastutil.longs.LongArrayList;
@@ -126,7 +121,7 @@ public class PendingBuild {
         if (blocks.isEmpty()) return;
         var translated = new ArrayList<PendingBlock>(blocks.size());
         for (var pb : blocks) {
-            translated.add(new PendingBlock(anchor.offset(pb.relPos), pb.spec, pb.buildOrder));
+            translated.add(pb.at(anchor.offset(pb.relPos)));
         }
         translated.sort(Comparator.comparingInt(pb -> pb.buildOrder));
         ACTIVE.put(
@@ -212,7 +207,7 @@ public class PendingBuild {
             var existingState = level.getBlockState(pb.relPos);
 
             // Skip if block is already correct (no tile data to restore)
-            if (existingState.equals(pb.spec.state) && pb.spec.tileData == null) {
+            if (existingState.equals(pb.spec.state) && pb.analyses.isEmpty()) {
                 if (moving) movedPositions.add(pb.relPos.asLong());
                 placed++;
                 continue;
@@ -306,55 +301,12 @@ public class PendingBuild {
             // Place the new block
             level.setBlockAndUpdate(pb.relPos, pb.spec.state);
 
-            // Restore tile entity data if present
-            if (pb.spec.tileData != null) {
-                BlockEntity be = level.getBlockEntity(pb.relPos);
-                if (be != null) {
-                    CompoundTag full = pb.spec.tileData;
-                    // MOVING relocates a block verbatim (state + contents travel intact).
-                    // COPYING fabricates a new block, so it keeps only the whitelisted
-                    // configuration each handler allows — positional/runtime state is dropped.
-                    CompoundTag tileTag = moving ? full.copy() : CopyHandlers.buildCopyTag(pb.spec.state, be, full, inv);
-                    tileTag.putInt("x", pb.relPos.getX());
-                    tileTag.putInt("y", pb.relPos.getY());
-                    tileTag.putInt("z", pb.relPos.getZ());
-                    if (Mods.GTCEU && GTCompat.isGTMachine(be)) {
-                        // GT machines must initialize in chunk-load order (ctor → load →
-                        // onLoad): loading NBT into a live machine leaves its subscriptions
-                        // and multiblock state initialized against the pre-load data.
-                        BlockEntity recreated = BlockEntity.loadStatic(pb.relPos, pb.spec.state, tileTag);
-                        if (recreated != null) {
-                            level.setBlockEntity(recreated);
-                            be = recreated;
-                        } else {
-                            MMMod.LOGGER.warn(
-                                    "Could not recreate block entity at {} from NBT, loading in place", pb.relPos);
-                            be.load(tileTag);
-                        }
-                    } else {
-                        be.load(tileTag);
-                    }
-                    if (!moving) {
-                        // Charge for covers / AE parts / single-slot items the handlers kept.
-                        CopyHandlers.afterPaste(level, pb.relPos, be, full, inv);
-                        // Refill item-handler contents from the capture, charged from inventory.
-                        // AE2 contents live behind its own inventories (handled above), not the
-                        // item-handler cap, so skip them to avoid double handling.
-                        if (!(Mods.AE2 && AECompat.isAEBlock(be))) {
-                            injectContents(be, pb.spec.contents, inv);
-                        }
-                        // Drain whatever the placed BE came with; refill captured amounts paid
-                        // from the bound AE2 network (nothing free when unbound).
-                        fillFluids(be, pb.spec.fluids, cfg.uplink, level);
-                    }
-                    // Covers were restored from NBT (possibly remapped to rotated sides); re-init the
-                    // cover container so they render and can be opened without a manual refresh.
-                    if (Mods.GTCEU) GTCompat.reinitCovers(be);
-                    be.setChanged();
-                    if (Mods.GTCEU && GTCompat.needsClientSync(be)) {
-                        GTCompat.scheduleClientSync(level, pb.relPos);
-                    }
-                }
+            // Reproduce captured tile state (machine config + covers, AE parts/facades, container
+            // contents, tank fluids) through the analyses. MOVING carries a verbatim RawTileAnalysis;
+            // COPYING carries per-concern analyses that charge the player as they install. Each owns
+            // its own recreate/reinit/sync, so there is no mode branching here.
+            if (!pb.analyses.isEmpty()) {
+                pb.apply(new BlockApplyContext(level, pb.relPos, inv));
             }
 
             if (moving) movedPositions.add(pb.relPos.asLong());
@@ -426,32 +378,6 @@ public class PendingBuild {
     }
 
     /**
-     * COPYING: refills a freshly placed block entity's item-handler slots from the captured
-     * contents snapshot, charging the player and capping each slot at what they can supply.
-     * The whitelisted load tag carries no items, so this is the sole item-restore path; it is
-     * layout-independent (works for any container exposing the capability).
-     */
-    private static void injectContents(BlockEntity be, @Nullable ListTag snapshot, MMInventory inv) {
-        if (snapshot == null || snapshot.isEmpty()) return;
-        IItemHandler handler = be.getCapability(ForgeCapabilities.ITEM_HANDLER).resolve().orElse(null);
-        if (!(handler instanceof IItemHandlerModifiable modifiable)) return;
-        boolean creative = inv.getPlayer().isCreative();
-
-        for (int i = 0; i < snapshot.size(); i++) {
-            CompoundTag slotTag = snapshot.getCompound(i);
-            int slot = slotTag.getInt("Slot");
-            ItemStack stack = ItemStack.of(slotTag);
-            if (stack.isEmpty() || slot < 0 || slot >= modifiable.getSlots()) continue;
-
-            int available = creative ? stack.getCount() : Math.min(stack.getCount(), inv.countInInventory(stack));
-            if (available <= 0) continue;
-
-            inv.consume(stack.copyWithCount(available));
-            modifiable.setStackInSlot(slot, stack.copyWithCount(available));
-        }
-    }
-
-    /**
      * Gives a replaced container's contents to the player. The block entity is removed
      * before the block afterwards, so the block's own onRemove can't also spill them.
      */
@@ -464,35 +390,6 @@ public class PendingBuild {
         for (int slot = 0; slot < handler.getSlots(); slot++) {
             ItemStack stack = handler.getStackInSlot(slot);
             if (!stack.isEmpty()) inv.give(stack.copy());
-        }
-    }
-
-    /**
-     * COPYING empties whatever fluids a freshly placed tank came with (they can't be granted for
-     * free), then — if the manipulator is bound to an AE2 uplink — refills the captured amounts,
-     * paying for them out of the network. Unbound, the tank is simply left empty.
-     */
-    private static void fillFluids(
-            BlockEntity be, @Nullable ListTag snapshot, @Nullable Location uplink, ServerLevel level) {
-        var handler = be.getCapability(ForgeCapabilities.FLUID_HANDLER).resolve().orElse(null);
-        if (handler == null) return;
-        // drain() removes one fluid type per call; bounded in case a handler refills itself
-        for (int i = 0; i < 64; i++) {
-            FluidStack drained = handler.drain(Integer.MAX_VALUE, IFluidHandler.FluidAction.EXECUTE);
-            if (drained.isEmpty()) break;
-        }
-        if (snapshot == null || snapshot.isEmpty()) return;
-        if (!(Mods.AE2 && uplink != null)) return;
-        for (int i = 0; i < snapshot.size(); i++) {
-            FluidStack want = FluidStack.loadFluidStackFromNBT(snapshot.getCompound(i));
-            if (want.isEmpty()) continue;
-            int capacity = handler.fill(want, IFluidHandler.FluidAction.SIMULATE);
-            if (capacity <= 0) continue;
-            int got = AECompat.uplinkExtractFluid(level, uplink, want, Math.min(capacity, want.getAmount()));
-            if (got <= 0) continue;
-            FluidStack give = want.copy();
-            give.setAmount(got);
-            handler.fill(give, IFluidHandler.FluidAction.EXECUTE);
         }
     }
 

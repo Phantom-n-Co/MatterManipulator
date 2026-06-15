@@ -3,7 +3,6 @@ package dev.wp.matter_manipulator.common.persist;
 import dev.wp.matter_manipulator.common.building.BlockSpec;
 
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.TagParser;
 import net.minecraft.world.level.block.state.BlockState;
@@ -25,9 +24,6 @@ public class BlockSpecAdapter implements JsonSerializer<BlockSpec>, JsonDeserial
         obj.addProperty(
                 "block", BuiltInRegistries.BLOCK.getKey(src.state.getBlock()).toString());
         obj.addProperty("state", NbtUtils.writeBlockState(src.state).toString());
-        if (src.tileData != null) {
-            obj.addProperty("tile", src.tileData.toString());
-        }
         return obj;
     }
 
@@ -38,11 +34,7 @@ public class BlockSpecAdapter implements JsonSerializer<BlockSpec>, JsonDeserial
         try {
             var stateNbt = TagParser.parseTag(obj.get("state").getAsString());
             BlockState state = NbtUtils.readBlockState(BuiltInRegistries.BLOCK.asLookup(), stateNbt);
-            CompoundTag tile = null;
-            if (obj.has("tile")) {
-                tile = TagParser.parseTag(obj.get("tile").getAsString());
-            }
-            return new BlockSpec(state, tile);
+            return new BlockSpec(state);
         } catch (Exception e) {
             throw new JsonParseException("Failed to deserialize BlockSpec", e);
         }

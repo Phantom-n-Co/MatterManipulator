@@ -27,7 +27,6 @@ import net.minecraftforge.event.level.LevelEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
 import com.gregtechceu.gtceu.api.block.MetaMachineBlock;
-import com.gregtechceu.gtceu.api.block.PipeBlock;
 import com.gregtechceu.gtceu.api.block.property.GTBlockStateProperties;
 import com.gregtechceu.gtceu.api.blockentity.MetaMachineBlockEntity;
 import com.gregtechceu.gtceu.api.blockentity.PipeBlockEntity;
@@ -273,23 +272,6 @@ public class GTCompat {
      * placing each one. {@code setConnection} mirrors the link onto the neighbor, so a later-placed
      * pipe links up the ones already down. No-op for non-pipes.
      */
-    /**
-     * Minimal tile NBT to keep when placing a "fresh" block in geometry/cables/exchange mode: GT
-     * pipes carry their paint color (the one piece of configuration that should survive), everything
-     * else (covers, connections, machine config, contents) is dropped. Returns {@code null} for
-     * non-pipes and unpainted pipes, so they place with no tile data at all.
-     */
-    @Nullable
-    public static CompoundTag freshTileData(BlockState state, @Nullable CompoundTag tileData) {
-        if (tileData == null || !(state.getBlock() instanceof PipeBlock)) return null;
-        Tag color = tileData.get("paintingColor");
-        if (color == null) return null;
-        CompoundTag out = new CompoundTag();
-        if (tileData.contains("id")) out.putString("id", tileData.getString("id"));
-        out.put("paintingColor", color.copy());
-        return out;
-    }
-
     public static void connectPipe(ServerLevel level, BlockPos pos) {
         if (!(level.getBlockEntity(pos) instanceof PipeBlockEntity<?, ?> pipe)) return;
         for (Direction side : Direction.values()) {
@@ -338,6 +320,30 @@ public class GTCompat {
             a.config = config;
             a.coverItems = captureCovers(be);
             return a;
+        }
+
+        /** Rebuilds an analysis from previously captured config NBT (see {@link #toNbt}). */
+        public static GTAnalysis fromConfig(CompoundTag config) {
+            GTAnalysis a = new GTAnalysis();
+            a.config = config.copy();
+            return a;
+        }
+
+        /** A reduced analysis keeping only a pipe's paint color (cables mode), or null if unpainted. */
+        @Nullable
+        public GTAnalysis colorOnly() {
+            if (!config.contains("paintingColor")) return null;
+            CompoundTag c = new CompoundTag();
+            if (config.contains("id")) c.putString("id", config.getString("id"));
+            c.put("paintingColor", config.get("paintingColor").copy());
+            GTAnalysis a = new GTAnalysis();
+            a.config = c;
+            return a;
+        }
+
+        /** The captured config NBT, for persisting a cables-mode analysis on the tool. */
+        public CompoundTag toNbt() {
+            return config.copy();
         }
 
         @Override
@@ -504,194 +510,5 @@ public class GTCompat {
             if (RelativeDirection.UP.getRelative(front, candidate, false) == worldUp) return candidate;
         }
         return null;
-    }
-
-    /**
-     * Copy rule for GT machines: keeps the player-facing configuration and covers and drops the
-     * positional/runtime state (recipe progress, stored energy, multiblock controller caches,
-     * subscription timers) that a blanket NBT copy would carry to the new location and break.
-     * Mirrors the field set a SpatialTools-style whitelist keeps. Facing lives in the block state,
-     * so it is preserved regardless of NBT.
-     */
-    public static class GTCopyHandler implements CopyHandler {
-        private static final String[] CONFIG_KEYS = {
-                "ownerUUID",
-                "paintingColor",
-                "cover",
-                "isFlipped",
-                "workingMode",
-                "voidingMode",
-                "batchEnabled",
-                "isWorkingEnabled",
-                "workingEnabled",
-                "isMuffled",
-                "isDistinct",
-                "currentParallel",
-                "durationMultiplier",
-                "circuitInventory",
-                "activeRecipeType",
-                "outputFacingItems",
-                "outputFacingFluids",
-                "inputFacingItems",
-                "inputFacingFluids",
-                "autoOutputItems",
-                "autoOutputFluids",
-                "allowInputFromOutputSideItems",
-                "allowInputFromOutputSideFluids",
-        };
-
-        @Override
-        public boolean matches(BlockState state, @Nullable BlockEntity be, @Nullable CompoundTag fullTag) {
-            // Pipes/cables are kept too, so their paint color (and covers) survive the copy.
-            return be instanceof MetaMachineBlockEntity || be instanceof PipeBlockEntity;
-        }
-
-        @Override
-        public void contributeNbt(CompoundTag full, CompoundTag out, MMInventory inv) {
-            for (String key : CONFIG_KEYS) {
-                Tag value = full.get(key);
-                if (value != null) out.put(key, value.copy());
-            }
-        }
-
-        @Override
-        public void afterPaste(ServerLevel level, BlockPos pos, BlockEntity be, CompoundTag full, MMInventory inv) {
-            // The "cover" config we kept re-installs the covers; charge the player for them here.
-            filterCovers(be, inv);
-        }
-
-        /** Single-direction auto-I/O sides stored directly in the machine NBT. */
-        private static final String[] FACING_KEYS = {
-                "outputFacingItems", "outputFacingFluids", "inputFacingItems", "inputFacingFluids",
-        };
-
-        @Override
-        public CompoundTag transformTileData(BlockState state, CompoundTag tileData, MMTransform transform) {
-            if (!tileData.getString("id").startsWith("gtceu:")) return tileData;
-
-            // Covers serialize under @Persisted(key = "cover") with one sub-tag per side; moving the
-            // whole sub-tag to the rotated side preserves the cover's settings.
-            if (tileData.contains("cover", Tag.TAG_COMPOUND)) {
-                CompoundTag covers = tileData.getCompound("cover");
-                CompoundTag rotated = covers.copy();
-                for (Direction side : Direction.values()) {
-                    rotated.remove(side.getSerializedName());
-                }
-                for (Direction side : Direction.values()) {
-                    Tag blob = covers.get(side.getSerializedName());
-                    if (blob == null) continue;
-                    Direction newSide = transform.apply(side);
-                    Tag moved = blob.copy();
-                    // GTCEu bakes the cover's attachedSide into the blob as int "side" = ordinal
-                    // (MachineCoverContainer.serializeCoverUid). Moving the blob to the rotated field is
-                    // not enough — the rebuilt cover takes its render/interaction side from this int, so
-                    // rewrite it too or the cover stays visually/functionally on the original face.
-                    if (moved instanceof CompoundTag c) {
-                        rewriteCoverSide(c, side.ordinal(), newSide.ordinal());
-                    }
-                    rotated.put(newSide.getSerializedName(), moved);
-                }
-                tileData.put("cover", rotated);
-            }
-
-            for (String key : FACING_KEYS) {
-                rotateDirKey(tileData, key, transform);
-            }
-
-            // A multiblock controller's isFlipped encodes structure chirality; a mirroring transform
-            // (odd number of flips) must toggle it so the structure mirrors with the paste.
-            if (tileData.contains("isFlipped") && transform.isReflection()) {
-                tileData.putBoolean("isFlipped", !tileData.getBoolean("isFlipped"));
-            }
-
-            return tileData;
-        }
-
-        /**
-         * Corrects a machine's GregTech "extended facing" after the generic facing rewrite. A machine's
-         * orientation is (front facing, upwards facing, isFlipped); only the front facing is a plain world
-         * direction the generic per-property pass gets right. Upwards facing is a horizontal "roll" whose
-         * meaning depends on the front facing (see {@link RelativeDirection}), so rotating it as if it were
-         * a world direction is wrong. Here we rebuild it: take the machine's real-world up vector, rotate
-         * that by the transform, then solve back for the upwards-facing value under the new front facing.
-         */
-        @Override
-        public BlockState transformBlockState(BlockState rotated, BlockState original, MMTransform transform) {
-            if (!(original.getBlock() instanceof MetaMachineBlock block)) return rotated;
-            RotationState rs = block.getRotationState();
-            if (rs == RotationState.NONE) return rotated;
-
-            Direction oldFront = original.getValue(rs.property);
-            // Front facing: take the generic pass's result if the machine allows it, else keep it as-is.
-            Direction newFront = transform.apply(oldFront);
-            if (rs.test(newFront) && rotated.hasProperty(rs.property)) {
-                rotated = rotated.setValue(rs.property, newFront);
-            } else {
-                newFront = rotated.getValue(rs.property);
-            }
-
-            if (block.getDefinition().isAllowExtendedFacing()
-                    && original.hasProperty(GTBlockStateProperties.UPWARDS_FACING)) {
-                Direction oldUp = original.getValue(GTBlockStateProperties.UPWARDS_FACING);
-                Direction worldUp = transform.apply(RelativeDirection.UP.getRelative(oldFront, oldUp, false));
-                Direction newUp = solveUpwardsFacing(newFront, worldUp);
-                if (newUp != null) {
-                    rotated = rotated.setValue(GTBlockStateProperties.UPWARDS_FACING, newUp);
-                }
-            }
-            return rotated;
-        }
-
-        /**
-         * Finds the horizontal upwards-facing value that, with {@code front}, yields the given real-world
-         * up direction — the inverse of {@link RelativeDirection#getRelative}. Returns null if none fits
-         * (e.g. the front facing fell back to a value the world-up is no longer perpendicular to).
-         */
-        private static Direction solveUpwardsFacing(Direction front, Direction worldUp) {
-            for (Direction candidate : Direction.values()) {
-                if (candidate.getAxis() == Direction.Axis.Y) continue; // upwards facing is horizontal
-                if (RelativeDirection.UP.getRelative(front, candidate, false) == worldUp) return candidate;
-            }
-            return null;
-        }
-
-        /**
-         * Recursively rewrites a cover blob's {@code attachedSide} (serialized as int {@code "side"}
-         * = ordinal) from one side to another. Only ints whose value matches the original ordinal are
-         * touched, so unrelated side references aren't disturbed, and it doesn't depend on where
-         * LDLib nests the cover uid.
-         */
-        private static void rewriteCoverSide(CompoundTag tag, int oldOrdinal, int newOrdinal) {
-            for (String key : new ArrayList<>(tag.getAllKeys())) {
-                Tag child = tag.get(key);
-                if ("side".equals(key) && child instanceof IntTag it && it.getAsInt() == oldOrdinal) {
-                    tag.putInt(key, newOrdinal);
-                } else if (child instanceof CompoundTag c) {
-                    rewriteCoverSide(c, oldOrdinal, newOrdinal);
-                } else if (child instanceof ListTag list) {
-                    for (Tag el : list) {
-                        if (el instanceof CompoundTag ec) rewriteCoverSide(ec, oldOrdinal, newOrdinal);
-                    }
-                }
-            }
-        }
-
-        /** Rotates a single Direction value stored under {@code key} (string/int/byte encodings). */
-        private static void rotateDirKey(CompoundTag tag, String key, MMTransform transform) {
-            if (tag.contains(key, Tag.TAG_STRING)) {
-                Direction d = Direction.byName(tag.getString(key));
-                if (d != null) tag.putString(key, transform.apply(d).getSerializedName());
-            } else if (tag.contains(key, Tag.TAG_INT)) {
-                tag.putInt(
-                        key,
-                        transform
-                                .apply(Direction.from3DDataValue(tag.getInt(key)))
-                                .get3DDataValue());
-            } else if (tag.contains(key, Tag.TAG_BYTE)) {
-                tag.putByte(key, (byte) transform
-                        .apply(Direction.from3DDataValue(tag.getByte(key)))
-                        .get3DDataValue());
-            }
-        }
     }
 }

@@ -16,7 +16,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.fluids.FluidStack;
 
 import appeng.api.inventories.ISegmentedInventory;
@@ -52,24 +51,6 @@ public class AECompat {
 
     public static boolean isAEBlock(BlockEntity be) {
         return be instanceof IPartHost || be instanceof ISegmentedInventory;
-    }
-
-    /**
-     * Minimal tile NBT to keep when placing a "fresh" AE2 cable in geometry/cables/exchange mode:
-     * only the center cable part (keyed {@code "cable"}) survives, so the bus places as a bare cable
-     * with no attached parts or facades — matching the original mod's cable-mode behaviour, which
-     * lays down just the cable part. The cable's color rides inside that blob (cables are distinct
-     * colored part items). Returns {@code null} for anything that isn't a cable bus with a cable.
-     */
-    @Nullable
-    public static CompoundTag freshTileData(BlockState state, @Nullable CompoundTag tileData) {
-        if (tileData == null || !tileData.getString("id").equals("ae2:cable_bus")) return null;
-        Tag center = tileData.get("cable");
-        if (center == null) return null;
-        CompoundTag out = new CompoundTag();
-        out.putString("id", "ae2:cable_bus");
-        out.put("cable", center.copy());
-        return out;
     }
 
     /**
@@ -319,6 +300,24 @@ public class AECompat {
             return a;
         }
 
+        /** Rebuilds a (cable) analysis from previously captured NBT (see {@link #toNbt}). */
+        public static AEAnalysis fromData(CompoundTag data) {
+            AEAnalysis a = new AEAnalysis();
+            a.data = data.copy();
+            List<ItemStack> items = new ArrayList<>();
+            if (data.get("cable") instanceof CompoundTag cable) {
+                IPartItem<?> partItem = IPartItem.byId(ResourceLocation.parse(cable.getString("id")));
+                if (partItem != null) items.add(new ItemStack(partItem));
+            }
+            a.items = items;
+            return a;
+        }
+
+        /** The captured NBT, for persisting a cables-mode analysis on the tool. */
+        public CompoundTag toNbt() {
+            return data.copy();
+        }
+
         @Override
         public boolean apply(BlockApplyContext ctx) {
             BlockEntity be = ctx.getBlockEntity();
@@ -390,70 +389,5 @@ public class AECompat {
             tag.remove(keyFor.apply(side));
         }
         moved.forEach(tag::put);
-    }
-
-    /**
-     * Copy rule for AE2 blocks. AE2 re-initializes its own grid/node state when a block is placed,
-     * so unlike GT machines the full-NBT path is safe and already reproduces parts, facades, and
-     * configuration correctly. To avoid regressing that working path, this handler passes the
-     * captured tag through unchanged (keeping AE2 inside the allowlist gate rather than blanking
-     * it) and charges the player for parts, upgrades, and cells in {@code afterPaste}.
-     *
-     * <p>Part/cell contents live behind {@code ISegmentedInventory} and part NBT, not the root
-     * item-handler capability, so {@code PendingBuild.injectContents} is skipped for AE2 blocks to
-     * avoid any double handling. A finer per-part whitelist via AE2's {@code exportSettings} API is
-     * a future refinement; AE2 is lower priority than GT here.
-     */
-    public static class AECopyHandler implements CopyHandler {
-        @Override
-        public boolean matches(BlockState state, @Nullable BlockEntity be, @Nullable CompoundTag fullTag) {
-            return isAEBlock(be);
-        }
-
-        @Override
-        public void contributeNbt(CompoundTag full, CompoundTag out, MMInventory inv) {
-            for (String key : full.getAllKeys()) {
-                Tag value = full.get(key);
-                if (value != null) out.put(key, value.copy());
-            }
-        }
-
-        @Override
-        public void afterPaste(ServerLevel level, BlockPos pos, BlockEntity be, CompoundTag full, MMInventory inv) {
-            filterAEItems(be, inv);
-        }
-
-        /**
-         * Rotates a cable bus's parts and facades to follow a COPYING/MOVING rotation/flip.
-         *
-         * <p>A cable bus stores each side's part under that side's serialized name
-         * ({@code down/up/north/...}; the center cable is keyed {@code "cable"} and has no side) and
-         * each facade under {@code "facade" + Capitalized(side)} — both written at the root of the tile
-         * NBT by {@code CableBusContainer.writeToNBT}/{@code FacadeContainer.writeToNBT}. A part takes
-         * its side purely from which key it sits under ({@code AEBasePart.side} is not serialized; it's
-         * set from the slot on load), so moving each side blob to the transform-rotated key is all that's
-         * needed — unlike GT covers, there is no side baked inside the blob to rewrite.
-         */
-        @Override
-        public CompoundTag transformTileData(BlockState state, CompoundTag tileData, MMTransform transform) {
-            if (!tileData.getString("id").equals("ae2:cable_bus")) return tileData;
-            permuteSideKeys(tileData, transform, side -> side.getSerializedName());
-            permuteSideKeys(tileData, transform, side -> "facade" + StringUtils.capitalize(side.getSerializedName()));
-            return tileData;
-        }
-
-        /** Moves each per-side sub-tag (keyed by {@code keyFor}) to the transform-rotated side. */
-        private static void permuteSideKeys(
-                CompoundTag tag, MMTransform transform, java.util.function.Function<Direction, String> keyFor) {
-            java.util.Map<String, Tag> moved = new java.util.HashMap<>();
-            for (Direction side : Direction.values()) {
-                Tag blob = tag.get(keyFor.apply(side));
-                if (blob != null) moved.put(keyFor.apply(transform.apply(side)), blob.copy());
-            }
-            for (Direction side : Direction.values()) {
-                tag.remove(keyFor.apply(side));
-            }
-            moved.forEach(tag::put);
-        }
     }
 }

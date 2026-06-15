@@ -6,7 +6,6 @@ import dev.wp.matter_manipulator.common.building.shapes.ShapeCylinder;
 import dev.wp.matter_manipulator.common.building.shapes.ShapeLine;
 import dev.wp.matter_manipulator.common.building.shapes.ShapeSphere;
 import dev.wp.matter_manipulator.common.compat.AECompat;
-import dev.wp.matter_manipulator.common.compat.CopyHandlers;
 import dev.wp.matter_manipulator.common.compat.GTCompat;
 import dev.wp.matter_manipulator.common.items.manipulator.MMConfig;
 import dev.wp.matter_manipulator.common.items.manipulator.PlaceMode;
@@ -15,6 +14,7 @@ import dev.wp.matter_manipulator.common.utils.Mods;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.TagParser;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Mirror;
 import net.minecraft.world.level.block.Rotation;
@@ -61,8 +61,9 @@ public class BuildGenerator {
                 case VOLUME -> cfg.volumes;
             };
             var picked = palette.pick(rng);
+            // Geometry places fresh blocks: the palette spec is state-only, no analyses attached.
             if (picked != null) {
-                blocks.add(new PendingBlock(sb.pos(), fresh(picked)));
+                blocks.add(new PendingBlock(sb.pos(), picked));
             }
         }
         return blocks;
@@ -86,8 +87,9 @@ public class BuildGenerator {
                     var current = level.getBlockState(pos);
                     if (cfg.replaceWhitelist.contains(current.getBlock())) {
                         var picked = cfg.replaceWith.pick(rng);
+                        // Exchanging places fresh blocks too — no analyses.
                         if (picked != null) {
-                            blocks.add(new PendingBlock(pos, fresh(picked)));
+                            blocks.add(new PendingBlock(pos, picked));
                         }
                     }
                 }
@@ -99,9 +101,10 @@ public class BuildGenerator {
     private static List<PendingBlock> generateCopyMove(MMConfig cfg, Level level, boolean moving) {
         if (cfg.coordA == null || cfg.coordB == null || cfg.coordC == null) return Collections.emptyList();
 
-        var rawBlocks = BlockAnalyzer.analyzeRegion(level, cfg.coordA.pos, cfg.coordB.pos);
+        var rawBlocks = BlockAnalyzer.analyzeRegion(level, cfg.coordA.pos, cfg.coordB.pos, moving);
         if (rawBlocks.isEmpty()) return Collections.emptyList();
 
+        boolean identity = cfg.transform.isIdentity();
         var baseBlocks = new ArrayList<PendingBlock>();
         for (var pb : rawBlocks) {
             Vector3i transformedRel = cfg.transform.apply(new Vector3i(pb.relPos.getX(), pb.relPos.getY(), pb.relPos.getZ()));
@@ -109,14 +112,12 @@ public class BuildGenerator {
             BlockState original = pb.spec.state;
             BlockState blockState = original;
 
-            // 1. Vanilla rotation/mirror: rotates shape/axis (logs, stairs) and horizontal facing
-            //    for both vanilla and GT blocks, consistent with how the positions are transformed.
+            // 1. Vanilla rotation/mirror: rotates shape/axis (logs, stairs) and horizontal facing.
             var rm = cfg.transform.deriveRotationMirror();
             if (rm.mirror() != Mirror.NONE) blockState = blockState.mirror(rm.mirror());
             if (rm.rotation() != Rotation.NONE) blockState = blockState.rotate(rm.rotation());
 
-            // 2. Override each facing property with the full transform (handles vertical facing and
-            //    guarantees facing tracks the structure), skipping values the property forbids.
+            // 2. Override each facing property with the full transform (handles vertical facing).
             for (Property<?> prop : original.getProperties()) {
                 if (prop.getValueClass() == Direction.class) {
                     @SuppressWarnings("unchecked")
@@ -128,21 +129,19 @@ public class BuildGenerator {
                 }
             }
 
-            // 3. Correct compound orientation steps 1-2 can't express (e.g. a GT multiblock's upwards
-            //    facing, a relative roll that depends on the front facing set above).
-            if (!cfg.transform.isIdentity()) {
-                blockState = CopyHandlers.transformBlockState(blockState, original, cfg.transform);
+            // 3. GregTech extended facing (upwards facing is a relative roll the generic pass can't express).
+            if (Mods.GTCEU && !identity) {
+                blockState = GTCompat.transformBlockState(blockState, original, cfg.transform);
             }
 
-            // 4. Rotate block-entity-stored orientation (e.g. GT cover sides, multiblock flip) in NBT.
-            CompoundTag tileData = pb.spec.tileData;
-            if (tileData != null && !cfg.transform.isIdentity()) {
-                tileData = CopyHandlers.transformTileData(blockState, tileData.copy(), cfg.transform);
-            }
-
-            baseBlocks.add(new PendingBlock(
+            // 4. Rotate the analyses' orientation (cover sides, AE part sides, isFlipped).
+            var out = new PendingBlock(
                     new BlockPos(transformedRel.x(), transformedRel.y(), transformedRel.z()),
-                    new BlockSpec(blockState, tileData, pb.spec.contents, pb.spec.extraItems, pb.spec.fluids)));
+                    new BlockSpec(blockState),
+                    pb.buildOrder);
+            for (var analysis : pb.analyses) out.analyses.add(analysis.copy());
+            if (!identity) out.transform(cfg.transform);
+            baseBlocks.add(out);
         }
 
         var blocks = new ArrayList<PendingBlock>();
@@ -161,7 +160,7 @@ public class BuildGenerator {
 
                         Vector3i offset = cfg.transform.apply(new Vector3i(offsetX, offsetY, offsetZ));
                         for (var pb : baseBlocks) {
-                            blocks.add(new PendingBlock(pb.relPos.offset(offset.x, offset.y, offset.z), pb.spec));
+                            blocks.add(pb.at(pb.relPos.offset(offset.x, offset.y, offset.z)));
                         }
                     }
                 }
@@ -170,9 +169,6 @@ public class BuildGenerator {
             blocks.addAll(baseBlocks);
         }
 
-        // Relativize to Paste Origin (coordC) for PendingBuild
-        // Wait, PacketStartBuild was using BlockPos.ZERO as anchor and pb.relPos as relative to it.
-        // So the blocks already have the correct relative positions.
         return blocks;
     }
 
@@ -185,25 +181,33 @@ public class BuildGenerator {
                 new Vector3i(a.getX(), a.getY(), a.getZ()), new Vector3i(b.getX(), b.getY(), b.getZ()));
 
         var line = ShapeLine.generate(a, new BlockPos(pinnedB.x, pinnedB.y, pinnedB.z));
-        var freshCable = fresh(cfg.cables);
         var blocks = new ArrayList<PendingBlock>();
         for (var sb : line) {
-            blocks.add(new PendingBlock(sb.pos(), freshCable));
+            var pb = new PendingBlock(sb.pos(), cfg.cables);
+            attachCableAnalysis(cfg, pb);
+            blocks.add(pb);
         }
         return blocks;
     }
 
     /**
-     * Strips a palette spec down to a fresh block for geometry/cables/exchange placement: only the
-     * block state is kept, never the source block's contents, fluids, covers, or machine config —
-     * those belong to COPYING/MOVING. Exceptions, matching the original mod's cable-mode behaviour:
-     * a GT pipe keeps its paint color ({@link GTCompat#freshTileData}) and an AE2 cable bus keeps
-     * only its center cable ({@link AECompat#freshTileData}), so cables place bare rather than empty.
+     * Attaches the minimal cable analysis captured at pick time (AE center cable, or a GT pipe's
+     * paint color) so cables-mode placement reproduces the cable's identity/color without copying
+     * the rest of the source bus.
      */
-    private static BlockSpec fresh(BlockSpec picked) {
-        CompoundTag keep = null;
-        if (Mods.GTCEU) keep = GTCompat.freshTileData(picked.state, picked.tileData);
-        if (keep == null && Mods.AE2) keep = AECompat.freshTileData(picked.state, picked.tileData);
-        return new BlockSpec(picked.state, keep);
+    private static void attachCableAnalysis(MMConfig cfg, PendingBlock pb) {
+        if (cfg.cableTile == null) return;
+        CompoundTag nbt;
+        try {
+            nbt = TagParser.parseTag(cfg.cableTile);
+        } catch (Exception e) {
+            return;
+        }
+        String id = nbt.getString("id");
+        if (Mods.AE2 && id.equals("ae2:cable_bus")) {
+            pb.addAnalysis(AECompat.AEAnalysis.fromData(nbt));
+        } else if (Mods.GTCEU && id.startsWith("gtceu:")) {
+            pb.addAnalysis(GTCompat.GTAnalysis.fromConfig(nbt));
+        }
     }
 }

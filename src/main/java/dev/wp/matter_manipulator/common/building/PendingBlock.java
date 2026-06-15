@@ -1,11 +1,21 @@
 package dev.wp.matter_manipulator.common.building;
 
 import dev.wp.matter_manipulator.common.building.analysis.BlockApplyContext;
+import dev.wp.matter_manipulator.common.building.analysis.FluidAnalysis;
 import dev.wp.matter_manipulator.common.building.analysis.ITileAnalysis;
+import dev.wp.matter_manipulator.common.building.analysis.InventoryAnalysis;
+import dev.wp.matter_manipulator.common.building.analysis.RawTileAnalysis;
 import dev.wp.matter_manipulator.common.building.analysis.RequiredItems;
+import dev.wp.matter_manipulator.common.building.analysis.VanillaMiscAnalysis;
+import dev.wp.matter_manipulator.common.compat.AECompat;
+import dev.wp.matter_manipulator.common.compat.GTCompat;
 import dev.wp.matter_manipulator.common.items.manipulator.MMTransform;
+import dev.wp.matter_manipulator.common.utils.Mods;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -44,6 +54,44 @@ public class PendingBlock {
 
     public void addAnalysis(ITileAnalysis analysis) {
         if (analysis != null) analyses.add(analysis);
+    }
+
+    /**
+     * Captures the tile state at {@code worldPos} into analyses (called during a copy/move). MOVING
+     * keeps everything verbatim ({@link RawTileAnalysis}); COPYING attaches per-concern analyses:
+     * AE2 reproduces its own parts/contents, so it stands alone; otherwise a GT machine's config (or
+     * a vanilla block's misc config) followed by the generic item-handler contents and tank fluids.
+     * Order matters — config (which may recreate the BE) runs before the inventory fill.
+     */
+    public void analyze(Level level, BlockPos worldPos, boolean moving) {
+        BlockEntity be = level.getBlockEntity(worldPos);
+        if (be == null) return;
+        if (moving) {
+            addAnalysis(RawTileAnalysis.of(be.saveWithFullMetadata()));
+            return;
+        }
+        if (Mods.AE2 && AECompat.isAEBlock(be)) {
+            addAnalysis(AECompat.AEAnalysis.analyze(be));
+            return; // AE re-initialises its own grid and reproduces parts/contents wholesale
+        }
+        boolean gt = false;
+        if (Mods.GTCEU) {
+            ITileAnalysis gtAnalysis = GTCompat.GTAnalysis.analyze(be);
+            if (gtAnalysis != null) {
+                addAnalysis(gtAnalysis);
+                gt = true;
+            }
+        }
+        if (!gt) addAnalysis(VanillaMiscAnalysis.analyze(be));
+        addAnalysis(InventoryAnalysis.analyze(be));
+        addAnalysis(FluidAnalysis.analyze(be));
+    }
+
+    /** Block-entity NBT for the ghost preview to reconstruct model data, or null if none is needed. */
+    public CompoundTag previewTileData() {
+        CompoundTag out = new CompoundTag();
+        for (ITileAnalysis a : analyses) a.contributePreviewNbt(out);
+        return out.isEmpty() ? null : out;
     }
 
     /** Rotate/flip every attached analysis to follow a build transform. */

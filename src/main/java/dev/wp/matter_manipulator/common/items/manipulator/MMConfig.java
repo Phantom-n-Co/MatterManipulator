@@ -35,6 +35,12 @@ public class MMConfig {
     public WeightedSpecList replaceWhitelist = new WeightedSpecList();
     public WeightedSpecList replaceWith = new WeightedSpecList();
     public BlockSpec cables = BlockSpec.air();
+    /**
+     * Minimal captured tile NBT (SNBT) for the cables block: an AE2 center cable, or a GT pipe's
+     * paint color. Null for plain blocks. Lets cables-mode reproduce the cable's identity/color
+     * without the rest of the source bus. See {@code BuildGenerator.attachCableAnalysis}.
+     */
+    public String cableTile = null;
 
     public int[] arraySpan = new int[] { 0, 0, 0 };
     public MMTransform transform = new MMTransform();
@@ -86,6 +92,7 @@ public class MMConfig {
         next.replaceWhitelist = this.replaceWhitelist;
         next.replaceWith = this.replaceWith;
         next.cables = this.cables;
+        next.cableTile = this.cableTile;
         next.arraySpan = this.arraySpan.clone();
         next.transform = this.transform.copy();
         next.capturedRegion = this.capturedRegion != null ? this.capturedRegion.copy() : null;

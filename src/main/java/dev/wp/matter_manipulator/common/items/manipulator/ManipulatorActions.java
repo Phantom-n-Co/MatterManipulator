@@ -1,12 +1,20 @@
 package dev.wp.matter_manipulator.common.items.manipulator;
 
 import dev.wp.matter_manipulator.common.building.BlockSpec;
+import dev.wp.matter_manipulator.common.compat.AECompat;
+import dev.wp.matter_manipulator.common.compat.GTCompat;
 import dev.wp.matter_manipulator.common.data.WeightedSpecList;
 import dev.wp.matter_manipulator.common.utils.MMUtils;
+import dev.wp.matter_manipulator.common.utils.Mods;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.block.entity.BlockEntity;
+
+import javax.annotation.Nullable;
 
 /**
  * Server-side block-selection actions, shared by the pending-action right-click path
@@ -93,13 +101,37 @@ public class ManipulatorActions {
 
     /** Picking air clears the cable block. */
     public static void pickCable(ServerPlayer player, MMConfig cfg, BlockPos pos) {
-        BlockSpec block = BlockSpec.fromWorld(player.serverLevel(), pos);
+        ServerLevel level = player.serverLevel();
+        BlockSpec block = BlockSpec.fromWorld(level, pos);
         cfg.cables = block;
+        cfg.cableTile = captureCableTile(level, pos);
         if (block.isAir()) {
             MMUtils.sendInfoToPlayer(player, "mm.info.cleared_cable");
         } else {
             MMUtils.sendInfoToPlayer(player, "mm.info.set_cable", displayName(block));
         }
+    }
+
+    /**
+     * Captures only the cable's identity/color for cables mode: an AE2 center cable, or a GT pipe's
+     * paint color, as SNBT. Null for plain blocks. This is the faithful "lightweight capture at pick
+     * time" — the rest of the source bus is intentionally dropped.
+     */
+    @Nullable
+    private static String captureCableTile(ServerLevel level, BlockPos pos) {
+        BlockEntity be = level.getBlockEntity(pos);
+        if (be == null) return null;
+        CompoundTag nbt = null;
+        if (Mods.AE2 && AECompat.isAEBlock(be)) {
+            AECompat.AEAnalysis analysis = AECompat.AEAnalysis.analyze(be);
+            AECompat.AEAnalysis cable = analysis == null ? null : analysis.cableOnly();
+            if (cable != null) nbt = cable.toNbt();
+        } else if (Mods.GTCEU) {
+            GTCompat.GTAnalysis analysis = GTCompat.GTAnalysis.analyze(be);
+            GTCompat.GTAnalysis color = analysis == null ? null : analysis.colorOnly();
+            if (color != null) nbt = color.toNbt();
+        }
+        return nbt == null ? null : nbt.toString();
     }
 
     private static Component displayName(BlockSpec block) {

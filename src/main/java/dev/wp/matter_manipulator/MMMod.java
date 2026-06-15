@@ -1,6 +1,5 @@
 package dev.wp.matter_manipulator;
 
-import dev.wp.matter_manipulator.common.compat.CopyHandlers;
 import dev.wp.matter_manipulator.common.compat.GTCompat;
 import dev.wp.matter_manipulator.common.compat.ae.AEUplinkRegistrar;
 import dev.wp.matter_manipulator.common.config.MMModConfig;
@@ -47,7 +46,6 @@ public class MMMod {
 
     private void commonSetup(FMLCommonSetupEvent event) {
         event.enqueueWork(MMNetwork::init);
-        event.enqueueWork(CopyHandlers::init);
         // GregTech-only Forge event handlers; gated so GTCompat never loads without GregTech.
         if (Mods.GTCEU) {
             event.enqueueWork(GTCompat::registerEvents);

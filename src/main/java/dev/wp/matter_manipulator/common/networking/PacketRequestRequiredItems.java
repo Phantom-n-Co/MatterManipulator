@@ -2,6 +2,7 @@ package dev.wp.matter_manipulator.common.networking;
 
 import dev.wp.matter_manipulator.common.building.BuildGenerator;
 import dev.wp.matter_manipulator.common.building.MMInventory;
+import dev.wp.matter_manipulator.common.building.analysis.RequiredItems;
 import dev.wp.matter_manipulator.common.compat.AECompat;
 import dev.wp.matter_manipulator.common.items.manipulator.MMState;
 import dev.wp.matter_manipulator.common.items.manipulator.PlaceMode;
@@ -9,8 +10,6 @@ import dev.wp.matter_manipulator.common.utils.MMUtils;
 import dev.wp.matter_manipulator.common.utils.Mods;
 
 import net.minecraft.ChatFormatting;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -21,7 +20,6 @@ import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.network.NetworkEvent;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -81,46 +79,19 @@ public class PacketRequestRequiredItems {
 
             boolean planPattern = (pkt.flags & PLAN_PATTERN) != 0;
 
-            Map<Item, Long> required = new LinkedHashMap<>();
-            Map<Fluid, Long> requiredFluids = new LinkedHashMap<>();
+            RequiredItems req = new RequiredItems();
             for (var pb : blocks) {
-                var stack = pb.spec.toStack();
                 if (!planAll) {
                     var pos = eff.coordC.pos.offset(pb.relPos);
                     if (level.isLoaded(pos) && level.getBlockState(pos) == pb.spec.state) continue;
                 }
-                // Itemless hosts (e.g. an AE2 cable bus) have no block item; their real cost is the
-                // cable/parts/facades counted via extraItems below, so don't skip them outright.
-                if (!stack.isEmpty()) {
-                    required.merge(stack.getItem(), (long) stack.getCount(), Long::sum);
-                }
-                if (pb.spec.contents != null) {
-                    // Captured through the source's item handler — works for any container
-                    for (int i = 0; i < pb.spec.contents.size(); i++) {
-                        ItemStack stored = ItemStack.of(pb.spec.contents.getCompound(i));
-                        if (!stored.isEmpty()) {
-                            required.merge(stored.getItem(), (long) stored.getCount(), Long::sum);
-                        }
-                    }
-                } else if (pb.spec.tileData != null) {
-                    mergeStoredItems(required, pb.spec.tileData);
-                }
-                if (pb.spec.extraItems != null) {
-                    for (ItemStack extra : pb.spec.extraItems) {
-                        if (!extra.isEmpty()) {
-                            required.merge(extra.getItem(), (long) extra.getCount(), Long::sum);
-                        }
-                    }
-                }
-                if (pb.spec.fluids != null) {
-                    for (int i = 0; i < pb.spec.fluids.size(); i++) {
-                        FluidStack fs = FluidStack.loadFluidStackFromNBT(pb.spec.fluids.getCompound(i));
-                        if (!fs.isEmpty()) {
-                            requiredFluids.merge(fs.getFluid(), (long) fs.getAmount(), Long::sum);
-                        }
-                    }
-                }
+                // The block item itself (empty for itemless hosts like an AE2 cable bus) plus whatever
+                // the attached analyses (covers, AE parts/cable, container contents, fluids) install.
+                req.add(pb.spec.toStack());
+                pb.collectRequiredItems(req);
             }
+            Map<Item, Long> required = req.items;
+            Map<Fluid, Long> requiredFluids = req.fluids;
 
             if (required.isEmpty() && requiredFluids.isEmpty()) {
                 MMUtils.sendInfoToPlayer(player, "mm.info.none");
@@ -185,22 +156,5 @@ public class PacketRequestRequiredItems {
             }
         });
         ctx.get().setPacketHandled(true);
-    }
-
-    /**
-     * Counts the single-slot items a copy keeps that have no item-handler capability — lectern
-     * books and jukebox records. Container inventories are counted from the {@code contents}
-     * snapshot instead (which covers any item-handler layout), so {@code Items} is intentionally
-     * not scanned here: it would over-count blocks whose contents the whitelist won't paste.
-     */
-    private static void mergeStoredItems(Map<Item, Long> required, CompoundTag tileData) {
-        for (String key : new String[] { "Book", "RecordItem" }) {
-            if (tileData.contains(key, Tag.TAG_COMPOUND)) {
-                ItemStack stack = ItemStack.of(tileData.getCompound(key));
-                if (!stack.isEmpty()) {
-                    required.merge(stack.getItem(), (long) stack.getCount(), Long::sum);
-                }
-            }
-        }
     }
 }
