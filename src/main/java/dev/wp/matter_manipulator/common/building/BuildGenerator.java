@@ -5,9 +5,12 @@ import dev.wp.matter_manipulator.common.building.shapes.ShapeCube;
 import dev.wp.matter_manipulator.common.building.shapes.ShapeCylinder;
 import dev.wp.matter_manipulator.common.building.shapes.ShapeLine;
 import dev.wp.matter_manipulator.common.building.shapes.ShapeSphere;
+import dev.wp.matter_manipulator.common.compat.AECompat;
 import dev.wp.matter_manipulator.common.compat.CopyHandlers;
+import dev.wp.matter_manipulator.common.compat.GTCompat;
 import dev.wp.matter_manipulator.common.items.manipulator.MMConfig;
 import dev.wp.matter_manipulator.common.items.manipulator.PlaceMode;
+import dev.wp.matter_manipulator.common.utils.Mods;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -59,7 +62,7 @@ public class BuildGenerator {
             };
             var picked = palette.pick(rng);
             if (picked != null) {
-                blocks.add(new PendingBlock(sb.pos(), picked));
+                blocks.add(new PendingBlock(sb.pos(), fresh(picked)));
             }
         }
         return blocks;
@@ -84,7 +87,7 @@ public class BuildGenerator {
                     if (cfg.replaceWhitelist.contains(current.getBlock())) {
                         var picked = cfg.replaceWith.pick(rng);
                         if (picked != null) {
-                            blocks.add(new PendingBlock(pos, picked));
+                            blocks.add(new PendingBlock(pos, fresh(picked)));
                         }
                     }
                 }
@@ -182,10 +185,25 @@ public class BuildGenerator {
                 new Vector3i(a.getX(), a.getY(), a.getZ()), new Vector3i(b.getX(), b.getY(), b.getZ()));
 
         var line = ShapeLine.generate(a, new BlockPos(pinnedB.x, pinnedB.y, pinnedB.z));
+        var freshCable = fresh(cfg.cables);
         var blocks = new ArrayList<PendingBlock>();
         for (var sb : line) {
-            blocks.add(new PendingBlock(sb.pos(), cfg.cables));
+            blocks.add(new PendingBlock(sb.pos(), freshCable));
         }
         return blocks;
+    }
+
+    /**
+     * Strips a palette spec down to a fresh block for geometry/cables/exchange placement: only the
+     * block state is kept, never the source block's contents, fluids, covers, or machine config —
+     * those belong to COPYING/MOVING. Exceptions, matching the original mod's cable-mode behaviour:
+     * a GT pipe keeps its paint color ({@link GTCompat#freshTileData}) and an AE2 cable bus keeps
+     * only its center cable ({@link AECompat#freshTileData}), so cables place bare rather than empty.
+     */
+    private static BlockSpec fresh(BlockSpec picked) {
+        CompoundTag keep = null;
+        if (Mods.GTCEU) keep = GTCompat.freshTileData(picked.state, picked.tileData);
+        if (keep == null && Mods.AE2) keep = AECompat.freshTileData(picked.state, picked.tileData);
+        return new BlockSpec(picked.state, keep);
     }
 }

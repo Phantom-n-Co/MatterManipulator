@@ -85,12 +85,15 @@ public class PacketRequestRequiredItems {
             Map<Fluid, Long> requiredFluids = new LinkedHashMap<>();
             for (var pb : blocks) {
                 var stack = pb.spec.toStack();
-                if (stack.isEmpty()) continue;
                 if (!planAll) {
                     var pos = eff.coordC.pos.offset(pb.relPos);
                     if (level.isLoaded(pos) && level.getBlockState(pos) == pb.spec.state) continue;
                 }
-                required.merge(stack.getItem(), (long) stack.getCount(), Long::sum);
+                // Itemless hosts (e.g. an AE2 cable bus) have no block item; their real cost is the
+                // cable/parts/facades counted via extraItems below, so don't skip them outright.
+                if (!stack.isEmpty()) {
+                    required.merge(stack.getItem(), (long) stack.getCount(), Long::sum);
+                }
                 if (pb.spec.contents != null) {
                     // Captured through the source's item handler — works for any container
                     for (int i = 0; i < pb.spec.contents.size(); i++) {

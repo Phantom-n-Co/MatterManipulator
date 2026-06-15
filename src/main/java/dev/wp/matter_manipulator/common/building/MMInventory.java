@@ -120,4 +120,9 @@ public class MMInventory {
     public Player getPlayer() {
         return player;
     }
+
+    @Nullable
+    public Location getUplink() {
+        return uplink;
+    }
 }

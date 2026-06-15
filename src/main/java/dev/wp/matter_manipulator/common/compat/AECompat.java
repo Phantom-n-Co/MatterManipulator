@@ -2,6 +2,9 @@ package dev.wp.matter_manipulator.common.compat;
 
 import dev.wp.matter_manipulator.common.building.Location;
 import dev.wp.matter_manipulator.common.building.MMInventory;
+import dev.wp.matter_manipulator.common.building.analysis.BlockApplyContext;
+import dev.wp.matter_manipulator.common.building.analysis.ITileAnalysis;
+import dev.wp.matter_manipulator.common.building.analysis.RequiredItems;
 import dev.wp.matter_manipulator.common.compat.ae.UplinkBlockEntity;
 import dev.wp.matter_manipulator.common.items.manipulator.MMTransform;
 
@@ -22,6 +25,7 @@ import appeng.api.parts.IFacadeContainer;
 import appeng.api.parts.IFacadePart;
 import appeng.api.parts.IPart;
 import appeng.api.parts.IPartHost;
+import appeng.api.parts.IPartItem;
 import appeng.api.stacks.AEFluidKey;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.GenericStack;
@@ -48,6 +52,24 @@ public class AECompat {
 
     public static boolean isAEBlock(BlockEntity be) {
         return be instanceof IPartHost || be instanceof ISegmentedInventory;
+    }
+
+    /**
+     * Minimal tile NBT to keep when placing a "fresh" AE2 cable in geometry/cables/exchange mode:
+     * only the center cable part (keyed {@code "cable"}) survives, so the bus places as a bare cable
+     * with no attached parts or facades — matching the original mod's cable-mode behaviour, which
+     * lays down just the cable part. The cable's color rides inside that blob (cables are distinct
+     * colored part items). Returns {@code null} for anything that isn't a cable bus with a cable.
+     */
+    @Nullable
+    public static CompoundTag freshTileData(BlockState state, @Nullable CompoundTag tileData) {
+        if (tileData == null || !tileData.getString("id").equals("ae2:cable_bus")) return null;
+        Tag center = tileData.get("cable");
+        if (center == null) return null;
+        CompoundTag out = new CompoundTag();
+        out.putString("id", "ae2:cable_bus");
+        out.put("cable", center.copy());
+        return out;
     }
 
     /**
@@ -90,9 +112,9 @@ public class AECompat {
 
     /**
      * Called after {@code be.load()} in COPYING mode. For each part/upgrade/cell restored from
-     * NBT, consumes the item from the player's inventory. Parts that can't be paid for are
-     * removed (with their contents given back); individual upgrades/cells that can't be paid for
-     * are cleared and given back.
+     * NBT, consumes the item from the player's inventory. Anything the player can't pay for is
+     * removed (parts) or cleared (upgrades/cells) — never handed back: these were fabricated from
+     * the copy template, not taken from the player, so giving them out would mint free items.
      */
     public static void filterAEItems(BlockEntity be, MMInventory inv) {
         boolean creative = inv.getPlayer().isCreative();
@@ -107,12 +129,10 @@ public class AECompat {
                         filterSegmented(seg, inv, creative);
                     }
                 } else {
-                    // Collect all drops (part item + contents) before removing
-                    List<ItemStack> drops = new ArrayList<>();
-                    part.addPartDrop(drops, false);
-                    part.addAdditionalDrops(drops, false);
+                    // Can't pay for this copied part: remove it from the world. removePartFromSide
+                    // detaches it without dropping, and we must not give it back — it was rebuilt
+                    // from the template, so handing it over would mint a free part.
                     partHost.removePartFromSide(dir);
-                    drops.forEach(inv::give);
                 }
             }
             IFacadeContainer fc = partHost.getFacadeContainer();
@@ -123,8 +143,8 @@ public class AECompat {
                 if (creative || inv.canConsume(facadeItem)) {
                     inv.consume(facadeItem);
                 } else {
+                    // Fabricated from the template — remove it, don't hand the player a free facade.
                     fc.removeFacade(partHost, dir);
-                    inv.give(facadeItem);
                 }
             }
         } else if (be instanceof ISegmentedInventory seg) {
@@ -142,7 +162,7 @@ public class AECompat {
                 if (creative || inv.canConsume(stack)) {
                     inv.consume(stack);
                 } else {
-                    inv.give(stack.copy());
+                    // Fabricated from the template — clear it, don't grant a free cell/upgrade.
                     internal.setItemDirect(i, ItemStack.EMPTY);
                 }
             }
@@ -243,6 +263,133 @@ public class AECompat {
         UplinkBlockEntity u = resolveUplink(level, loc);
         if (u == null) return -1;
         return u.getUplink().clearPlan(player);
+    }
+
+    /**
+     * Parsed AE2 tile state for a copied block. AE2 re-initialises its own grid/node state when a
+     * block is placed, so the captured BE NBT can be loaded wholesale and it correctly reproduces
+     * parts, facades, cells, and configuration; this analysis therefore stores that NBT plus the real
+     * items (parts/facades/cells/upgrades) needed for the required-items tally, and charges them in
+     * {@link #apply} (unaffordable items are removed, never given back — see {@link #filterAEItems}).
+     * {@link #transform} permutes the per-side part/facade keys; {@link #forCable}/{@link #cableOnly}
+     * build a bare center-cable analysis for cables mode (mirroring the original {@code getAECables}).
+     */
+    public static class AEAnalysis implements ITileAnalysis {
+        private CompoundTag data;
+        @Nullable
+        private List<ItemStack> items;
+
+        @Nullable
+        public static AEAnalysis analyze(BlockEntity be) {
+            if (!isAEBlock(be)) return null;
+            AEAnalysis a = new AEAnalysis();
+            a.data = be.saveWithFullMetadata();
+            a.items = captureAEItems(be);
+            return a;
+        }
+
+        /** A bare center-cable analysis from a cable part item (cables mode). */
+        @Nullable
+        public static AEAnalysis forCable(ItemStack cableStack) {
+            if (!(cableStack.getItem() instanceof IPartItem<?> partItem)) return null;
+            CompoundTag cable = new CompoundTag();
+            cable.putString("id", IPartItem.getId(partItem).toString());
+            CompoundTag data = new CompoundTag();
+            data.putString("id", "ae2:cable_bus");
+            data.put("cable", cable);
+            AEAnalysis a = new AEAnalysis();
+            a.data = data;
+            a.items = List.of(new ItemStack(partItem));
+            return a;
+        }
+
+        /** Reduce a captured cable bus to just its center cable, dropping attached parts and facades. */
+        @Nullable
+        public AEAnalysis cableOnly() {
+            if (!data.getString("id").equals("ae2:cable_bus")) return null;
+            Tag center = data.get("cable");
+            if (!(center instanceof CompoundTag cableBlob)) return null;
+            CompoundTag d = new CompoundTag();
+            d.putString("id", "ae2:cable_bus");
+            d.put("cable", cableBlob.copy());
+            AEAnalysis a = new AEAnalysis();
+            a.data = d;
+            IPartItem<?> partItem = IPartItem.byId(ResourceLocation.parse(cableBlob.getString("id")));
+            a.items = partItem == null ? List.of() : List.of(new ItemStack(partItem));
+            return a;
+        }
+
+        @Override
+        public boolean apply(BlockApplyContext ctx) {
+            BlockEntity be = ctx.getBlockEntity();
+            if (be == null) return true;
+            CompoundTag tag = data.copy();
+            BlockPos pos = ctx.pos();
+            tag.putInt("x", pos.getX());
+            tag.putInt("y", pos.getY());
+            tag.putInt("z", pos.getZ());
+            be.load(tag);
+            filterAEItems(be, ctx.inv());
+            be.setChanged();
+            return true;
+        }
+
+        @Override
+        public void collectRequiredItems(RequiredItems out) {
+            if (items != null) {
+                for (ItemStack s : items) out.add(s);
+            }
+        }
+
+        @Override
+        public void transform(MMTransform transform) {
+            transformCableBusNbt(data, transform);
+        }
+
+        @Override
+        public ITileAnalysis copy() {
+            AEAnalysis dup = new AEAnalysis();
+            dup.data = data.copy();
+            if (items != null) {
+                dup.items = new ArrayList<>(items.size());
+                for (ItemStack s : items) dup.items.add(s.copy());
+            }
+            return dup;
+        }
+
+        @Override
+        public void contributePreviewNbt(CompoundTag out) {
+            for (String key : data.getAllKeys()) {
+                out.put(key, data.get(key).copy());
+            }
+        }
+    }
+
+    /**
+     * Rotates/flips a cable bus's parts and facades in place by moving each per-side sub-tag to the
+     * transform-rotated side. A part takes its side purely from which key it sits under
+     * ({@code AEBasePart.side} is not serialized), so moving the blob is all that's needed — no side
+     * is baked inside it (unlike GT covers). No-op for NBT that isn't a cable bus. Shared by
+     * {@link AEAnalysis} (copy) and {@code RawTileAnalysis} (move).
+     */
+    public static void transformCableBusNbt(CompoundTag tag, MMTransform transform) {
+        if (!tag.getString("id").equals("ae2:cable_bus")) return;
+        permuteSideKeys(tag, transform, side -> side.getSerializedName());
+        permuteSideKeys(tag, transform, side -> "facade" + StringUtils.capitalize(side.getSerializedName()));
+    }
+
+    /** Moves each per-side sub-tag (keyed by {@code keyFor}) to the transform-rotated side. */
+    private static void permuteSideKeys(
+            CompoundTag tag, MMTransform transform, java.util.function.Function<Direction, String> keyFor) {
+        java.util.Map<String, Tag> moved = new java.util.HashMap<>();
+        for (Direction side : Direction.values()) {
+            Tag blob = tag.get(keyFor.apply(side));
+            if (blob != null) moved.put(keyFor.apply(transform.apply(side)), blob.copy());
+        }
+        for (Direction side : Direction.values()) {
+            tag.remove(keyFor.apply(side));
+        }
+        moved.forEach(tag::put);
     }
 
     /**
