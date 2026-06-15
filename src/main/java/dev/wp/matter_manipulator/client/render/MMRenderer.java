@@ -1,7 +1,5 @@
 package dev.wp.matter_manipulator.client.render;
 
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
 import dev.wp.matter_manipulator.common.building.BuildGenerator;
 import dev.wp.matter_manipulator.common.building.Location;
 import dev.wp.matter_manipulator.common.building.PendingBlock;
@@ -11,9 +9,7 @@ import dev.wp.matter_manipulator.common.items.manipulator.MMState;
 import dev.wp.matter_manipulator.common.items.manipulator.PendingAction;
 import dev.wp.matter_manipulator.common.items.manipulator.PlaceMode;
 import dev.wp.matter_manipulator.common.items.manipulator.ShapeType;
-import java.util.Collections;
-import java.util.List;
-import javax.annotation.Nullable;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.LevelRenderer;
@@ -24,14 +20,21 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import org.joml.Vector3i;
+
+import java.util.Collections;
+import java.util.List;
+
+import javax.annotation.Nullable;
 
 /**
  * Renders translucent bounding boxes and cable line previews
  * for the currently held matter manipulator.
  */
 public class MMRenderer {
-
     /** Dimension string displayed above the hotbar (e.g. "10x5x8"). Empty when nothing to show. */
     public static String hudText = "";
 
@@ -65,10 +68,9 @@ public class MMRenderer {
         updateAnalysisCache(cfg, mc.level);
 
         // Ghost-block hints: positions are coordC-relative in COPYING/MOVING, absolute otherwise
-        BlockPos ghostOrigin =
-                (cfg.placeMode == PlaceMode.COPYING || cfg.placeMode == PlaceMode.MOVING) && cfg.coordC != null
-                        ? cfg.coordC.pos
-                        : null;
+        BlockPos ghostOrigin = (cfg.placeMode == PlaceMode.COPYING || cfg.placeMode == PlaceMode.MOVING) && cfg.coordC != null
+                ? cfg.coordC.pos
+                : null;
         int tierRange = ((ItemMatterManipulator) held.getItem()).getTier().range;
         GhostBlockRenderer.submit(analysisCache, ghostOrigin, mc.level, player, tierRange, camPos);
 
@@ -148,8 +150,8 @@ public class MMRenderer {
             bufSource.endBatch(RenderType.lines());
 
             int len = Math.max(
-                            Math.max(Math.abs(a.getX() - b.getX()), Math.abs(a.getY() - b.getY())),
-                            Math.abs(a.getZ() - b.getZ()))
+                    Math.max(Math.abs(a.getX() - b.getX()), Math.abs(a.getY() - b.getY())),
+                    Math.abs(a.getZ() - b.getZ()))
                     + 1;
             hudText = len + " blocks";
         } else {
@@ -222,7 +224,7 @@ public class MMRenderer {
                 // Live array span preview while aiming
                 if (cfg.coordA != null && cfg.coordB != null && cfg.coordC != null) {
                     var mult = cfg.getArrayMult(look);
-                    eff.arraySpan = new int[] {mult.x, mult.y, mult.z};
+                    eff.arraySpan = new int[] { mult.x, mult.y, mult.z };
                 }
             }
             case MARK_COPY_A, MARK_CUT_A -> {
@@ -434,8 +436,8 @@ public class MMRenderer {
         Vector3i c0 = cfg.transform.apply(new Vector3i((int) rx[0], (int) ry[0], (int) rz[0]));
         Vector3i c1 = cfg.transform.apply(new Vector3i((int) rx[1], (int) ry[1], (int) rz[1]));
         return new int[] {
-            Math.min(c0.x(), c1.x()), Math.min(c0.y(), c1.y()), Math.min(c0.z(), c1.z()),
-            Math.max(c0.x(), c1.x()), Math.max(c0.y(), c1.y()), Math.max(c0.z(), c1.z()),
+                Math.min(c0.x(), c1.x()), Math.min(c0.y(), c1.y()), Math.min(c0.z(), c1.z()),
+                Math.max(c0.x(), c1.x()), Math.max(c0.y(), c1.y()), Math.max(c0.z(), c1.z()),
         };
     }
 
@@ -444,7 +446,7 @@ public class MMRenderer {
         long relMin = Math.min(0, delta), relMax = Math.max(0, delta);
         int step = delta + (delta < 0 ? -1 : 1); // copy spacing = region size, signed
         long o0 = (long) Math.min(span, 0) * step, o1 = (long) Math.max(span, 0) * step;
-        return new long[] {relMin + Math.min(o0, o1), relMax + Math.max(o0, o1)};
+        return new long[] { relMin + Math.min(o0, o1), relMax + Math.max(o0, o1) };
     }
 
     /** Cheap order-sensitive hash over positions + states; far cheaper than re-baking models. */

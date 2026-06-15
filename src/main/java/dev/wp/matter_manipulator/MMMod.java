@@ -1,6 +1,5 @@
 package dev.wp.matter_manipulator;
 
-import com.mojang.logging.LogUtils;
 import dev.wp.matter_manipulator.common.compat.CopyHandlers;
 import dev.wp.matter_manipulator.common.compat.GTCompat;
 import dev.wp.matter_manipulator.common.compat.ae.AEUplinkRegistrar;
@@ -9,6 +8,7 @@ import dev.wp.matter_manipulator.common.items.MMItems;
 import dev.wp.matter_manipulator.common.items.MMRecipes;
 import dev.wp.matter_manipulator.common.networking.MMNetwork;
 import dev.wp.matter_manipulator.common.utils.Mods;
+
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -16,6 +16,8 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+
+import com.mojang.logging.LogUtils;
 import org.slf4j.Logger;
 
 @Mod(MMMod.MODID)

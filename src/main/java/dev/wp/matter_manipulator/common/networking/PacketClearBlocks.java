@@ -2,14 +2,15 @@ package dev.wp.matter_manipulator.common.networking;
 
 import dev.wp.matter_manipulator.common.data.WeightedSpecList;
 import dev.wp.matter_manipulator.common.items.manipulator.MMState;
-import java.util.function.Supplier;
+
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
 
-public class PacketClearBlocks {
+import java.util.function.Supplier;
 
+public class PacketClearBlocks {
     public PacketClearBlocks() {}
 
     public static void encode(PacketClearBlocks pkt, FriendlyByteBuf buf) {}

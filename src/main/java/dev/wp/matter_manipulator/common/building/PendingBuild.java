@@ -16,19 +16,7 @@ import dev.wp.matter_manipulator.common.networking.MMNetwork;
 import dev.wp.matter_manipulator.common.networking.PacketBuildStatus;
 import dev.wp.matter_manipulator.common.utils.MMUtils;
 import dev.wp.matter_manipulator.common.utils.Mods;
-import it.unimi.dsi.fastutil.longs.LongArrayList;
-import it.unimi.dsi.fastutil.longs.LongList;
-import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import javax.annotation.Nullable;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -51,8 +39,23 @@ import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.IItemHandlerModifiable;
 import net.minecraftforge.network.PacketDistributor;
 
-public class PendingBuild {
+import it.unimi.dsi.fastutil.longs.LongArrayList;
+import it.unimi.dsi.fastutil.longs.LongList;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import javax.annotation.Nullable;
+
+public class PendingBuild {
     private static final Map<UUID, PendingBuild> ACTIVE = new HashMap<>();
 
     private final UUID playerId;
@@ -103,13 +106,13 @@ public class PendingBuild {
     /**
      * Start (or replace) a build for a player.
      *
-     * @param blocks     PendingBlocks whose {@code relPos} is relative to {@code anchor}
-     *                   (or absolute world position when anchor = {@link BlockPos#ZERO}).
-     * @param anchor     Added to each block's relPos to produce the world position.
-     * @param moving     True for MOVING-mode builds (no item interaction).
-     * @param sourceMin  Optional min corner to clear when build finishes (MOVING mode).
-     * @param sourceMax  Optional max corner to clear when build finishes (MOVING mode).
-     * @param cableMode  True for CABLES-mode builds: auto-connect placed GT pipes.
+     * @param blocks    PendingBlocks whose {@code relPos} is relative to {@code anchor}
+     *                  (or absolute world position when anchor = {@link BlockPos#ZERO}).
+     * @param anchor    Added to each block's relPos to produce the world position.
+     * @param moving    True for MOVING-mode builds (no item interaction).
+     * @param sourceMin Optional min corner to clear when build finishes (MOVING mode).
+     * @param sourceMax Optional max corner to clear when build finishes (MOVING mode).
+     * @param cableMode True for CABLES-mode builds: auto-connect placed GT pipes.
      */
     public static void start(
             Player player,
@@ -311,8 +314,7 @@ public class PendingBuild {
                     // MOVING relocates a block verbatim (state + contents travel intact).
                     // COPYING fabricates a new block, so it keeps only the whitelisted
                     // configuration each handler allows — positional/runtime state is dropped.
-                    CompoundTag tileTag =
-                            moving ? full.copy() : CopyHandlers.buildCopyTag(pb.spec.state, be, full, inv);
+                    CompoundTag tileTag = moving ? full.copy() : CopyHandlers.buildCopyTag(pb.spec.state, be, full, inv);
                     tileTag.putInt("x", pb.relPos.getX());
                     tileTag.putInt("y", pb.relPos.getY());
                     tileTag.putInt("z", pb.relPos.getZ());
@@ -431,8 +433,7 @@ public class PendingBuild {
      */
     private static void injectContents(BlockEntity be, @Nullable ListTag snapshot, MMInventory inv) {
         if (snapshot == null || snapshot.isEmpty()) return;
-        IItemHandler handler =
-                be.getCapability(ForgeCapabilities.ITEM_HANDLER).resolve().orElse(null);
+        IItemHandler handler = be.getCapability(ForgeCapabilities.ITEM_HANDLER).resolve().orElse(null);
         if (!(handler instanceof IItemHandlerModifiable modifiable)) return;
         boolean creative = inv.getPlayer().isCreative();
 
@@ -458,8 +459,7 @@ public class PendingBuild {
         if (be == null) return;
         // Machines that save their contents into the dropped item already keep them
         if (Mods.GTCEU && GTCompat.savesContentsToItem(be)) return;
-        IItemHandler handler =
-                be.getCapability(ForgeCapabilities.ITEM_HANDLER).resolve().orElse(null);
+        IItemHandler handler = be.getCapability(ForgeCapabilities.ITEM_HANDLER).resolve().orElse(null);
         if (handler == null) return;
         for (int slot = 0; slot < handler.getSlots(); slot++) {
             ItemStack stack = handler.getStackInSlot(slot);
@@ -474,8 +474,7 @@ public class PendingBuild {
      */
     private static void fillFluids(
             BlockEntity be, @Nullable ListTag snapshot, @Nullable Location uplink, ServerLevel level) {
-        var handler =
-                be.getCapability(ForgeCapabilities.FLUID_HANDLER).resolve().orElse(null);
+        var handler = be.getCapability(ForgeCapabilities.FLUID_HANDLER).resolve().orElse(null);
         if (handler == null) return;
         // drain() removes one fluid type per call; bounded in case a handler refills itself
         for (int i = 0; i < 64; i++) {

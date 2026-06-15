@@ -1,5 +1,13 @@
 package dev.wp.matter_manipulator.common.compat.ae;
 
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+
 import appeng.api.config.Actionable;
 import appeng.api.networking.IGrid;
 import appeng.api.networking.crafting.ICraftingLink;
@@ -11,15 +19,9 @@ import appeng.blockentity.grid.AENetworkBlockEntity;
 import appeng.helpers.patternprovider.PatternProviderLogic;
 import appeng.helpers.patternprovider.PatternProviderLogicHost;
 import com.google.common.collect.ImmutableSet;
-import java.util.EnumSet;
 import lombok.Getter;
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.Tag;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.state.BlockState;
+
+import java.util.EnumSet;
 
 /**
  * AE2 grid device that hosts a {@link UplinkLogic}. It joins the network through ME cables, exposes
@@ -32,7 +34,6 @@ import net.minecraft.world.level.block.state.BlockState;
  */
 @Getter
 public class UplinkBlockEntity extends AENetworkBlockEntity implements PatternProviderLogicHost, ICraftingRequester {
-
     private final UplinkLogic uplink;
 
     public UplinkBlockEntity(BlockPos pos, BlockState state) {

@@ -3,16 +3,18 @@ package dev.wp.matter_manipulator.common.items.manipulator;
 import dev.wp.matter_manipulator.common.building.BlockSpec;
 import dev.wp.matter_manipulator.common.building.Location;
 import dev.wp.matter_manipulator.common.data.WeightedSpecList;
-import java.util.Arrays;
-import java.util.Objects;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.Level;
+
 import org.joml.Vector3i;
 
-public class MMConfig {
+import java.util.Arrays;
+import java.util.Objects;
 
+public class MMConfig {
     public PlaceMode placeMode = PlaceMode.GEOMETRY;
     public RemoveMode removeMode = RemoveMode.NONE;
     public ShapeType shape = ShapeType.CUBE;
@@ -34,7 +36,7 @@ public class MMConfig {
     public WeightedSpecList replaceWith = new WeightedSpecList();
     public BlockSpec cables = BlockSpec.air();
 
-    public int[] arraySpan = new int[] {0, 0, 0};
+    public int[] arraySpan = new int[] { 0, 0, 0 };
     public MMTransform transform = new MMTransform();
 
     /**

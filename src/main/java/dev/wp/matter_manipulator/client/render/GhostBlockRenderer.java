@@ -1,22 +1,9 @@
 package dev.wp.matter_manipulator.client.render;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.BufferBuilder;
-import com.mojang.blaze3d.vertex.DefaultVertexFormat;
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexBuffer;
-import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.mojang.blaze3d.vertex.VertexFormat;
-import com.mojang.blaze3d.vertex.VertexSorting;
 import dev.wp.matter_manipulator.common.building.PendingBlock;
 import dev.wp.matter_manipulator.common.config.MMModConfig;
 import dev.wp.matter_manipulator.common.items.manipulator.PlaceMode;
-import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
-import it.unimi.dsi.fastutil.longs.LongSet;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import javax.annotation.Nullable;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.GameRenderer;
@@ -31,8 +18,25 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.client.model.data.ModelData;
+
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexBuffer;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.blaze3d.vertex.VertexFormat;
+import com.mojang.blaze3d.vertex.VertexSorting;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongSet;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+
+import javax.annotation.Nullable;
 
 /**
  * Renders translucent ghost-block hints for all manipulator modes.
@@ -46,7 +50,6 @@ import org.joml.Matrix4f;
  */
 @OnlyIn(Dist.CLIENT)
 public class GhostBlockRenderer {
-
     private static final float GHOST_ALPHA = 0.5f;
     /** Ghost models render at this fraction of full size, centered in their cell, so gaps are visible. */
     private static final float GHOST_SCALE = 0.75f;
@@ -203,8 +206,7 @@ public class GhostBlockRenderer {
                 removalBoxes.clear();
                 return;
             }
-            currentJob =
-                    new BakeJob(pendingBlocks, pendingOrigin, pendingLevel, pendingPlayer, pendingRange, pendingCamPos);
+            currentJob = new BakeJob(pendingBlocks, pendingOrigin, pendingLevel, pendingPlayer, pendingRange, pendingCamPos);
         }
 
         if (builder == null) builder = new BufferBuilder(2097152);
@@ -246,8 +248,7 @@ public class GhostBlockRenderer {
         builder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.BLOCK);
         builder.restoreSortState(sortState);
         builder.setQuadSorting(
-                VertexSorting.byDistance((float) (camPos.x - anchor.getX()), (float) (camPos.y - anchor.getY()), (float)
-                        (camPos.z - anchor.getZ())));
+                VertexSorting.byDistance((float) (camPos.x - anchor.getX()), (float) (camPos.y - anchor.getY()), (float) (camPos.z - anchor.getZ())));
         sortState = builder.getSortState();
         var rb = builder.end();
         vbo.bind();
@@ -327,7 +328,6 @@ public class GhostBlockRenderer {
      * consume a bounded budget per {@link #advance} call.
      */
     private static final class BakeJob {
-
         private final List<PendingBlock> blocks;
 
         @Nullable
@@ -487,8 +487,7 @@ public class GhostBlockRenderer {
 
         private void finish() {
             builder.setQuadSorting(VertexSorting.byDistance(
-                    (float) (camPos.x - jobAnchor.getX()), (float) (camPos.y - jobAnchor.getY()), (float)
-                            (camPos.z - jobAnchor.getZ())));
+                    (float) (camPos.x - jobAnchor.getX()), (float) (camPos.y - jobAnchor.getY()), (float) (camPos.z - jobAnchor.getZ())));
             sortState = builder.getSortState();
 
             var rb = builder.endOrDiscardIfEmpty();
@@ -592,7 +591,6 @@ public class GhostBlockRenderer {
 
     /** Multiplies vertex colors by a tint and forces a fixed alpha, making block models translucent. */
     private static final class GhostConsumer implements VertexConsumer {
-
         private final VertexConsumer inner;
         private final int a255;
         private float tr = 1f, tg = 1f, tb = 1f;

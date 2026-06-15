@@ -2,12 +2,14 @@ package dev.wp.matter_manipulator.common.compat;
 
 import dev.wp.matter_manipulator.common.building.MMInventory;
 import dev.wp.matter_manipulator.common.items.manipulator.MMTransform;
-import javax.annotation.Nullable;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+
+import javax.annotation.Nullable;
 
 /**
  * A per-block-type rule for what survives a COPY. The manipulator no longer pastes a block
@@ -18,7 +20,6 @@ import net.minecraft.world.level.block.state.BlockState;
  * item-handler capability, so handlers only deal with configuration, covers, and parts.
  */
 public interface CopyHandler {
-
     /** Whether this handler applies to the given block. {@code fullTag} is the captured BE NBT. */
     boolean matches(BlockState state, @Nullable BlockEntity be, @Nullable CompoundTag fullTag);
 

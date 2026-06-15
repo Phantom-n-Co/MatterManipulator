@@ -3,16 +3,18 @@ package dev.wp.matter_manipulator.common.networking;
 import dev.wp.matter_manipulator.common.items.manipulator.BlockSelectMode;
 import dev.wp.matter_manipulator.common.items.manipulator.MMState;
 import dev.wp.matter_manipulator.common.items.manipulator.PendingAction;
-import java.util.function.Supplier;
-import javax.annotation.Nullable;
+
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
 
+import java.util.function.Supplier;
+
+import javax.annotation.Nullable;
+
 /** Sets a pending action on the server, optionally also updating blockSelectMode. */
 public class PacketSetPendingAction {
-
     @Nullable
     private final PendingAction action;
 

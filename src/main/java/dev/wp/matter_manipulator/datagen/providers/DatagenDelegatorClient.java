@@ -2,9 +2,11 @@ package dev.wp.matter_manipulator.datagen.providers;
 
 import dev.wp.matter_manipulator.datagen.providers.client.MMItemModelProvider;
 import dev.wp.matter_manipulator.datagen.providers.client.MMLanguageProvider;
-import java.util.function.Function;
+
 import net.minecraft.data.DataProvider;
 import net.minecraftforge.data.event.GatherDataEvent;
+
+import java.util.function.Function;
 
 public class DatagenDelegatorClient {
     public static void configure(GatherDataEvent event) {

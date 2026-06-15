@@ -8,9 +8,7 @@ import dev.wp.matter_manipulator.common.building.shapes.ShapeSphere;
 import dev.wp.matter_manipulator.common.compat.CopyHandlers;
 import dev.wp.matter_manipulator.common.items.manipulator.MMConfig;
 import dev.wp.matter_manipulator.common.items.manipulator.PlaceMode;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -19,10 +17,14 @@ import net.minecraft.world.level.block.Mirror;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
+
 import org.joml.Vector3i;
 
-public class BuildGenerator {
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
+public class BuildGenerator {
     public static List<PendingBlock> generateBlocks(MMConfig cfg, Level level) {
         return switch (cfg.placeMode) {
             case GEOMETRY -> generateGeometry(cfg, level);
@@ -36,27 +38,25 @@ public class BuildGenerator {
     private static List<PendingBlock> generateGeometry(MMConfig cfg, Level level) {
         if (cfg.coordA == null || cfg.coordB == null) return Collections.emptyList();
 
-        List<ShapeBlock> shapeBlocks =
-                switch (cfg.shape) {
-                    case LINE -> ShapeLine.generate(cfg.coordA.pos, cfg.coordB.pos);
-                    case CUBE -> ShapeCube.generate(cfg.coordA.pos, cfg.coordB.pos);
-                    case SPHERE -> ShapeSphere.generate(cfg.coordA.pos, cfg.coordB.pos);
-                    case CYLINDER -> {
-                        if (cfg.coordC == null) yield Collections.emptyList();
-                        yield ShapeCylinder.generate(cfg.coordA.pos, cfg.coordB.pos, cfg.coordC.pos);
-                    }
-                };
+        List<ShapeBlock> shapeBlocks = switch (cfg.shape) {
+            case LINE -> ShapeLine.generate(cfg.coordA.pos, cfg.coordB.pos);
+            case CUBE -> ShapeCube.generate(cfg.coordA.pos, cfg.coordB.pos);
+            case SPHERE -> ShapeSphere.generate(cfg.coordA.pos, cfg.coordB.pos);
+            case CYLINDER -> {
+                if (cfg.coordC == null) yield Collections.emptyList();
+                yield ShapeCylinder.generate(cfg.coordA.pos, cfg.coordB.pos, cfg.coordC.pos);
+            }
+        };
 
         var rng = level.getRandom();
         var blocks = new ArrayList<PendingBlock>();
         for (var sb : shapeBlocks) {
-            var palette =
-                    switch (sb.slot()) {
-                        case CORNER -> cfg.corners;
-                        case EDGE -> cfg.edges;
-                        case FACE -> cfg.faces;
-                        case VOLUME -> cfg.volumes;
-                    };
+            var palette = switch (sb.slot()) {
+                case CORNER -> cfg.corners;
+                case EDGE -> cfg.edges;
+                case FACE -> cfg.faces;
+                case VOLUME -> cfg.volumes;
+            };
             var picked = palette.pick(rng);
             if (picked != null) {
                 blocks.add(new PendingBlock(sb.pos(), picked));
@@ -101,8 +101,7 @@ public class BuildGenerator {
 
         var baseBlocks = new ArrayList<PendingBlock>();
         for (var pb : rawBlocks) {
-            Vector3i transformedRel =
-                    cfg.transform.apply(new Vector3i(pb.relPos.getX(), pb.relPos.getY(), pb.relPos.getZ()));
+            Vector3i transformedRel = cfg.transform.apply(new Vector3i(pb.relPos.getX(), pb.relPos.getY(), pb.relPos.getZ()));
 
             BlockState original = pb.spec.state;
             BlockState blockState = original;

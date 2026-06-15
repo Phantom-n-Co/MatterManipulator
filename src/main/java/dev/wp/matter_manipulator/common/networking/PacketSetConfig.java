@@ -2,13 +2,14 @@ package dev.wp.matter_manipulator.common.networking;
 
 import dev.wp.matter_manipulator.common.items.manipulator.MMConfig;
 import dev.wp.matter_manipulator.common.items.manipulator.MMState;
-import java.util.function.Supplier;
+
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
 
-public class PacketSetConfig {
+import java.util.function.Supplier;
 
+public class PacketSetConfig {
     public final String configJson;
 
     public PacketSetConfig(String configJson) {

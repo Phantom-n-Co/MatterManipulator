@@ -1,12 +1,13 @@
 package dev.wp.matter_manipulator.common.building.shapes;
 
 import dev.wp.matter_manipulator.common.items.manipulator.SlotType;
-import java.util.ArrayList;
-import java.util.List;
+
 import net.minecraft.core.BlockPos;
 
-public class ShapeSphere {
+import java.util.ArrayList;
+import java.util.List;
 
+public class ShapeSphere {
     public static List<ShapeBlock> generate(BlockPos center, BlockPos radiusPoint) {
         var result = new ArrayList<ShapeBlock>();
 

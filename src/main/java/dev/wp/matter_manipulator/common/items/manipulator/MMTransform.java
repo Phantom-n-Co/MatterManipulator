@@ -1,16 +1,17 @@
 package dev.wp.matter_manipulator.common.items.manipulator;
 
-import java.util.Objects;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.Mirror;
 import net.minecraft.world.level.block.Rotation;
+
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
 
+import java.util.Objects;
+
 /** Represents the rotation and flipping of a build region. */
 public class MMTransform {
-
     public boolean flipX, flipY, flipZ;
     public Direction forward = Direction.NORTH;
     public Direction up = Direction.UP;
@@ -61,7 +62,7 @@ public class MMTransform {
         return getRotation().determinant3x3() < 0;
     }
 
-    private static final Direction[] HORIZONTALS = {Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST};
+    private static final Direction[] HORIZONTALS = { Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST };
 
     /** A vanilla rotation + mirror equivalent of this transform (for {@code BlockState.rotate/mirror}). */
     public record RotMir(Rotation rotation, Mirror mirror) {}

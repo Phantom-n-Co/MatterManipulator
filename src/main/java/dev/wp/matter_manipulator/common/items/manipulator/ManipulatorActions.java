@@ -3,6 +3,7 @@ package dev.wp.matter_manipulator.common.items.manipulator;
 import dev.wp.matter_manipulator.common.building.BlockSpec;
 import dev.wp.matter_manipulator.common.data.WeightedSpecList;
 import dev.wp.matter_manipulator.common.utils.MMUtils;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -12,7 +13,6 @@ import net.minecraft.server.level.ServerPlayer;
  * (PacketSetCoord) and middle-mouse picking (PacketMMBPressed).
  */
 public class ManipulatorActions {
-
     /**
      * Sets or adds (when {@code add}) a block in the palette list(s) chosen by
      * {@code selectMode}.
@@ -21,14 +21,13 @@ public class ManipulatorActions {
             ServerPlayer player, MMConfig cfg, BlockSelectMode selectMode, BlockPos pos, boolean add) {
         BlockSpec block = BlockSpec.fromWorld(player.serverLevel(), pos);
 
-        String what =
-                switch (selectMode) {
-                    case CORNERS -> "corners";
-                    case EDGES -> "edges";
-                    case FACES -> "faces";
-                    case VOLUMES -> "volumes";
-                    case ALL -> "all blocks";
-                };
+        String what = switch (selectMode) {
+            case CORNERS -> "corners";
+            case EDGES -> "edges";
+            case FACES -> "faces";
+            case VOLUMES -> "volumes";
+            case ALL -> "all blocks";
+        };
 
         switch (selectMode) {
             case CORNERS -> {

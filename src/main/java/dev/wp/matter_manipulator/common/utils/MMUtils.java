@@ -9,7 +9,6 @@ import net.minecraft.world.entity.player.Player;
  * Chat feedback helpers.
  */
 public class MMUtils {
-
     public static void sendErrorToPlayer(Player player, Component message) {
         player.sendSystemMessage(colored(message, ChatFormatting.RED));
     }

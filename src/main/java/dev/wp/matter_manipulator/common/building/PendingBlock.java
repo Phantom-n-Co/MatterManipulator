@@ -3,7 +3,6 @@ package dev.wp.matter_manipulator.common.building;
 import net.minecraft.core.BlockPos;
 
 public class PendingBlock {
-
     /** Position relative to paste anchor. */
     public final BlockPos relPos;
 

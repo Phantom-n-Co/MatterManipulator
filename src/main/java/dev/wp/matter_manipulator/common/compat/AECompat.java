@@ -1,22 +1,10 @@
 package dev.wp.matter_manipulator.common.compat;
 
-import appeng.api.inventories.ISegmentedInventory;
-import appeng.api.inventories.InternalInventory;
-import appeng.api.parts.IFacadeContainer;
-import appeng.api.parts.IFacadePart;
-import appeng.api.parts.IPart;
-import appeng.api.parts.IPartHost;
-import appeng.api.stacks.AEFluidKey;
-import appeng.api.stacks.AEItemKey;
-import appeng.api.stacks.GenericStack;
 import dev.wp.matter_manipulator.common.building.Location;
 import dev.wp.matter_manipulator.common.building.MMInventory;
 import dev.wp.matter_manipulator.common.compat.ae.UplinkBlockEntity;
 import dev.wp.matter_manipulator.common.items.manipulator.MMTransform;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-import javax.annotation.Nullable;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -27,19 +15,35 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.fluids.FluidStack;
+
+import appeng.api.inventories.ISegmentedInventory;
+import appeng.api.inventories.InternalInventory;
+import appeng.api.parts.IFacadeContainer;
+import appeng.api.parts.IFacadePart;
+import appeng.api.parts.IPart;
+import appeng.api.parts.IPartHost;
+import appeng.api.stacks.AEFluidKey;
+import appeng.api.stacks.AEItemKey;
+import appeng.api.stacks.GenericStack;
 import org.apache.commons.lang3.StringUtils;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+import javax.annotation.Nullable;
 
 public class AECompat {
 
     // Ghost/config items (ISegmentedInventory.CONFIG) are intentionally excluded — they are fake items.
     private static final ResourceLocation[] ITEM_KEYS = {
-        ISegmentedInventory.UPGRADES, ISegmentedInventory.CELLS, ISegmentedInventory.STORAGE
+            ISegmentedInventory.UPGRADES, ISegmentedInventory.CELLS, ISegmentedInventory.STORAGE
     };
 
     // Cable-bus part slots. null = the center (the cable itself); the rest are attached parts.
     // The cable bus block has no obtainable item of its own, so the center cable carries that cost.
     private static final Direction[] PART_SIDES = {
-        null, Direction.DOWN, Direction.UP, Direction.NORTH, Direction.SOUTH, Direction.WEST, Direction.EAST
+            null, Direction.DOWN, Direction.UP, Direction.NORTH, Direction.SOUTH, Direction.WEST, Direction.EAST
     };
 
     public static boolean isAEBlock(BlockEntity be) {
@@ -254,7 +258,6 @@ public class AECompat {
      * a future refinement; AE2 is lower priority than GT here.
      */
     public static class AECopyHandler implements CopyHandler {
-
         @Override
         public boolean matches(BlockState state, @Nullable BlockEntity be, @Nullable CompoundTag fullTag) {
             return isAEBlock(be);

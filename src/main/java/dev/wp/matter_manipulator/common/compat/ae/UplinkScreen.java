@@ -2,6 +2,7 @@ package dev.wp.matter_manipulator.common.compat.ae;
 
 import dev.wp.matter_manipulator.common.items.manipulator.ItemMatterManipulator;
 import dev.wp.matter_manipulator.common.items.manipulator.MMState;
+
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -14,7 +15,6 @@ import net.minecraft.world.item.ItemStack;
  * a panel, slot cells, a status line, and an Unlink button.
  */
 public class UplinkScreen extends AbstractContainerScreen<UplinkMenu> {
-
     private static final int PANEL = 0xFFC6C6C6;
     private static final int BORDER = 0xFF555555;
     private static final int SLOT = 0xFF8B8B8B;
@@ -30,10 +30,10 @@ public class UplinkScreen extends AbstractContainerScreen<UplinkMenu> {
     protected void init() {
         super.init();
         addRenderableWidget(Button.builder(Component.literal("Unlink"), b -> {
-                    if (minecraft != null && minecraft.gameMode != null) {
-                        minecraft.gameMode.handleInventoryButtonClick(menu.containerId, UplinkMenu.UNLINK_BUTTON);
-                    }
-                })
+            if (minecraft != null && minecraft.gameMode != null) {
+                minecraft.gameMode.handleInventoryButtonClick(menu.containerId, UplinkMenu.UNLINK_BUTTON);
+            }
+        })
                 .bounds(leftPos + 108, topPos + 31, 56, 20)
                 .build());
     }

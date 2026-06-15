@@ -1,6 +1,5 @@
 package dev.wp.matter_manipulator.common.compat.ae;
 
-import appeng.block.AEBaseEntityBlock;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -15,12 +14,13 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraftforge.network.NetworkHooks;
 
+import appeng.block.AEBaseEntityBlock;
+
 /**
  * The Matter Manipulator AE2 uplink block: a network bridge the manipulator binds to via this
  * block's GUI (drop a manipulator into the link slot).
  */
 public class UplinkBlock extends AEBaseEntityBlock<UplinkBlockEntity> {
-
     public UplinkBlock() {
         super(BlockBehaviour.Properties.of().strength(2.5f));
     }

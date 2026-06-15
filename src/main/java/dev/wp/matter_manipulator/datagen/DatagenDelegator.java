@@ -3,6 +3,7 @@ package dev.wp.matter_manipulator.datagen;
 import dev.wp.matter_manipulator.MMMod;
 import dev.wp.matter_manipulator.datagen.providers.DatagenDelegatorClient;
 import dev.wp.matter_manipulator.datagen.providers.DatagenDelegatorServer;
+
 import net.minecraftforge.data.event.GatherDataEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;

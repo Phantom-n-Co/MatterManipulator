@@ -1,27 +1,11 @@
 package dev.wp.matter_manipulator.common.compat;
 
-import com.gregtechceu.gtceu.api.block.MetaMachineBlock;
-import com.gregtechceu.gtceu.api.block.property.GTBlockStateProperties;
-import com.gregtechceu.gtceu.api.blockentity.MetaMachineBlockEntity;
-import com.gregtechceu.gtceu.api.blockentity.PipeBlockEntity;
-import com.gregtechceu.gtceu.api.capability.ICoverable;
-import com.gregtechceu.gtceu.api.capability.IElectricItem;
-import com.gregtechceu.gtceu.api.capability.forge.GTCapability;
-import com.gregtechceu.gtceu.api.cover.CoverBehavior;
-import com.gregtechceu.gtceu.api.data.RotationState;
-import com.gregtechceu.gtceu.api.machine.feature.IDropSaveMachine;
-import com.gregtechceu.gtceu.api.pattern.util.RelativeDirection;
-import com.lowdragmc.lowdraglib.syncdata.blockentity.IAutoSyncBlockEntity;
 import dev.wp.matter_manipulator.common.building.MMInventory;
 import dev.wp.matter_manipulator.common.items.manipulator.MMState;
 import dev.wp.matter_manipulator.common.items.manipulator.MMTier;
 import dev.wp.matter_manipulator.common.items.manipulator.MMTransform;
 import dev.wp.matter_manipulator.common.utils.Mods;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -39,6 +23,26 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.level.LevelEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
+import com.gregtechceu.gtceu.api.block.MetaMachineBlock;
+import com.gregtechceu.gtceu.api.block.property.GTBlockStateProperties;
+import com.gregtechceu.gtceu.api.blockentity.MetaMachineBlockEntity;
+import com.gregtechceu.gtceu.api.blockentity.PipeBlockEntity;
+import com.gregtechceu.gtceu.api.capability.ICoverable;
+import com.gregtechceu.gtceu.api.capability.IElectricItem;
+import com.gregtechceu.gtceu.api.capability.forge.GTCapability;
+import com.gregtechceu.gtceu.api.cover.CoverBehavior;
+import com.gregtechceu.gtceu.api.data.RotationState;
+import com.gregtechceu.gtceu.api.machine.feature.IDropSaveMachine;
+import com.gregtechceu.gtceu.api.pattern.util.RelativeDirection;
+import com.lowdragmc.lowdraglib.syncdata.blockentity.IAutoSyncBlockEntity;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 /**
  * GregTech soft-dependency compat. This class imports GregTech types, so it must only be loaded
  * when GregTech is present — every caller guards on {@link Mods#GTCEU}. Its Forge event handlers are
@@ -46,7 +50,6 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
  * {@link #registerEvents()}.
  */
 public class GTCompat {
-
     /** Registers the deferred-sync Forge event handlers. Call only when GregTech is present. */
     public static void registerEvents() {
         net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(GTCompat.class);
@@ -108,7 +111,8 @@ public class GTCompat {
     public static void onLevelTick(TickEvent.LevelTickEvent event) {
         if (event.phase != TickEvent.Phase.END
                 || PENDING_SYNCS.isEmpty()
-                || !(event.level instanceof ServerLevel level)) return;
+                || !(event.level instanceof ServerLevel level))
+            return;
         Iterator<PendingSync> it = PENDING_SYNCS.iterator();
         while (it.hasNext()) {
             PendingSync sync = it.next();
@@ -198,7 +202,6 @@ public class GTCompat {
 
     /** {@link IElectricItem} backed by the manipulator's own NBT charge (shared with the build loop). */
     private static class MMElectricItem implements IElectricItem {
-
         private final ItemStack stack;
         private final MMTier tier;
 
@@ -289,31 +292,30 @@ public class GTCompat {
      * so it is preserved regardless of NBT.
      */
     public static class GTCopyHandler implements CopyHandler {
-
         private static final String[] CONFIG_KEYS = {
-            "ownerUUID",
-            "paintingColor",
-            "cover",
-            "isFlipped",
-            "workingMode",
-            "voidingMode",
-            "batchEnabled",
-            "isWorkingEnabled",
-            "workingEnabled",
-            "isMuffled",
-            "isDistinct",
-            "currentParallel",
-            "durationMultiplier",
-            "circuitInventory",
-            "activeRecipeType",
-            "outputFacingItems",
-            "outputFacingFluids",
-            "inputFacingItems",
-            "inputFacingFluids",
-            "autoOutputItems",
-            "autoOutputFluids",
-            "allowInputFromOutputSideItems",
-            "allowInputFromOutputSideFluids",
+                "ownerUUID",
+                "paintingColor",
+                "cover",
+                "isFlipped",
+                "workingMode",
+                "voidingMode",
+                "batchEnabled",
+                "isWorkingEnabled",
+                "workingEnabled",
+                "isMuffled",
+                "isDistinct",
+                "currentParallel",
+                "durationMultiplier",
+                "circuitInventory",
+                "activeRecipeType",
+                "outputFacingItems",
+                "outputFacingFluids",
+                "inputFacingItems",
+                "inputFacingFluids",
+                "autoOutputItems",
+                "autoOutputFluids",
+                "allowInputFromOutputSideItems",
+                "allowInputFromOutputSideFluids",
         };
 
         @Override
@@ -338,7 +340,7 @@ public class GTCompat {
 
         /** Single-direction auto-I/O sides stored directly in the machine NBT. */
         private static final String[] FACING_KEYS = {
-            "outputFacingItems", "outputFacingFluids", "inputFacingItems", "inputFacingFluids",
+                "outputFacingItems", "outputFacingFluids", "inputFacingItems", "inputFacingFluids",
         };
 
         @Override

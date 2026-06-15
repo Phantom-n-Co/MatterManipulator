@@ -2,17 +2,18 @@ package dev.wp.matter_manipulator.common.building;
 
 import dev.wp.matter_manipulator.common.compat.AECompat;
 import dev.wp.matter_manipulator.common.utils.Mods;
-import javax.annotation.Nullable;
+
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+
+import javax.annotation.Nullable;
 
 /**
  * Manages item consumption for building operations. Sources from the player's inventory and,
  * when the manipulator is bound to an AE2 uplink, from that network (storage + uplink buffer).
  */
 public class MMInventory {
-
     private final Player player;
     /** Bound AE2 uplink (null if unbound); resolved through {@link AECompat} so this class stays AE2-free. */
     @Nullable

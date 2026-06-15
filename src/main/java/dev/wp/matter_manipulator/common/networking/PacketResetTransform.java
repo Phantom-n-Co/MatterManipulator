@@ -2,14 +2,15 @@ package dev.wp.matter_manipulator.common.networking;
 
 import dev.wp.matter_manipulator.common.items.manipulator.MMState;
 import dev.wp.matter_manipulator.common.items.manipulator.MMTransform;
-import java.util.function.Supplier;
+
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
 
-public class PacketResetTransform {
+import java.util.function.Supplier;
 
+public class PacketResetTransform {
     public PacketResetTransform() {}
 
     public static void encode(PacketResetTransform pkt, FriendlyByteBuf buf) {}
@@ -28,7 +29,7 @@ public class PacketResetTransform {
 
             var cfg = state.mutate();
             cfg.transform = new MMTransform();
-            cfg.arraySpan = new int[] {0, 0, 0};
+            cfg.arraySpan = new int[] { 0, 0, 0 };
 
             player.sendSystemMessage(Component.literal("Matter Manipulator transform reset."));
 

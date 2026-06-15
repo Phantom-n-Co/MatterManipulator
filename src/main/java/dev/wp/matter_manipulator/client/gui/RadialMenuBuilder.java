@@ -2,19 +2,20 @@ package dev.wp.matter_manipulator.client.gui;
 
 import dev.wp.matter_manipulator.client.gui.RadialMenu.RadialMenuClickHandler;
 import dev.wp.matter_manipulator.client.gui.RadialMenu.RadialMenuOption;
+
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
 /**
  * Builder that helps constructing radial menus with options and nested sub-menus.
  */
 @OnlyIn(Dist.CLIENT)
 public class RadialMenuBuilder {
-
     public final List<RadialMenuOptionBuilder<RadialMenuBuilder>> options = new ArrayList<>();
     public float innerRadius = 0.25f, outerRadius = 0.60f;
 
@@ -23,6 +24,7 @@ public class RadialMenuBuilder {
         this.innerRadius = r;
         return this;
     }
+
     /** Sets the outer radius. */
     public RadialMenuBuilder outerRadius(float r) {
         this.outerRadius = r;
@@ -55,7 +57,6 @@ public class RadialMenuBuilder {
     // ── option builder base ────────────────────────────────────────────────────
 
     public abstract static class RadialMenuOptionBuilder<Parent> {
-
         final Parent parent;
         Supplier<String> label = () -> "?";
         double weight = 1;
@@ -76,7 +77,6 @@ public class RadialMenuBuilder {
     // ── leaf option ────────────────────────────────────────────────────────────
 
     public static class RadialMenuOptionBuilderLeaf<Parent> extends RadialMenuOptionBuilder<Parent> {
-
         private RadialMenuClickHandler onClicked;
 
         RadialMenuOptionBuilderLeaf(Parent parent) {
@@ -134,7 +134,6 @@ public class RadialMenuBuilder {
     // ── branch (sub-menu) ──────────────────────────────────────────────────────
 
     public static class RadialMenuOptionBuilderBranch<Parent> extends RadialMenuOptionBuilder<Parent> {
-
         private final List<RadialMenuOptionBuilder<RadialMenuOptionBuilderBranch<Parent>>> children = new ArrayList<>();
 
         RadialMenuOptionBuilderBranch(Parent parent) {

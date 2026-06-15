@@ -1,12 +1,13 @@
 package dev.wp.matter_manipulator.common.building.shapes;
 
 import dev.wp.matter_manipulator.common.items.manipulator.SlotType;
-import java.util.ArrayList;
-import java.util.List;
+
 import net.minecraft.core.BlockPos;
 
-public class ShapeLine {
+import java.util.ArrayList;
+import java.util.List;
 
+public class ShapeLine {
     /** Bresenham 3D line from a to b (inclusive). All positions are EDGE slots. */
     public static List<ShapeBlock> generate(BlockPos a, BlockPos b) {
         var result = new ArrayList<ShapeBlock>();

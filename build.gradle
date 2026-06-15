@@ -1,11 +1,10 @@
 plugins {
     id 'idea'
-    id 'java'
     id 'java-library'
     id 'maven-publish'
     id 'net.neoforged.moddev.legacyforge' version '2.0.91'
     id 'io.freefair.lombok' version '8.14'
-    id 'com.diffplug.spotless' version '8.6.0'
+    id 'com.diffplug.spotless' version '8.1.0'
 }
 
 tasks.named('wrapper', Wrapper).configure {
@@ -13,18 +12,28 @@ tasks.named('wrapper', Wrapper).configure {
 }
 
 spotless {
+    encoding 'UTF-8'
+
+    format 'misc', {
+        target '.gitignore'
+
+        trimTrailingWhitespace()
+        leadingTabsToSpaces()
+        endWithNewline()
+    }
+
     java {
         target 'src/main/java/**/*.java'
-        removeUnusedImports()
-        importOrder(
-            'dev\\.wp\\.matter_manipulator',
-            'net',
-            ''
-        )
+
+        def orderFile = file("$rootDir/spotless/import-order")
+        def formatFile = file("$rootDir/spotless/eclipse-format.xml")
+
+        toggleOffOn()
+        importOrderFile(orderFile)
         forbidWildcardImports()
-        palantirJavaFormat()
-        trimTrailingWhitespace()
+        removeUnusedImports()
         endWithNewline()
+        eclipse('4.31').configFile(formatFile)
     }
 }
 

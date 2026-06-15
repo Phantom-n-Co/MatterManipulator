@@ -1,9 +1,10 @@
 package dev.wp.matter_manipulator.common.compat.ae;
 
-import java.util.UUID;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+
+import java.util.UUID;
 
 /**
  * The synthetic output of an uplink plan pattern. Requesting it from an AE terminal makes the
@@ -11,7 +12,6 @@ import net.minecraft.world.item.ItemStack;
  * id so distinct plans are distinct items; the display name reflects the plan's block count.
  */
 public class PlanTokenItem extends Item {
-
     public PlanTokenItem() {
         super(new Item.Properties());
     }

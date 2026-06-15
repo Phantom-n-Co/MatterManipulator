@@ -1,12 +1,14 @@
 package dev.wp.matter_manipulator.common.compat;
 
 import dev.wp.matter_manipulator.common.building.MMInventory;
-import javax.annotation.Nullable;
+
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+
+import javax.annotation.Nullable;
 
 /**
  * Whitelists vanilla block-entity configuration that has no item-handler capability path, so it
@@ -15,10 +17,9 @@ import net.minecraft.world.level.block.state.BlockState;
  * restored generically through the item-handler capability by {@code PendingBuild.injectContents}.
  */
 public class VanillaMiscHandler implements CopyHandler {
-
     /** Config keys with no item cost — copied verbatim when present. */
     private static final String[] CONFIG_KEYS = {
-        "CustomName", "Lock", "front_text", "back_text", "is_waxed", "Patterns",
+            "CustomName", "Lock", "front_text", "back_text", "is_waxed", "Patterns",
     };
 
     @Override

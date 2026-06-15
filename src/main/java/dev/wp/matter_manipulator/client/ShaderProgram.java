@@ -1,6 +1,12 @@
 package dev.wp.matter_manipulator.client;
 
-import static dev.wp.matter_manipulator.MMMod.LOGGER;
+import net.minecraft.client.Minecraft;
+import net.minecraft.resources.ResourceLocation;
+
+import org.joml.Vector2f;
+import org.joml.Vector3f;
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL20;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -8,16 +14,11 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import net.minecraft.client.Minecraft;
-import net.minecraft.resources.ResourceLocation;
-import org.joml.Vector2f;
-import org.joml.Vector3f;
-import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL20;
+
+import static dev.wp.matter_manipulator.MMMod.LOGGER;
 
 @SuppressWarnings("unused")
 public class ShaderProgram implements AutoCloseable {
-
     protected int program;
 
     public ShaderProgram(String domain, String vertShaderFilename, String fragShaderFilename) {
@@ -92,7 +93,6 @@ public class ShaderProgram implements AutoCloseable {
     }
 
     private static int linkValidateShader(int program, int vertShader, int fragShader) {
-
         if (vertShader != 0) GL20.glAttachShader(program, vertShader);
         if (fragShader != 0) GL20.glAttachShader(program, fragShader);
 

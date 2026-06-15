@@ -2,13 +2,15 @@ package dev.wp.matter_manipulator.common.building.shapes;
 
 import dev.wp.matter_manipulator.common.items.manipulator.MMConfig;
 import dev.wp.matter_manipulator.common.items.manipulator.SlotType;
-import java.util.ArrayList;
-import java.util.List;
+
 import net.minecraft.core.BlockPos;
+
 import org.joml.Vector3i;
 
-public class ShapeCylinder {
+import java.util.ArrayList;
+import java.util.List;
 
+public class ShapeCylinder {
     public static List<ShapeBlock> generate(BlockPos a, BlockPos b, BlockPos c) {
         var result = new ArrayList<ShapeBlock>();
 

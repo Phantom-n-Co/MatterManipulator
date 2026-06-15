@@ -1,5 +1,8 @@
 package dev.wp.matter_manipulator.common.persist;
 
+import dev.wp.matter_manipulator.common.building.BlockSpec;
+import dev.wp.matter_manipulator.common.data.WeightedSpecList;
+
 import com.google.gson.JsonArray;
 import com.google.gson.JsonDeserializationContext;
 import com.google.gson.JsonDeserializer;
@@ -8,12 +11,10 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonSerializationContext;
 import com.google.gson.JsonSerializer;
-import dev.wp.matter_manipulator.common.building.BlockSpec;
-import dev.wp.matter_manipulator.common.data.WeightedSpecList;
+
 import java.lang.reflect.Type;
 
 public class WeightedSpecListAdapter implements JsonSerializer<WeightedSpecList>, JsonDeserializer<WeightedSpecList> {
-
     @Override
     public JsonElement serialize(WeightedSpecList src, Type typeOfSrc, JsonSerializationContext context) {
         var arr = new JsonArray();

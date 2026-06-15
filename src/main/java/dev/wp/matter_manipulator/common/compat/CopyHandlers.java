@@ -2,9 +2,7 @@ package dev.wp.matter_manipulator.common.compat;
 
 import dev.wp.matter_manipulator.common.building.MMInventory;
 import dev.wp.matter_manipulator.common.items.manipulator.MMTransform;
-import java.util.ArrayList;
-import java.util.List;
-import javax.annotation.Nullable;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
@@ -12,6 +10,11 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.fml.ModList;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.annotation.Nullable;
 
 /**
  * Registry of {@link CopyHandler}s and the entry points the build loop uses to reduce a captured
@@ -22,7 +25,6 @@ import net.minecraftforge.fml.ModList;
  * full internal state to the new location.
  */
 public final class CopyHandlers {
-
     private static final List<CopyHandler> HANDLERS = new ArrayList<>();
 
     private CopyHandlers() {}

@@ -1,12 +1,12 @@
 package dev.wp.matter_manipulator.common.building;
 
-import java.util.ArrayList;
-import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
 
-public class BlockAnalyzer {
+import java.util.ArrayList;
+import java.util.List;
 
+public class BlockAnalyzer {
     /**
      * Reads all non-air blocks in the AABB from cornerA to cornerB (inclusive).
      * Returned blocks have positions relative to cornerA.

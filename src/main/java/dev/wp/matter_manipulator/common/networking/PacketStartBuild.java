@@ -7,19 +7,20 @@ import dev.wp.matter_manipulator.common.items.manipulator.ItemMatterManipulator;
 import dev.wp.matter_manipulator.common.items.manipulator.MMCapability;
 import dev.wp.matter_manipulator.common.items.manipulator.MMState;
 import dev.wp.matter_manipulator.common.items.manipulator.PlaceMode;
-import java.util.List;
-import java.util.function.Supplier;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
 
+import java.util.List;
+import java.util.function.Supplier;
+
 /**
  * Client requests the server to start a build based on the current MMConfig.
  */
 public class PacketStartBuild {
-
     public PacketStartBuild() {}
 
     public static void encode(PacketStartBuild pkt, FriendlyByteBuf buf) {}

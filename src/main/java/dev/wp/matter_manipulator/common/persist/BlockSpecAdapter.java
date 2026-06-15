@@ -1,5 +1,13 @@
 package dev.wp.matter_manipulator.common.persist;
 
+import dev.wp.matter_manipulator.common.building.BlockSpec;
+
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtUtils;
+import net.minecraft.nbt.TagParser;
+import net.minecraft.world.level.block.state.BlockState;
+
 import com.google.gson.JsonDeserializationContext;
 import com.google.gson.JsonDeserializer;
 import com.google.gson.JsonElement;
@@ -7,16 +15,10 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonSerializationContext;
 import com.google.gson.JsonSerializer;
-import dev.wp.matter_manipulator.common.building.BlockSpec;
+
 import java.lang.reflect.Type;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.NbtUtils;
-import net.minecraft.nbt.TagParser;
-import net.minecraft.world.level.block.state.BlockState;
 
 public class BlockSpecAdapter implements JsonSerializer<BlockSpec>, JsonDeserializer<BlockSpec> {
-
     @Override
     public JsonElement serialize(BlockSpec src, Type typeOfSrc, JsonSerializationContext context) {
         var obj = new JsonObject();

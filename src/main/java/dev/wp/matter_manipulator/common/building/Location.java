@@ -1,7 +1,5 @@
 package dev.wp.matter_manipulator.common.building;
 
-import java.util.Objects;
-import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
@@ -11,8 +9,11 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraftforge.server.ServerLifecycleHooks;
 
-public class Location {
+import java.util.Objects;
 
+import javax.annotation.Nullable;
+
+public class Location {
     public ResourceKey<Level> dimension;
     public BlockPos pos;
 

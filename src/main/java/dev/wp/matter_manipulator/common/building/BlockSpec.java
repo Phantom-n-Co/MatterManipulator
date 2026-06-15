@@ -3,10 +3,7 @@ package dev.wp.matter_manipulator.common.building;
 import dev.wp.matter_manipulator.common.compat.AECompat;
 import dev.wp.matter_manipulator.common.compat.GTCompat;
 import dev.wp.matter_manipulator.common.utils.Mods;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import javax.annotation.Nullable;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
@@ -21,8 +18,13 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
 
-public class BlockSpec {
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
+import javax.annotation.Nullable;
+
+public class BlockSpec {
     public final BlockState state;
 
     @Nullable
@@ -110,8 +112,7 @@ public class BlockSpec {
 
     @Nullable
     private static ListTag captureFluids(BlockEntity be) {
-        var handler =
-                be.getCapability(ForgeCapabilities.FLUID_HANDLER).resolve().orElse(null);
+        var handler = be.getCapability(ForgeCapabilities.FLUID_HANDLER).resolve().orElse(null);
         if (handler == null) return null;
         var list = new ListTag();
         for (int tank = 0; tank < handler.getTanks(); tank++) {

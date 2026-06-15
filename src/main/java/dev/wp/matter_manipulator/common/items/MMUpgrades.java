@@ -1,10 +1,12 @@
 package dev.wp.matter_manipulator.common.items;
 
 import dev.wp.matter_manipulator.common.items.manipulator.MMCapability;
-import java.util.HashMap;
-import java.util.Map;
+
 import net.minecraft.world.item.Item;
 import net.minecraftforge.registries.RegistryObject;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public enum MMUpgrades {
     POWER_P2P(0, 0, MMItems.UPGRADE_POWER_P2P),

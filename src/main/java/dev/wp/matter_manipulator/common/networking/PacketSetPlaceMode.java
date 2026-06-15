@@ -2,13 +2,14 @@ package dev.wp.matter_manipulator.common.networking;
 
 import dev.wp.matter_manipulator.common.items.manipulator.MMState;
 import dev.wp.matter_manipulator.common.items.manipulator.PlaceMode;
-import java.util.function.Supplier;
+
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
 
-public class PacketSetPlaceMode {
+import java.util.function.Supplier;
 
+public class PacketSetPlaceMode {
     private final PlaceMode mode;
 
     public PacketSetPlaceMode(PlaceMode mode) {

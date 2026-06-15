@@ -1,11 +1,11 @@
 package dev.wp.matter_manipulator.common.networking;
 
 import dev.wp.matter_manipulator.MMMod;
+
 import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.simple.SimpleChannel;
 
 public class MMNetwork {
-
     private static final String PROTOCOL_VERSION = "1";
 
     public static SimpleChannel CHANNEL;

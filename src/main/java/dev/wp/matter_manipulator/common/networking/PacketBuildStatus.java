@@ -1,11 +1,13 @@
 package dev.wp.matter_manipulator.common.networking;
 
 import dev.wp.matter_manipulator.client.render.GhostBlockRenderer;
-import java.util.function.Supplier;
+
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.network.NetworkEvent;
+
+import java.util.function.Supplier;
 
 /**
  * Client bound: positions (BlockPos.asLong) of blocks the build failed on.
@@ -13,7 +15,6 @@ import net.minecraftforge.network.NetworkEvent;
  * configured statusExpiration. Sending two empty arrays clears the hints.
  */
 public class PacketBuildStatus {
-
     public final long[] errors;
     public final long[] warnings;
 

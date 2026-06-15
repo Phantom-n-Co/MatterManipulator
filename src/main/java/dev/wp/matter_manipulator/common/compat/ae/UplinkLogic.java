@@ -1,5 +1,15 @@
 package dev.wp.matter_manipulator.common.compat.ae;
 
+import dev.wp.matter_manipulator.MMMod;
+
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+
 import appeng.api.config.Actionable;
 import appeng.api.config.PowerMultiplier;
 import appeng.api.crafting.IPatternDetails;
@@ -20,19 +30,13 @@ import appeng.api.storage.StorageHelper;
 import appeng.helpers.patternprovider.PatternProviderLogic;
 import appeng.helpers.patternprovider.PatternProviderLogicHost;
 import com.google.common.collect.ImmutableSet;
-import dev.wp.matter_manipulator.MMMod;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Future;
+
 import javax.annotation.Nullable;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.Level;
 
 /**
  * Host-agnostic AE2 bridge for the Matter Manipulator uplink. It exposes a network's storage,
@@ -42,20 +46,19 @@ import net.minecraft.world.level.Level;
  *
  * <p>Two flavours of plan:
  * <ul>
- *   <li><b>Manual</b> — the pattern just sits in the network; the player requests the token from
- *       their AE terminal. When crafted, the build's blocks (the inputs) land in network storage and
- *       the token is emitted-then-voided so the job finishes without leaving a token item.</li>
- *   <li><b>Auto</b> — the uplink itself submits a one-shot crafting job for the token (acting as an
- *       {@link ICraftingRequester}) and <b>cancels it the instant the pattern is pushed</b>, so the
- *       token is never produced at all; the build's blocks still land in storage. This mirrors the
- *       1.7.10 uplink's auto plans.</li>
+ * <li><b>Manual</b> — the pattern just sits in the network; the player requests the token from
+ * their AE terminal. When crafted, the build's blocks (the inputs) land in network storage and
+ * the token is emitted-then-voided so the job finishes without leaving a token item.</li>
+ * <li><b>Auto</b> — the uplink itself submits a one-shot crafting job for the token (acting as an
+ * {@link ICraftingRequester}) and <b>cancels it the instant the pattern is pushed</b>, so the
+ * token is never produced at all; the build's blocks still land in storage. This mirrors the
+ * 1.7.10 uplink's auto plans.</li>
  * </ul>
  *
  * <p>Constructed from an {@link IManagedGridNode} + host callbacks only, so the same component can
  * later be mounted on a GregTech multiblock.
  */
 public class UplinkLogic {
-
     private static final int PATTERN_SLOTS = 36;
 
     private final UplinkPatternLogic logic;
@@ -177,7 +180,7 @@ public class UplinkLogic {
         for (GenericStack s : blocks) if (s != null) total += s.amount();
         ItemStack token = PlanTokenItem.create(owner, nextPlanId++, total);
         ItemStack pattern = PatternDetailsHelper.encodeProcessingPattern(
-                blocks, new GenericStack[] {new GenericStack(AEItemKey.of(token), 1)});
+                blocks, new GenericStack[] { new GenericStack(AEItemKey.of(token), 1) });
 
         logic.getPatternInv().setItemDirect(slot, pattern);
         slots[slot] = new PlanEntry(owner, auto, token);

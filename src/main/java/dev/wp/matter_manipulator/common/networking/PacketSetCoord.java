@@ -7,7 +7,7 @@ import dev.wp.matter_manipulator.common.items.manipulator.ManipulatorActions;
 import dev.wp.matter_manipulator.common.items.manipulator.PendingAction;
 import dev.wp.matter_manipulator.common.items.manipulator.PlaceMode;
 import dev.wp.matter_manipulator.common.utils.MMUtils;
-import java.util.function.Supplier;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.FriendlyByteBuf;
@@ -16,10 +16,12 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.network.NetworkEvent;
+
 import org.joml.Vector3i;
 
-public class PacketSetCoord {
+import java.util.function.Supplier;
 
+public class PacketSetCoord {
     /**
      * 0=A, 1=B, 2=C
      */
@@ -79,12 +81,11 @@ public class PacketSetCoord {
                 }
 
                 setCoord(cfg, effectiveWhich, pkt.loc);
-                String label =
-                        switch (effectiveWhich) {
-                            case 0 -> "A";
-                            case 1 -> "B";
-                            default -> "C";
-                        };
+                String label = switch (effectiveWhich) {
+                    case 0 -> "A";
+                    case 1 -> "B";
+                    default -> "C";
+                };
                 player.sendSystemMessage(
                         Component.literal("Coord " + label + " set to " + pkt.loc.pos.toShortString()));
             }
@@ -140,7 +141,7 @@ public class PacketSetCoord {
                     MMUtils.sendErrorToPlayer(player, "mm.info.error.cannot_mark_paste");
                 } else {
                     Vector3i mult = cfg.getArrayMult(loc.pos);
-                    cfg.arraySpan = new int[] {mult.x, mult.y, mult.z};
+                    cfg.arraySpan = new int[] { mult.x, mult.y, mult.z };
                     MMUtils.sendInfoToPlayer(player, "mm.info.array_marked", mult.x, mult.y, mult.z);
                 }
                 cfg.action = null;

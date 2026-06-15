@@ -15,7 +15,7 @@ import dev.wp.matter_manipulator.common.networking.PacketResetTransform;
 import dev.wp.matter_manipulator.common.networking.PacketSetPendingAction;
 import dev.wp.matter_manipulator.common.networking.PacketSetPlaceMode;
 import dev.wp.matter_manipulator.common.networking.PacketToggleLock;
-import javax.annotation.Nullable;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
@@ -30,9 +30,10 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
+import javax.annotation.Nullable;
+
 @Mod.EventBusSubscriber(modid = MMMod.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
 public class ClientEvents {
-
     @Nullable
     private static Screen deferredScreen;
 

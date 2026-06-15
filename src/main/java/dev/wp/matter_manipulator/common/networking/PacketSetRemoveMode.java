@@ -2,13 +2,14 @@ package dev.wp.matter_manipulator.common.networking;
 
 import dev.wp.matter_manipulator.common.items.manipulator.MMState;
 import dev.wp.matter_manipulator.common.items.manipulator.RemoveMode;
-import java.util.function.Supplier;
+
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
 
-public class PacketSetRemoveMode {
+import java.util.function.Supplier;
 
+public class PacketSetRemoveMode {
     private final RemoveMode mode;
 
     public PacketSetRemoveMode(RemoveMode mode) {

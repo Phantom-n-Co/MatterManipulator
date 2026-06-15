@@ -1,7 +1,5 @@
 package dev.wp.matter_manipulator.common.items.manipulator;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import dev.wp.matter_manipulator.MMMod;
 import dev.wp.matter_manipulator.common.building.BlockSpec;
 import dev.wp.matter_manipulator.common.building.Location;
@@ -11,13 +9,18 @@ import dev.wp.matter_manipulator.common.items.MMUpgrades;
 import dev.wp.matter_manipulator.common.persist.BlockSpecAdapter;
 import dev.wp.matter_manipulator.common.persist.LocationAdapter;
 import dev.wp.matter_manipulator.common.persist.WeightedSpecListAdapter;
-import java.util.BitSet;
-import javax.annotation.Nullable;
+
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
 
-public class MMState {
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
+import java.util.BitSet;
+
+import javax.annotation.Nullable;
+
+public class MMState {
     private static final int JSON_VERSION = 1;
     private static final String KEY_CHARGE = "charge";
     private static final String KEY_UPGRADES = "upgrades";

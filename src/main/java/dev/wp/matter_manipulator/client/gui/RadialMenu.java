@@ -1,6 +1,11 @@
 package dev.wp.matter_manipulator.client.gui;
 
-import static java.lang.Math.PI;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.GameRenderer;
+import net.minecraft.network.chat.Component;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 
 import brachy.modularui.api.widget.Interactable;
 import brachy.modularui.screen.viewport.ModularGuiContext;
@@ -12,21 +17,17 @@ import com.mojang.blaze3d.vertex.BufferUploader;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexFormat;
+import org.joml.Matrix4f;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.renderer.GameRenderer;
-import net.minecraft.network.chat.Component;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import org.joml.Matrix4f;
+
+import static java.lang.Math.PI;
 
 @OnlyIn(Dist.CLIENT)
 public class RadialMenu extends Widget<RadialMenu> implements Interactable {
-
     private static final double TAU = PI * 2;
 
     public List<RadialMenuOption> options = new ArrayList<>();
@@ -83,7 +84,7 @@ public class RadialMenu extends Widget<RadialMenu> implements Interactable {
             buf.begin(VertexFormat.Mode.TRIANGLE_STRIP, DefaultVertexFormat.POSITION_COLOR);
 
             double step = PI / 32;
-            for (int i = 0; ; i++) {
+            for (int i = 0;; i++) {
                 double t = option.startTheta + i * step;
                 double tc = Math.min(Math.max(t, option.startTheta), option.endTheta);
 

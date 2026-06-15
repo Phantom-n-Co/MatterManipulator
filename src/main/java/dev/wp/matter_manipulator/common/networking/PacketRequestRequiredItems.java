@@ -7,11 +7,7 @@ import dev.wp.matter_manipulator.common.items.manipulator.MMState;
 import dev.wp.matter_manipulator.common.items.manipulator.PlaceMode;
 import dev.wp.matter_manipulator.common.utils.MMUtils;
 import dev.wp.matter_manipulator.common.utils.Mods;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Supplier;
+
 import net.minecraft.ChatFormatting;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
@@ -24,9 +20,14 @@ import net.minecraft.world.level.material.Fluid;
 import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.network.NetworkEvent;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Supplier;
+
 /** Radial menu "Planning" options: computes the material list for the current copy and prints it to chat. */
 public class PacketRequestRequiredItems {
-
     /** Include all blocks rather than only those that don't match the world yet. */
     public static final int PLAN_ALL = 0b1;
     /** Register a terminal-requestable plan pattern on the bound AE2 uplink. */
@@ -190,7 +191,7 @@ public class PacketRequestRequiredItems {
      * not scanned here: it would over-count blocks whose contents the whitelist won't paste.
      */
     private static void mergeStoredItems(Map<Item, Long> required, CompoundTag tileData) {
-        for (String key : new String[] {"Book", "RecordItem"}) {
+        for (String key : new String[] { "Book", "RecordItem" }) {
             if (tileData.contains(key, Tag.TAG_COMPOUND)) {
                 ItemStack stack = ItemStack.of(tileData.getCompound(key));
                 if (!stack.isEmpty()) {

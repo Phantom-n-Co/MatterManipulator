@@ -1,5 +1,12 @@
 package dev.wp.matter_manipulator.common.persist;
 
+import dev.wp.matter_manipulator.common.building.Location;
+
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
+
 import com.google.gson.JsonDeserializationContext;
 import com.google.gson.JsonDeserializer;
 import com.google.gson.JsonElement;
@@ -7,15 +14,10 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonSerializationContext;
 import com.google.gson.JsonSerializer;
-import dev.wp.matter_manipulator.common.building.Location;
+
 import java.lang.reflect.Type;
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
 
 public class LocationAdapter implements JsonSerializer<Location>, JsonDeserializer<Location> {
-
     @Override
     public JsonElement serialize(Location src, Type typeOfSrc, JsonSerializationContext context) {
         var obj = new JsonObject();

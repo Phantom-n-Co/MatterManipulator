@@ -1,5 +1,9 @@
 package dev.wp.matter_manipulator.client.render;
 
+import net.minecraft.client.renderer.ShaderInstance;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
+
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.BufferUploader;
@@ -7,17 +11,14 @@ import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexFormat;
-import javax.annotation.Nullable;
 import lombok.Setter;
-import net.minecraft.client.renderer.ShaderInstance;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 import org.joml.Matrix4f;
+
+import javax.annotation.Nullable;
 
 /** Utility for drawing translucent animated selection boxes via the fancybox shader. */
 @OnlyIn(Dist.CLIENT)
 public class BoxRenderer {
-
     /**
      * -- SETTER --
      * Called from RegisterShadersEvent once the shader is compiled and linked.

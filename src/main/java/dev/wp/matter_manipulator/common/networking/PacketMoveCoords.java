@@ -7,12 +7,15 @@ import dev.wp.matter_manipulator.common.items.manipulator.PendingAction;
 import dev.wp.matter_manipulator.common.items.manipulator.PlaceMode;
 import dev.wp.matter_manipulator.common.items.manipulator.ShapeType;
 import dev.wp.matter_manipulator.common.utils.MMUtils;
-import java.util.function.Supplier;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
+
 import org.joml.Vector3i;
+
+import java.util.function.Supplier;
 
 /**
  * Radial menu "Move Coords" options. A/B/ALL start tracking the crosshair (committed
@@ -20,7 +23,6 @@ import org.joml.Vector3i;
  * lands on the looked-at position.
  */
 public class PacketMoveCoords {
-
     public enum Which {
         A,
         B,

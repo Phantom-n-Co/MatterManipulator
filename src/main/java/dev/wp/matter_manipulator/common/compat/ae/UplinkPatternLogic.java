@@ -16,7 +16,6 @@ import appeng.helpers.patternprovider.PatternProviderLogicHost;
  * via {@link UplinkLogic}, so the uplink never holds items.
  */
 public class UplinkPatternLogic extends PatternProviderLogic {
-
     private final UplinkLogic uplink;
 
     public UplinkPatternLogic(IManagedGridNode mainNode, PatternProviderLogicHost host, UplinkLogic uplink, int slots) {

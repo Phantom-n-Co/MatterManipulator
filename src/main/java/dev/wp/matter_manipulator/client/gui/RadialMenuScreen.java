@@ -1,17 +1,17 @@
 package dev.wp.matter_manipulator.client.gui;
 
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
+
 import brachy.modularui.screen.ModularPanel;
 import brachy.modularui.screen.ModularScreen;
 import brachy.modularui.screen.ScreenWrapper;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
 /**
  * Full-screen radial menu wrapper for ModularUI.
  */
 @OnlyIn(Dist.CLIENT)
 public class RadialMenuScreen extends ScreenWrapper {
-
     public RadialMenuScreen(RadialMenuBuilder builder) {
         super(createModularScreen(builder));
     }

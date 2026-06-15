@@ -1,7 +1,5 @@
 package dev.wp.matter_manipulator.common.building;
 
-import java.util.List;
-import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
@@ -24,6 +22,10 @@ import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.shapes.VoxelShape;
+
+import java.util.List;
+
+import javax.annotation.Nullable;
 
 public class SimulatedLevelReader implements LevelReader {
     private final LevelReader delegate;

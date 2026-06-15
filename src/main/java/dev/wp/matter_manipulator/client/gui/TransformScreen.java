@@ -1,6 +1,5 @@
 package dev.wp.matter_manipulator.client.gui;
 
-import com.mojang.blaze3d.platform.InputConstants;
 import dev.wp.matter_manipulator.client.render.MMRenderer;
 import dev.wp.matter_manipulator.common.items.manipulator.ItemMatterManipulator;
 import dev.wp.matter_manipulator.common.items.manipulator.MMConfig;
@@ -13,9 +12,7 @@ import dev.wp.matter_manipulator.common.networking.PacketRotateTransform;
 import dev.wp.matter_manipulator.common.networking.PacketSetArraySpan;
 import dev.wp.matter_manipulator.common.networking.PacketSetCoordDirect;
 import dev.wp.matter_manipulator.common.networking.PacketToggleFlip;
-import java.util.ArrayList;
-import java.util.List;
-import javax.annotation.Nullable;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -27,7 +24,14 @@ import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
+
+import com.mojang.blaze3d.platform.InputConstants;
 import org.joml.Vector3i;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.annotation.Nullable;
 
 /**
  * Transparent full-screen overlay with rotate/flip/reset controls and an info panel on
@@ -36,7 +40,6 @@ import org.joml.Vector3i;
  */
 @OnlyIn(Dist.CLIENT)
 public class TransformScreen extends Screen {
-
     private static final int BORDER_COLOR = 0xFF888888;
     private static final int PANEL_COLOR = 0xFF111111;
     private static final int TEXT_COLOR = 0xFFDDDDDD;
@@ -105,29 +108,29 @@ public class TransformScreen extends Screen {
         decorations.add(() -> drawInfoPanel(infoX, infoY));
 
         addRenderableWidget(Button.builder(
-                        Component.translatable("mm.transform.button.reset"),
-                        b -> MMNetwork.CHANNEL.sendToServer(new PacketResetTransform()))
+                Component.translatable("mm.transform.button.reset"),
+                b -> MMNetwork.CHANNEL.sendToServer(new PacketResetTransform()))
                 .bounds(x + 90, y + 24, 40, 18)
                 .build());
     }
 
     private void addRotateRow(int x, int y, String axis, Direction dir) {
         addRenderableWidget(Button.builder(
-                        Component.translatable("mm.transform.button.rotate_" + axis + "-"),
-                        b -> MMNetwork.CHANNEL.sendToServer(new PacketRotateTransform(dir, false)))
+                Component.translatable("mm.transform.button.rotate_" + axis + "-"),
+                b -> MMNetwork.CHANNEL.sendToServer(new PacketRotateTransform(dir, false)))
                 .bounds(x, y, 62, 18)
                 .build());
         addRenderableWidget(Button.builder(
-                        Component.translatable("mm.transform.button.rotate_" + axis + "+"),
-                        b -> MMNetwork.CHANNEL.sendToServer(new PacketRotateTransform(dir, true)))
+                Component.translatable("mm.transform.button.rotate_" + axis + "+"),
+                b -> MMNetwork.CHANNEL.sendToServer(new PacketRotateTransform(dir, true)))
                 .bounds(x + 68, y, 62, 18)
                 .build());
     }
 
     private void addFlipButton(int x, int y, String axis, int flag) {
         addRenderableWidget(Button.builder(
-                        Component.translatable("mm.transform.button.flip_" + axis),
-                        b -> MMNetwork.CHANNEL.sendToServer(new PacketToggleFlip(flag)))
+                Component.translatable("mm.transform.button.flip_" + axis),
+                b -> MMNetwork.CHANNEL.sendToServer(new PacketToggleFlip(flag)))
                 .bounds(x, y, 40, 18)
                 .build());
     }
@@ -190,8 +193,8 @@ public class TransformScreen extends Screen {
         if (minecraft != null && minecraft.getWindow().getGuiScale() <= 2) {
             // Plenty of vertical room: one column with all groups
             Coord[] groups = showStack
-                    ? new Coord[] {Coord.COPY, Coord.COPY_A, Coord.COPY_B, Coord.PASTE, Coord.STACK}
-                    : new Coord[] {Coord.COPY, Coord.COPY_A, Coord.COPY_B, Coord.PASTE};
+                    ? new Coord[] { Coord.COPY, Coord.COPY_A, Coord.COPY_B, Coord.PASTE, Coord.STACK }
+                    : new Coord[] { Coord.COPY, Coord.COPY_A, Coord.COPY_B, Coord.PASTE };
             int x = width - ROW_W - 10;
             int y = (height - GROUP_H * groups.length) / 2;
             for (Coord coord : groups) {
@@ -199,7 +202,7 @@ public class TransformScreen extends Screen {
                 y += GROUP_H;
             }
         } else {
-            Coord[] right = {Coord.COPY_A, Coord.COPY_B, Coord.PASTE};
+            Coord[] right = { Coord.COPY_A, Coord.COPY_B, Coord.PASTE };
             int x = width - ROW_W - 10;
             int y = (height - GROUP_H * right.length) / 2;
             for (Coord coord : right) {
@@ -207,7 +210,7 @@ public class TransformScreen extends Screen {
                 y += GROUP_H;
             }
 
-            Coord[] lessRight = showStack ? new Coord[] {Coord.COPY, Coord.STACK} : new Coord[] {Coord.COPY};
+            Coord[] lessRight = showStack ? new Coord[] { Coord.COPY, Coord.STACK } : new Coord[] { Coord.COPY };
             x = width - ROW_W * 2 - 20;
             y = (height - GROUP_H * lessRight.length) / 2;
             for (Coord coord : lessRight) {
@@ -234,18 +237,17 @@ public class TransformScreen extends Screen {
     }
 
     private void addCoordRow(int x, int y, Coord coord, int axis) {
-        String axisName =
-                switch (axis) {
-                    case 0 -> "X";
-                    case 1 -> "Y";
-                    default -> "Z";
-                };
+        String axisName = switch (axis) {
+            case 0 -> "X";
+            case 1 -> "Y";
+            default -> "Z";
+        };
         StepSize step = new StepSize(coord, axis);
 
         Button minus = Button.builder(Component.empty(), b -> {
-                    int i = getComponent(coord, axis) - step.getOffset();
-                    setComponent(coord, axis, i);
-                })
+            int i = getComponent(coord, axis) - step.getOffset();
+            setComponent(coord, axis, i);
+        })
                 .bounds(x, y, 40, 18)
                 .build();
         addRenderableWidget(minus);
@@ -277,9 +279,9 @@ public class TransformScreen extends Screen {
         }
 
         Button plus = Button.builder(Component.empty(), b -> {
-                    int i = getComponent(coord, axis) + step.getOffset();
-                    setComponent(coord, axis, i);
-                })
+            int i = getComponent(coord, axis) + step.getOffset();
+            setComponent(coord, axis, i);
+        })
                 .bounds(x + 90, y, 40, 18)
                 .build();
         addRenderableWidget(plus);
@@ -336,12 +338,9 @@ public class TransformScreen extends Screen {
                     MMNetwork.CHANNEL.sendToServer(new PacketSetCoordDirect(1, cfg.coordB.pos.offset(delta)));
                 }
             }
-            case COPY_A ->
-                MMNetwork.CHANNEL.sendToServer(new PacketSetCoordDirect(0, new BlockPos(loc.x, loc.y, loc.z)));
-            case COPY_B ->
-                MMNetwork.CHANNEL.sendToServer(new PacketSetCoordDirect(1, new BlockPos(loc.x, loc.y, loc.z)));
-            case PASTE ->
-                MMNetwork.CHANNEL.sendToServer(new PacketSetCoordDirect(2, new BlockPos(loc.x, loc.y, loc.z)));
+            case COPY_A -> MMNetwork.CHANNEL.sendToServer(new PacketSetCoordDirect(0, new BlockPos(loc.x, loc.y, loc.z)));
+            case COPY_B -> MMNetwork.CHANNEL.sendToServer(new PacketSetCoordDirect(1, new BlockPos(loc.x, loc.y, loc.z)));
+            case PASTE -> MMNetwork.CHANNEL.sendToServer(new PacketSetCoordDirect(2, new BlockPos(loc.x, loc.y, loc.z)));
             case STACK -> MMNetwork.CHANNEL.sendToServer(new PacketSetArraySpan(axis, value));
         }
     }
@@ -386,7 +385,6 @@ public class TransformScreen extends Screen {
      * The region size is captured once per Ctrl press and held until Ctrl is released.
      */
     private class StepSize {
-
         private final Coord coord;
         private final int axis;
         private Vector3i size;

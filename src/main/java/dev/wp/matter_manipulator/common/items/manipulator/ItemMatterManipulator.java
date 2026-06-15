@@ -26,9 +26,7 @@ import dev.wp.matter_manipulator.common.networking.PacketSetRemoveMode;
 import dev.wp.matter_manipulator.common.networking.PacketSetShape;
 import dev.wp.matter_manipulator.common.networking.PacketStartBuild;
 import dev.wp.matter_manipulator.common.utils.Mods;
-import java.util.List;
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.language.I18n;
@@ -53,8 +51,12 @@ import net.minecraftforge.common.capabilities.ICapabilityProvider;
 import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.energy.IEnergyStorage;
 
-public class ItemMatterManipulator extends Item {
+import java.util.List;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
+public class ItemMatterManipulator extends Item {
     private final MMTier tier;
 
     public ItemMatterManipulator(MMTier tier) {
@@ -506,8 +508,7 @@ public class ItemMatterManipulator extends Item {
             return GTCompat.createElectricItemProvider(stack, tier);
         }
         return new ICapabilityProvider() {
-            private final LazyOptional<IEnergyStorage> energyCap =
-                    LazyOptional.of(() -> new StackEnergyStorage(stack, tier));
+            private final LazyOptional<IEnergyStorage> energyCap = LazyOptional.of(() -> new StackEnergyStorage(stack, tier));
 
             @Override
             public @Nonnull <T> LazyOptional<T> getCapability(@Nonnull Capability<T> cap, @Nullable Direction side) {
@@ -520,7 +521,6 @@ public class ItemMatterManipulator extends Item {
     // ── Energy Storage backed by NBT ─────────────────────────────────────────────
 
     private static class StackEnergyStorage implements IEnergyStorage {
-
         private final ItemStack stack;
         private final MMTier tier;
 
