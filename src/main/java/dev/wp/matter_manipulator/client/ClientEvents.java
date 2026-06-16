@@ -9,11 +9,13 @@ import dev.wp.matter_manipulator.common.items.manipulator.MMState;
 import dev.wp.matter_manipulator.common.items.manipulator.PendingAction;
 import dev.wp.matter_manipulator.common.items.manipulator.PlaceMode;
 import dev.wp.matter_manipulator.common.networking.MMNetwork;
+import dev.wp.matter_manipulator.common.networking.PacketCancelBuild;
 import dev.wp.matter_manipulator.common.networking.PacketClearCoords;
 import dev.wp.matter_manipulator.common.networking.PacketMMBPressed;
 import dev.wp.matter_manipulator.common.networking.PacketResetTransform;
 import dev.wp.matter_manipulator.common.networking.PacketSetPendingAction;
 import dev.wp.matter_manipulator.common.networking.PacketSetPlaceMode;
+import dev.wp.matter_manipulator.common.networking.PacketStartBuild;
 import dev.wp.matter_manipulator.common.networking.PacketToggleLock;
 
 import net.minecraft.client.Minecraft;
@@ -93,6 +95,8 @@ public class ClientEvents {
         while (MMKeyMappings.COPY.consumeClick()) {}
         while (MMKeyMappings.PASTE.consumeClick()) {}
         while (MMKeyMappings.RESET.consumeClick()) {}
+        while (MMKeyMappings.START_BUILD.consumeClick()) {}
+        while (MMKeyMappings.CANCEL_BUILD.consumeClick()) {}
     }
 
     /**
@@ -201,6 +205,18 @@ public class ClientEvents {
                 MMNetwork.CHANNEL.sendToServer(new PacketResetTransform());
             }
             playActionSound(0.7f);
+            return;
+        }
+
+        if (MMKeyMappings.START_BUILD.consumeClick()) {
+            MMNetwork.CHANNEL.sendToServer(new PacketStartBuild());
+            playActionSound(1.3f);
+            return;
+        }
+
+        if (MMKeyMappings.CANCEL_BUILD.consumeClick()) {
+            MMNetwork.CHANNEL.sendToServer(new PacketCancelBuild());
+            playActionSound(0.6f);
             return;
         }
     }

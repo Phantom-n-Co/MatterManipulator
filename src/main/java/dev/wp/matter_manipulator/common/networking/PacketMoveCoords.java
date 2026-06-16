@@ -17,6 +17,8 @@ import org.joml.Vector3i;
 
 import java.util.function.Supplier;
 
+import static dev.wp.matter_manipulator.MMMod.MODID;
+
 /**
  * Radial menu "Move Coords" options. A/B/ALL start tracking the crosshair (committed
  * by the next right-click); HERE immediately translates the selection so coord A
@@ -56,7 +58,7 @@ public class PacketMoveCoords {
 
             var cfg = state.mutate();
             if (cfg.locked) {
-                MMUtils.sendErrorToPlayer(player, "mm.info.locked");
+                MMUtils.sendErrorToPlayer(player, MODID + "info.locked");
                 return;
             }
 
@@ -119,6 +121,6 @@ public class PacketMoveCoords {
 
         cfg.coordA = new Location(dim, lookingAt);
         cfg.coordB = new Location(dim, newB);
-        MMUtils.sendInfoToPlayer(player, "mm.info.coords_moved");
+        MMUtils.sendInfoToPlayer(player, MODID + "info.coords_moved");
     }
 }

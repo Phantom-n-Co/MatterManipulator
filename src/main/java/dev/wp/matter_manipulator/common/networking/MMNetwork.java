@@ -189,5 +189,12 @@ public class MMNetwork {
                 PacketToggleTetherEmptyHubs::encode,
                 PacketToggleTetherEmptyHubs::decode,
                 PacketToggleTetherEmptyHubs::handle);
+
+        CHANNEL.registerMessage(
+                nextId++,
+                PacketToggleBuild.class,
+                PacketToggleBuild::encode,
+                PacketToggleBuild::decode,
+                PacketToggleBuild::handle);
     }
 }

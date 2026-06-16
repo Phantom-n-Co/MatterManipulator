@@ -9,6 +9,8 @@ import net.minecraftforge.network.NetworkEvent;
 
 import java.util.function.Supplier;
 
+import static dev.wp.matter_manipulator.MMMod.MODID;
+
 /** Server-bound: toggles the COPYING "replace CRIBs with proxies" smart-copy option. */
 public class PacketToggleReplaceCribs {
     public PacketToggleReplaceCribs() {}
@@ -31,7 +33,7 @@ public class PacketToggleReplaceCribs {
             cfg.replaceCribsWithProxies = !cfg.replaceCribsWithProxies;
 
             player.sendSystemMessage(Component.translatable(
-                    "mm.info.replace_cribs", cfg.replaceCribsWithProxies ? "ON" : "OFF"));
+                    MODID + "info.replace_cribs", cfg.replaceCribsWithProxies ? "ON" : "OFF"));
 
             state.saveIfDirty();
         });

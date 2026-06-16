@@ -11,6 +11,8 @@ import net.minecraftforge.network.NetworkEvent;
 
 import java.util.function.Supplier;
 
+import static dev.wp.matter_manipulator.MMMod.MODID;
+
 /** Clears the sending player's plan patterns from the uplink their held manipulator is bound to. */
 public class PacketClearPlan {
     public PacketClearPlan() {}
@@ -29,14 +31,14 @@ public class PacketClearPlan {
             if (state == null) return;
             var cfg = state.getConfig();
             if (!Mods.AE2 || cfg.uplink == null) {
-                MMUtils.sendErrorToPlayer(player, "mm.info.error.no_uplink");
+                MMUtils.sendErrorToPlayer(player, MODID + "info.error.no_uplink");
                 return;
             }
             int cleared = AECompat.uplinkClearPlan(player.serverLevel(), cfg.uplink, player.getUUID());
             if (cleared < 0) {
-                MMUtils.sendErrorToPlayer(player, "mm.info.error.no_uplink");
+                MMUtils.sendErrorToPlayer(player, MODID + "info.error.no_uplink");
             } else {
-                MMUtils.sendInfoToPlayer(player, "mm.info.plan_cleared", cleared);
+                MMUtils.sendInfoToPlayer(player, MODID + "info.plan_cleared", cleared);
             }
         });
         ctx.get().setPacketHandled(true);

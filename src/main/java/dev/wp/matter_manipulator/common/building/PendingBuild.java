@@ -53,6 +53,8 @@ import java.util.UUID;
 
 import javax.annotation.Nullable;
 
+import static dev.wp.matter_manipulator.MMMod.MODID;
+
 /**
  * The per-player active build. {@link #doTick} mirrors the original mod's two-phase
  * {@code PendingBuild.tryPlaceBlocks}: it first selects a homogeneous batch of one block type that
@@ -153,7 +155,7 @@ public class PendingBuild {
         ACTIVE.put(
                 player.getUUID(),
                 new PendingBuild(player.getUUID(), tier, translated, moving, sourceMin, sourceMax, cableMode));
-        MMUtils.sendInfoToPlayer(player, "mm.info.building", blocks.size());
+        MMUtils.sendInfoToPlayer(player, MODID + "info.building", blocks.size());
     }
 
     public static void cancel(UUID playerId) {
@@ -304,7 +306,7 @@ public class PendingBuild {
         // Nothing to place this tick
         if (toPlace.isEmpty()) {
             if (outOfPower) {
-                MMUtils.sendErrorToPlayer(player, "mm.info.error.out_of_eu"); // pause; build persists
+                MMUtils.sendErrorToPlayer(player, MODID + "info.error.out_of_eu"); // pause; build persists
             } else if (queue.isEmpty()) {
                 finish(player, level);
             } else if (fullCycle) {
@@ -326,7 +328,7 @@ public class PendingBuild {
             int remainder = paid - affordable * perCount;
             if (remainder > 0) inv.give(perBlock.copyWithCount(remainder));
             if (affordable < toPlace.size()) {
-                MMUtils.sendWarningToPlayer(player, "mm.info.warning.could_not_find", toPlace.size() - affordable);
+                MMUtils.sendWarningToPlayer(player, MODID + "info.warning.could_not_find", toPlace.size() - affordable);
             }
         }
 
@@ -383,9 +385,9 @@ public class PendingBuild {
             finish(player, level);
         } else if (placed > 0) {
             // MOVING reports incremental progress like the original; placement stays quiet per-tick.
-            if (moving) MMUtils.sendInfoToPlayer(player, "mm.info.process_move", placed, queue.size());
+            if (moving) MMUtils.sendInfoToPlayer(player, MODID + "info.process_move", placed, queue.size());
         } else if (outOfPower) {
-            MMUtils.sendErrorToPlayer(player, "mm.info.error.out_of_eu"); // pause; build persists
+            MMUtils.sendErrorToPlayer(player, MODID + "info.error.out_of_eu"); // pause; build persists
         } else {
             // No progress and not a power pause (blocked placement or missing items) → report and end.
             giveUp(player, inv);
@@ -398,13 +400,13 @@ public class PendingBuild {
             clearSourceRegion(level, player);
         }
         ACTIVE.remove(playerId);
-        MMUtils.sendInfoToPlayer(player, moving ? "mm.info.finished_move" : "mm.info.finished_placing");
+        MMUtils.sendInfoToPlayer(player, moving ? MODID + "info.finished_move" : MODID + "info.finished_placing");
         sendStatus(player, LongList.of(), LongList.of());
     }
 
     private void warnProtectedOnce(Player player) {
         if (!warnedProtected) {
-            MMUtils.sendWarningToPlayer(player, "mm.info.warning.protected_area");
+            MMUtils.sendWarningToPlayer(player, MODID + "info.warning.protected_area");
             warnedProtected = true;
         }
     }
@@ -425,9 +427,9 @@ public class PendingBuild {
             }
         }
 
-        MMUtils.sendErrorToPlayer(player, "mm.info.error.could_not_place", queue.size());
+        MMUtils.sendErrorToPlayer(player, MODID + "info.error.could_not_place", queue.size());
         if (!missing.isEmpty()) {
-            MMUtils.sendWarningToPlayer(player, "mm.info.warning.could_not_find", warnings.size());
+            MMUtils.sendWarningToPlayer(player, MODID + "info.warning.could_not_find", warnings.size());
             for (var entry : missing.entrySet()) {
                 MMUtils.sendWarningToPlayer(
                         player,

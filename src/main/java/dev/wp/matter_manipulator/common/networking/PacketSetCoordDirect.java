@@ -11,6 +11,8 @@ import net.minecraftforge.network.NetworkEvent;
 
 import java.util.function.Supplier;
 
+import static dev.wp.matter_manipulator.MMMod.MODID;
+
 /**
  * Sets a coordinate to an absolute position, bypassing the pending-action and
  * area-selection semantics of {@link PacketSetCoord}. Used by the transform screen's
@@ -48,7 +50,7 @@ public class PacketSetCoordDirect {
             var cfg = state.mutate();
 
             if (cfg.locked) {
-                MMUtils.sendErrorToPlayer(player, "mm.info.locked");
+                MMUtils.sendErrorToPlayer(player, MODID + "info.locked");
                 return;
             }
 

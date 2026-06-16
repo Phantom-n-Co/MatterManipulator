@@ -1,14 +1,15 @@
 package dev.wp.matter_manipulator.datagen.providers.client;
 
-import dev.wp.matter_manipulator.MMMod;
 import dev.wp.matter_manipulator.common.items.MMItems;
 
 import net.minecraftforge.common.data.LanguageProvider;
 import net.minecraftforge.data.event.GatherDataEvent;
 
+import static dev.wp.matter_manipulator.MMMod.MODID;
+
 public class MMLanguageProvider extends LanguageProvider {
     public MMLanguageProvider(GatherDataEvent event) {
-        super(event.getGenerator().getPackOutput(), MMMod.MODID, "en_us");
+        super(event.getGenerator().getPackOutput(), MODID, "en_us");
     }
 
     @Override
@@ -22,17 +23,9 @@ public class MMLanguageProvider extends LanguageProvider {
 
         // AE2 uplink block (registered only with AE2; key added unconditionally so the name
         // resolves whenever the block is present).
-        add("block.matter_manipulator.ae2_uplink", "Matter Manipulator AE2 Uplink");
-        add("item.matter_manipulator.plan_token", "Build Plan");
-        add("item.matter_manipulator.plan_token.named", "Build Plan (%s blocks)");
-
-        add(guiKey("title"), "Matter Manipulator");
-        add(guiKey("mode"), "Place Mode");
-        add(guiKey("shape"), "Shape");
-        add(guiKey("remove"), "Remove Mode");
-        add(guiKey("start"), "Start Build");
-        add(guiKey("cancel"), "Cancel Build");
-        add(guiKey("clear"), "Clear Coords");
+        add(blockKey("ae2_uplink"), "Matter Manipulator AE2 Uplink");
+        add(itemKey("plan_token"), "Build Plan");
+        add(itemKey("plan_token.named"), "Build Plan (%s blocks)");
 
         add("key.categories.matter_manipulator", "Matter Manipulator");
         add(keyKey("ctrl"), "Control");
@@ -41,6 +34,8 @@ public class MMLanguageProvider extends LanguageProvider {
         add(keyKey("cut"), "Mark Cut");
         add(keyKey("paste"), "Mark Paste");
         add(keyKey("reset"), "Reset Coords");
+        add(keyKey("start_build"), "Start Build");
+        add(keyKey("cancel_build"), "Cancel Build");
 
         addRadialMenuKeys();
         addTransformKeys();
@@ -51,84 +46,87 @@ public class MMLanguageProvider extends LanguageProvider {
      * Transform screen button/header labels.
      */
     private void addTransformKeys() {
-        add("mm.transform.info", "Flip: %s\nUp: %s\nForward: %s");
-        add("mm.transform.button.rotate_x-", "Rotate X-");
-        add("mm.transform.button.rotate_x+", "Rotate X+");
-        add("mm.transform.button.rotate_y-", "Rotate Y-");
-        add("mm.transform.button.rotate_y+", "Rotate Y+");
-        add("mm.transform.button.rotate_z-", "Rotate Z-");
-        add("mm.transform.button.rotate_z+", "Rotate Z+");
-        add("mm.transform.button.flip_x", "Flip X");
-        add("mm.transform.button.flip_y", "Flip Y");
-        add("mm.transform.button.flip_z", "Flip Z");
-        add("mm.transform.button.reset", "Reset");
-        add("mm.transform.header.copy", "Copy");
-        add("mm.transform.header.copy_a", "Copy (A)");
-        add("mm.transform.header.copy_b", "Copy (B)");
-        add("mm.transform.header.paste", "Paste");
-        add("mm.transform.header.stacking", "Stacking");
+        add(transformKey("info"), "Flip: %s\nUp: %s\nForward: %s");
+        add(transformKey("button.rotate_x-"), "Rotate X-");
+        add(transformKey("button.rotate_x+"), "Rotate X+");
+        add(transformKey("button.rotate_y-"), "Rotate Y-");
+        add(transformKey("button.rotate_y+"), "Rotate Y+");
+        add(transformKey("button.rotate_z-"), "Rotate Z-");
+        add(transformKey("button.rotate_z+"), "Rotate Z+");
+        add(transformKey("button.flip_x"), "Flip X");
+        add(transformKey("button.flip_y"), "Flip Y");
+        add(transformKey("button.flip_z"), "Flip Z");
+        add(transformKey("button.reset"), "Reset");
+        add(transformKey("header.copy"), "Copy");
+        add(transformKey("header.copy_a"), "Copy (A)");
+        add(transformKey("header.copy_b"), "Copy (B)");
+        add(transformKey("header.paste"), "Paste");
+        add(transformKey("header.stacking"), "Stacking");
     }
 
     /**
      * Radial menu labels.
      */
     private void addRadialMenuKeys() {
-        add("mm.gui.set_mode", "Set Mode");
-        add("mm.gui.set_remove_mode", "Set Remove Mode");
-        add("mm.gui.remove_none", "Remove None");
-        add("mm.gui.remove_replaceable", "Remove Replaceable");
-        add("mm.gui.remove_all", "Remove All");
-        add("mm.gui.geometry", "Geometry");
-        add("mm.gui.moving", "Moving");
-        add("mm.gui.copying", "Copying");
-        add("mm.gui.exchanging", "Exchanging");
-        add("mm.gui.cables", "Cables");
-        add("mm.gui.select_blocks", "Select Blocks");
-        add("mm.gui.set_corners", "Set Corners");
-        add("mm.gui.set_edges", "Set Edges");
-        add("mm.gui.set_faces", "Set Faces");
-        add("mm.gui.set_volumes", "Set Volumes");
-        add("mm.gui.set_all", "Set All");
-        add("mm.gui.clear_all", "Clear All");
-        add("mm.gui.set_shape", "Set Shape");
-        add("mm.gui.line", "Line");
-        add("mm.gui.cube", "Cube");
-        add("mm.gui.sphere", "Sphere");
-        add("mm.gui.cylinder", "Cylinder");
-        add("mm.gui.move_coords", "Move Coords");
-        add("mm.gui.move_coord_a", "Move Coord A");
-        add("mm.gui.move_all", "Move All");
-        add("mm.gui.move_coord_b", "Move Coord B");
-        add("mm.gui.move_here", "Move Here");
-        add("mm.gui.mark_copy", "Mark Copy");
-        add("mm.gui.edit_stack", "Edit Stack");
-        add("mm.gui.reset", "Reset");
-        add("mm.gui.mark", "Mark");
-        add("mm.gui.planning", "Planning");
-        add("mm.gui.plan_all_manual", "Plan (All)");
-        add("mm.gui.plan_missing_manual", "Plan (Missing)");
-        add("mm.gui.create_plan_all", "Create Plan (All)");
-        add("mm.gui.create_plan_missing", "Create Plan (Missing)");
-        add("mm.gui.autocraft_all", "Auto-Craft (All)");
-        add("mm.gui.autocraft_missing", "Auto-Craft (Missing)");
-        add("mm.gui.clear_plan", "Clear Plans");
-        add("mm.gui.link_uplink", "Link to AE2 Uplink");
-        add("mm.gui.edit_transform", "Edit Transform");
-        add("mm.gui.mark_cut", "Mark Cut");
-        add("mm.gui.mark_paste", "Mark Paste");
-        add("mm.gui.edit_replace_whitelist", "Edit Replace Whitelist");
-        add("mm.gui.clear", "Clear");
-        add("mm.gui.add_block", "Add Block");
-        add("mm.gui.set_block", "Set Block");
-        add("mm.gui.set_block_to_replace_with", "Set Block To Replace With");
-        add("mm.gui.set_cable", "Set Cable");
-        add("mm.gui.start_build", "Start Build");
-        add("mm.gui.cancel_build", "Cancel Build");
-        add("mm.gui.smart_copy", "Smart Copy");
-        add("mm.gui.back", "Back");
-        add("mm.gui.replace_cribs", "Replace CRIBs with Proxies");
-        add("mm.gui.link_external_hubs", "Link External Hubs");
-        add("mm.gui.tether_empty_hubs", "Tether Unlinked Hubs");
+        add(guiKey("title"), "Matter Manipulator");
+        add(guiKey("mode"), "Place Mode");
+        add(guiKey("shape"), "Shape");
+        add(guiKey("remove"), "Remove Mode");
+        add(guiKey("clear_coords"), "Clear Coords");
+        add(guiKey("set_mode"), "Set Mode");
+        add(guiKey("set_remove_mode"), "Set Remove Mode");
+        add(guiKey("remove_none"), "Remove None");
+        add(guiKey("remove_replaceable"), "Remove Replaceable");
+        add(guiKey("remove_all"), "Remove All");
+        add(guiKey("geometry"), "Geometry");
+        add(guiKey("moving"), "Moving");
+        add(guiKey("copying"), "Copying");
+        add(guiKey("exchanging"), "Exchanging");
+        add(guiKey("cables"), "Cables");
+        add(guiKey("select_blocks"), "Select Blocks");
+        add(guiKey("set_corners"), "Set Corners");
+        add(guiKey("set_edges"), "Set Edges");
+        add(guiKey("set_faces"), "Set Faces");
+        add(guiKey("set_volumes"), "Set Volumes");
+        add(guiKey("set_all"), "Set All");
+        add(guiKey("clear_all"), "Clear All");
+        add(guiKey("set_shape"), "Set Shape");
+        add(guiKey("line"), "Line");
+        add(guiKey("cube"), "Cube");
+        add(guiKey("sphere"), "Sphere");
+        add(guiKey("cylinder"), "Cylinder");
+        add(guiKey("move_coords"), "Move Coords");
+        add(guiKey("move_coord_a"), "Move Coord A");
+        add(guiKey("move_all"), "Move All");
+        add(guiKey("move_coord_b"), "Move Coord B");
+        add(guiKey("move_here"), "Move Here");
+        add(guiKey("mark_copy"), "Mark Copy");
+        add(guiKey("edit_stack"), "Edit Stack");
+        add(guiKey("reset"), "Reset");
+        add(guiKey("mark"), "Mark");
+        add(guiKey("planning"), "Planning");
+        add(guiKey("plan_all_manual"), "Plan (All)");
+        add(guiKey("plan_missing_manual"), "Plan (Missing)");
+        add(guiKey("create_plan_all"), "Create Plan (All)");
+        add(guiKey("create_plan_missing"), "Create Plan (Missing)");
+        add(guiKey("autocraft_all"), "Auto-Craft (All)");
+        add(guiKey("autocraft_missing"), "Auto-Craft (Missing)");
+        add(guiKey("clear_plan"), "Clear Plans");
+        add(guiKey("link_uplink"), "Link to AE2 Uplink");
+        add(guiKey("edit_transform"), "Edit Transform");
+        add(guiKey("mark_cut"), "Mark Cut");
+        add(guiKey("mark_paste"), "Mark Paste");
+        add(guiKey("edit_replace_whitelist"), "Edit Replace Whitelist");
+        add(guiKey("clear_replace_whitelist"), "Clear");
+        add(guiKey("add_block"), "Add Block");
+        add(guiKey("set_block"), "Set Block");
+        add(guiKey("set_block_to_replace_with"), "Set Block To Replace With");
+        add(guiKey("set_cable"), "Set Cable");
+        add(guiKey("smart_copy"), "Smart Copy");
+        add(guiKey("back"), "Back");
+        add(guiKey("replace_cribs"), "Replace CRIBs with Proxies");
+        add(guiKey("link_external_hubs"), "Link External Hubs");
+        add(guiKey("tether_empty_hubs"), "Tether Unlinked Hubs");
     }
 
     /**
@@ -184,15 +182,27 @@ public class MMLanguageProvider extends LanguageProvider {
         add(infoKey("array_marked"), "Array span set to %s x %s x %s.");
     }
 
+    private String transformKey(String key) {
+        return MODID + ".transform." + key;
+    }
+
+    private String itemKey(String key) {
+        return "item." + MODID + "." + key;
+    }
+
+    private String blockKey(String key) {
+        return "block." + MODID + "." + key;
+    }
+
     private String infoKey(String key) {
-        return "mm.info." + key;
+        return MODID + ".info." + key;
     }
 
     private String guiKey(String key) {
-        return "gui." + MMMod.MODID + "." + key;
+        return "gui." + MODID + key;
     }
 
     private String keyKey(String key) {
-        return "key." + MMMod.MODID + "." + key;
+        return "key." + MODID + "." + key;
     }
 }

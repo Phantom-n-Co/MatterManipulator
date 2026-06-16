@@ -39,6 +39,8 @@ import java.util.concurrent.Future;
 
 import javax.annotation.Nullable;
 
+import static dev.wp.matter_manipulator.MMMod.MODID;
+
 /**
  * Host-agnostic AE2 bridge for the Matter Manipulator uplink. It exposes a network's storage,
  * energy, and autocrafting to a bound manipulator, and stores per-player <b>plan patterns</b>:
@@ -285,14 +287,14 @@ public class UplinkLogic {
             } catch (Exception ex) {
                 MMMod.LOGGER.debug("uplink: auto-craft calculation failed", ex);
                 e.calc = null;
-                notifyOwner(e.owner, level, "mm.info.error.autocraft_failed");
+                notifyOwner(e.owner, level, MODID + "info.error.autocraft_failed");
                 removeSlot(i);
                 continue;
             }
             e.calc = null;
 
             if (plan == null || !plan.missingItems().isEmpty()) {
-                notifyOwner(e.owner, level, "mm.info.error.autocraft_failed");
+                notifyOwner(e.owner, level, MODID + "info.error.autocraft_failed");
                 removeSlot(i);
                 continue;
             }
@@ -302,7 +304,7 @@ public class UplinkLogic {
                 e.link = result.link();
                 onDirty.run();
             } else {
-                notifyOwner(e.owner, level, "mm.info.error.autocraft_failed");
+                notifyOwner(e.owner, level, MODID + "info.error.autocraft_failed");
                 removeSlot(i);
             }
         }

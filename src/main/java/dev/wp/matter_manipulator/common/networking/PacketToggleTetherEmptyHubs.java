@@ -9,6 +9,8 @@ import net.minecraftforge.network.NetworkEvent;
 
 import java.util.function.Supplier;
 
+import static dev.wp.matter_manipulator.MMMod.MODID;
+
 /** Server-bound: toggles the COPYING "tether empty wireless hubs to the source" smart-copy option. */
 public class PacketToggleTetherEmptyHubs {
     public PacketToggleTetherEmptyHubs() {}
@@ -31,7 +33,7 @@ public class PacketToggleTetherEmptyHubs {
             cfg.tetherEmptyHubs = !cfg.tetherEmptyHubs;
 
             player.sendSystemMessage(Component.translatable(
-                    "mm.info.tether_empty_hubs", cfg.tetherEmptyHubs ? "ON" : "OFF"));
+                    MODID + "info.tether_empty_hubs", cfg.tetherEmptyHubs ? "ON" : "OFF"));
 
             state.saveIfDirty();
         });

@@ -33,6 +33,8 @@ import java.util.List;
 
 import javax.annotation.Nullable;
 
+import static dev.wp.matter_manipulator.MMMod.MODID;
+
 /**
  * Transparent full-screen overlay with rotate/flip/reset controls and an info panel on
  * the left, and coordinate editors for Copy / Copy (A) / Copy (B) / Paste / Stacking on
@@ -48,11 +50,11 @@ public class TransformScreen extends Screen {
     private static final int GROUP_H = 80;
 
     private enum Coord {
-        COPY("mm.transform.header.copy"),
-        COPY_A("mm.transform.header.copy_a"),
-        COPY_B("mm.transform.header.copy_b"),
-        PASTE("mm.transform.header.paste"),
-        STACK("mm.transform.header.stacking");
+        COPY(MODID + "transform.header.copy"),
+        COPY_A(MODID + "transform.header.copy_a"),
+        COPY_B(MODID + "transform.header.copy_b"),
+        PASTE(MODID + "transform.header.paste"),
+        STACK(MODID + "transform.header.stacking");
 
         final String headerKey;
 
@@ -71,7 +73,7 @@ public class TransformScreen extends Screen {
     private boolean refreshingFields;
 
     public TransformScreen() {
-        super(Component.translatable("mm.gui.edit_transform"));
+        super(Component.translatable("gui." + MODID + "edit_transform"));
     }
 
     @Override
@@ -108,7 +110,7 @@ public class TransformScreen extends Screen {
         decorations.add(() -> drawInfoPanel(infoX, infoY));
 
         addRenderableWidget(Button.builder(
-                Component.translatable("mm.transform.button.reset"),
+                Component.translatable(MODID + "transform.button.reset"),
                 b -> MMNetwork.CHANNEL.sendToServer(new PacketResetTransform()))
                 .bounds(x + 90, y + 24, 40, 18)
                 .build());
@@ -116,12 +118,12 @@ public class TransformScreen extends Screen {
 
     private void addRotateRow(int x, int y, String axis, Direction dir) {
         addRenderableWidget(Button.builder(
-                Component.translatable("mm.transform.button.rotate_" + axis + "-"),
+                Component.translatable(MODID + "transform.button.rotate_" + axis + "-"),
                 b -> MMNetwork.CHANNEL.sendToServer(new PacketRotateTransform(dir, false)))
                 .bounds(x, y, 62, 18)
                 .build());
         addRenderableWidget(Button.builder(
-                Component.translatable("mm.transform.button.rotate_" + axis + "+"),
+                Component.translatable(MODID + "transform.button.rotate_" + axis + "+"),
                 b -> MMNetwork.CHANNEL.sendToServer(new PacketRotateTransform(dir, true)))
                 .bounds(x + 68, y, 62, 18)
                 .build());
@@ -129,7 +131,7 @@ public class TransformScreen extends Screen {
 
     private void addFlipButton(int x, int y, String axis, int flag) {
         addRenderableWidget(Button.builder(
-                Component.translatable("mm.transform.button.flip_" + axis),
+                Component.translatable(MODID + "transform.button.flip_" + axis),
                 b -> MMNetwork.CHANNEL.sendToServer(new PacketToggleFlip(flag)))
                 .bounds(x, y, 40, 18)
                 .build());
@@ -149,7 +151,7 @@ public class TransformScreen extends Screen {
         if (t.flipZ) flips.add("Z");
 
         String info = I18n.get(
-                "mm.transform.info",
+                MODID + "transform.info",
                 flips.isEmpty() ? "None" : String.join(", ", flips),
                 directionName(t.up),
                 directionName(t.forward));

@@ -24,6 +24,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 
+import static dev.wp.matter_manipulator.MMMod.MODID;
+
 /** Radial menu "Planning" options: computes the material list for the current copy and prints it to chat. */
 public class PacketRequestRequiredItems {
     /** Include all blocks rather than only those that don't match the world yet. */
@@ -60,7 +62,7 @@ public class PacketRequestRequiredItems {
             boolean planAll = (pkt.flags & PLAN_ALL) != 0;
 
             if (cfg.coordA == null || cfg.coordB == null || !cfg.coordA.dimension.equals(cfg.coordB.dimension)) {
-                MMUtils.sendErrorToPlayer(player, "mm.info.error.must_have_copy_region");
+                MMUtils.sendErrorToPlayer(player, MODID + "info.error.must_have_copy_region");
                 return;
             }
 
@@ -69,7 +71,7 @@ public class PacketRequestRequiredItems {
                 if (planAll) {
                     eff.coordC = eff.coordA;
                 } else {
-                    MMUtils.sendErrorToPlayer(player, "mm.info.error.must_have_paste_region");
+                    MMUtils.sendErrorToPlayer(player, MODID + "info.error.must_have_paste_region");
                     return;
                 }
             }
@@ -94,14 +96,14 @@ public class PacketRequestRequiredItems {
             Map<Fluid, Long> requiredFluids = req.fluids;
 
             if (required.isEmpty() && requiredFluids.isEmpty()) {
-                MMUtils.sendInfoToPlayer(player, "mm.info.none");
+                MMUtils.sendInfoToPlayer(player, MODID + "info.none");
                 return;
             }
 
             boolean bound = Mods.AE2 && cfg.uplink != null && AECompat.hasUplink(level, cfg.uplink);
             var inv = new MMInventory(player, cfg.uplink);
 
-            MMUtils.sendInfoToPlayer(player, "mm.info.required_items");
+            MMUtils.sendInfoToPlayer(player, MODID + "info.required_items");
             for (var entry : required.entrySet()) {
                 long count = entry.getValue();
                 ItemStack itemStack = new ItemStack(entry.getKey());
@@ -118,7 +120,7 @@ public class PacketRequestRequiredItems {
             }
 
             if (!requiredFluids.isEmpty()) {
-                MMUtils.sendInfoToPlayer(player, "mm.info.required_fluids");
+                MMUtils.sendInfoToPlayer(player, MODID + "info.required_fluids");
                 for (var entry : requiredFluids.entrySet()) {
                     long mb = entry.getValue();
                     FluidStack fluidStack = new FluidStack(entry.getKey(), 1);
@@ -139,7 +141,7 @@ public class PacketRequestRequiredItems {
             boolean autocraft = (pkt.flags & PLAN_AUTOCRAFT) != 0;
             if (planPattern || autocraft) {
                 if (!bound) {
-                    MMUtils.sendErrorToPlayer(player, "mm.info.error.no_uplink");
+                    MMUtils.sendErrorToPlayer(player, MODID + "info.error.no_uplink");
                 } else {
                     List<ItemStack> planItems = new ArrayList<>(required.size());
                     for (var entry : required.entrySet()) {
@@ -150,8 +152,8 @@ public class PacketRequestRequiredItems {
                     MMUtils.sendInfoToPlayer(
                             player,
                             ok
-                                    ? (autocraft ? "mm.info.autocraft_started" : "mm.info.plan_created")
-                                    : "mm.info.plan_full");
+                                    ? (autocraft ? MODID + "info.autocraft_started" : MODID + "info.plan_created")
+                                    : MODID + "info.plan_full");
                 }
             }
         });

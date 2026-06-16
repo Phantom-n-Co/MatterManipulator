@@ -12,6 +12,8 @@ import java.util.List;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 
+import static dev.wp.matter_manipulator.MMMod.MODID;
+
 /**
  * Builder that helps constructing radial menus with options and nested sub-menus.
  */
@@ -208,7 +210,7 @@ public class RadialMenuBuilder {
                 for (var child : children) child.apply(_menu);
                 if (addBack) {
                     RadialMenuOption back = new RadialMenuOption();
-                    back.label = () -> I18n.get("mm.gui.back");
+                    back.label = () -> I18n.get("gui." + MODID + "back");
                     back.keepOpen = true;
                     back.onClick = (m, o, b) -> {
                         m.options.clear();

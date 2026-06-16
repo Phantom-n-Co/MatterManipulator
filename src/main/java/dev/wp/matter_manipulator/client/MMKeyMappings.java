@@ -31,6 +31,11 @@ public class MMKeyMappings {
 
     public static final KeyMapping RESET = new KeyMapping(key("reset"), InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_Z, CATEGORY);
 
+    /** Build start/cancel — unbound by default (sneak-right-click is the primary way to build). */
+    public static final KeyMapping START_BUILD = new KeyMapping(key("start_build"), InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, CATEGORY);
+
+    public static final KeyMapping CANCEL_BUILD = new KeyMapping(key("cancel_build"), InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, CATEGORY);
+
     @SubscribeEvent
     public static void register(RegisterKeyMappingsEvent event) {
         event.register(CONTROL);
@@ -39,6 +44,8 @@ public class MMKeyMappings {
         event.register(COPY);
         event.register(PASTE);
         event.register(RESET);
+        event.register(START_BUILD);
+        event.register(CANCEL_BUILD);
     }
 
     private static String key(String key) {

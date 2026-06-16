@@ -21,6 +21,8 @@ import org.joml.Vector3i;
 
 import java.util.function.Supplier;
 
+import static dev.wp.matter_manipulator.MMMod.MODID;
+
 public class PacketSetCoord {
     /**
      * 0=A, 1=B, 2=C
@@ -132,17 +134,17 @@ public class PacketSetCoord {
                 cfg.coordBOffset = null;
                 cfg.coordCOffset = null;
                 cfg.action = null;
-                MMUtils.sendInfoToPlayer(player, "mm.info.coords_moved");
+                MMUtils.sendInfoToPlayer(player, MODID + "info.coords_moved");
             }
             case MARK_ARRAY -> {
                 if (cfg.coordA == null || cfg.coordB == null || !cfg.coordA.dimension.equals(cfg.coordB.dimension)) {
-                    MMUtils.sendErrorToPlayer(player, "mm.info.error.cannot_mark_copy");
+                    MMUtils.sendErrorToPlayer(player, MODID + "info.error.cannot_mark_copy");
                 } else if (cfg.coordC == null || !cfg.coordC.dimension.equals(cfg.coordA.dimension)) {
-                    MMUtils.sendErrorToPlayer(player, "mm.info.error.cannot_mark_paste");
+                    MMUtils.sendErrorToPlayer(player, MODID + "info.error.cannot_mark_paste");
                 } else {
                     Vector3i mult = cfg.getArrayMult(loc.pos);
                     cfg.arraySpan = new int[] { mult.x, mult.y, mult.z };
-                    MMUtils.sendInfoToPlayer(player, "mm.info.array_marked", mult.x, mult.y, mult.z);
+                    MMUtils.sendInfoToPlayer(player, MODID + "info.array_marked", mult.x, mult.y, mult.z);
                 }
                 cfg.action = null;
             }

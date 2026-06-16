@@ -9,6 +9,8 @@ import net.minecraftforge.network.NetworkEvent;
 
 import java.util.function.Supplier;
 
+import static dev.wp.matter_manipulator.MMMod.MODID;
+
 /** Server-bound: toggles the COPYING "link external wireless hubs" smart-copy option. */
 public class PacketToggleLinkExternalHubs {
     public PacketToggleLinkExternalHubs() {}
@@ -31,7 +33,7 @@ public class PacketToggleLinkExternalHubs {
             cfg.linkExternalHubs = !cfg.linkExternalHubs;
 
             player.sendSystemMessage(Component.translatable(
-                    "mm.info.link_external_hubs", cfg.linkExternalHubs ? "ON" : "OFF"));
+                    MODID + "info.link_external_hubs", cfg.linkExternalHubs ? "ON" : "OFF"));
 
             state.saveIfDirty();
         });
