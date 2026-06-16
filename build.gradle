@@ -47,8 +47,8 @@ repositories {
         name = 'GTCEu Maven'
         url = 'https://maven.gtceu.com'
         content {
-            includeGroup 'com.gregtechceu.gtceu'
-            includeGroup 'appeng'
+            includeGroup('com.gregtechceu.gtceu')
+            includeGroup('appeng')
         }
     }
 
@@ -66,8 +66,8 @@ repositories {
         url = "https://repo.spongepowered.org/maven"
     }
     maven {
-        name 'FirstDarkDev'
-        url "https://maven.firstdarkdev.xyz/snapshots/"
+        name = 'FirstDarkDev'
+        url = "https://maven.firstdarkdev.xyz/snapshots/"
     }
     maven { // Registrate
         url = "https://maven.tterrag.com/"
@@ -86,9 +86,9 @@ repositories {
     }
     maven {
         // Curse Forge File
-        url "https://cursemaven.com/"
+        url = "https://cursemaven.com/"
         content {
-            includeGroup "curse.maven"
+            includeGroup("curse.maven")
         }
     }
     maven {
@@ -100,8 +100,8 @@ repositories {
         url = "https://thedarkcolour.github.io/KotlinForForge/"
     }
     maven {
-        name "Modmaven"
-        url "https://modmaven.dev/"
+        name = "Modmaven"
+        url = "https://modmaven.dev/"
         // For Gradle 5.1 and above, limit it to just AE2
         content {
             includeGroup 'appeng'
@@ -115,7 +115,7 @@ repositories {
             }
         }
         filter {
-            includeGroup "maven.modrinth"
+            includeGroup("maven.modrinth")
         }
     }
     maven {
@@ -282,7 +282,7 @@ publishing {
     }
     repositories {
         maven {
-            url "file://${project.projectDir}/repo"
+            url = "file://${project.projectDir}/repo"
         }
     }
 }
@@ -300,28 +300,28 @@ idea {
     }
 }
 
-spotless {
-    encoding 'UTF-8'
-
-    format 'misc', {
-        target '.gitignore'
-
-        trimTrailingWhitespace()
-        leadingTabsToSpaces()
-        endWithNewline()
-    }
-
-    java {
-        target 'src/main/java/**/*.java'
-
-        def orderFile = file("$rootDir/spotless/import-order")
-        def formatFile = file("$rootDir/spotless/eclipse-format.xml")
-
-        toggleOffOn()
-        importOrderFile(orderFile)
-        forbidWildcardImports()
-        removeUnusedImports()
-        endWithNewline()
-        eclipse('4.31').configFile(formatFile)
-    }
-}
+//spotless {
+//    encoding 'UTF-8'
+//
+//    format 'misc', {
+//        target '.gitignore'
+//
+//        trimTrailingWhitespace()
+//        leadingTabsToSpaces()
+//        endWithNewline()
+//    }
+//
+//    java {
+//        target 'src/main/java/**/*.java'
+//
+//        def orderFile = file("$rootDir/spotless/import-order")
+//        def formatFile = file("$rootDir/spotless/eclipse-format.xml")
+//
+//        toggleOffOn()
+//        importOrderFile(orderFile)
+//        forbidWildcardImports()
+//        removeUnusedImports()
+//        endWithNewline()
+//        eclipse('4.31').configFile(formatFile)
+//    }
+//}
