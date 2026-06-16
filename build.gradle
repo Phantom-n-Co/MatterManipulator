@@ -54,6 +54,15 @@ repositories {
     }
 
     maven {
+        url = uri("https://maven.shedaniel.me/")
+        content {
+            includeGroup("me.shedaniel")
+            includeGroup("me.shedaniel.cloth")
+            includeGroup("dev.architectury")
+        }
+    }
+
+    maven {
         name = "sponge"
         url = "https://repo.spongepowered.org/maven"
     }
@@ -188,15 +197,35 @@ dependencies {
     modRuntimeOnly("maven.modrinth:jade:${jade_version}")
 
     modImplementation("brachy.modularui:modularui-mc${minecraft_version}:${mui_version}") { transitive = false }
-    modRuntimeOnly("top.theillusivec4.curios:curios-forge:5.9.1+1.20.1")
 
+    // GTm
     modImplementation("com.gregtechceu.gtceu:gtceu-${minecraft_version}:${gtceu_version}:slim") { transitive = false }
     modImplementation("com.lowdragmc.ldlib:ldlib-forge-${minecraft_version}:${ldlib_version}") { transitive = false }
     modImplementation("com.tterrag.registrate:Registrate:${registrate_version}")
     modImplementation("dev.toma.configuration:configuration-forge-${minecraft_version}:${configuration_version}")
 
+    // AE2
     modImplementation("appeng:appliedenergistics2-forge:${ae2_version}")
     modImplementation("org.appliedenergistics:guideme:${guideme_version}")
+
+    // Extended AE2
+    modImplementation("curse.maven:ex-pattern-provider-892005:8203753")
+    modImplementation("curse.maven:glodium-957920:5226922")
+
+    // Modern AE2
+    modImplementation("curse.maven:mae2-1028068:7084998")
+
+    // AE2WTLib
+    modImplementation("curse.maven:applied-energistics-2-wireless-terminals-459929:7251206")
+    modRuntimeOnly("me.shedaniel.cloth:cloth-config-forge:${clothVersion}")
+    modRuntimeOnly("dev.architectury:architectury-forge:${architecturyVersion}")
+    modRuntimeOnly("top.theillusivec4.curios:curios-forge:5.9.1+1.20.1")
+
+    // Perf/Visual mods for testing
+    modClientLocalRuntime("maven.modrinth:oculus:${oculus_version}")
+    modClientLocalRuntime("maven.modrinth:embeddium:${embeddium_version}")
+    modCompileOnly("maven.modrinth:oculus:${oculus_version}")
+    modCompileOnly("maven.modrinth:embeddium:${embeddium_version}")
 
     compileOnly('org.projectlombok:lombok:1.18.24')
     annotationProcessor('org.projectlombok:lombok:1.18.24')
@@ -256,14 +285,11 @@ publishing {
 }
 
 tasks.withType(JavaCompile).configureEach {
-    options.encoding = 'UTF-8' // Use the UTF-8 charset for Java compilation
+    options.encoding = 'UTF-8'
+    options.release.set(17)
+    options.compilerArgs << "-Aquiet=true" // shut up mixin
 }
 
-processResources {
-    exclude '.cache'
-}
-
-// IDEA no longer automatically downloads sources/javadoc jars for dependencies, so we need to explicitly enable the behavior.
 idea {
     module {
         downloadSources = true
