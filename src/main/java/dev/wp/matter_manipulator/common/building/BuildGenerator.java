@@ -272,7 +272,7 @@ public class BuildGenerator {
         if (Mods.AE2 && id.equals("ae2:cable_bus")) {
             pb.addAnalysis(AECompat.AEAnalysis.fromData(nbt));
         } else if (Mods.GTCEU && id.startsWith("gtceu:")) {
-            pb.addAnalysis(GTCompat.GTAnalysis.fromConfig(nbt));
+            pb.addAnalysis(GTCompat.GTMachineAnalysis.fromConfig(nbt));
         }
     }
 }

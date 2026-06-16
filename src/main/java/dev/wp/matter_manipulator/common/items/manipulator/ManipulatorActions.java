@@ -129,8 +129,8 @@ public class ManipulatorActions {
             AECompat.AEAnalysis cable = analysis == null ? null : analysis.cableOnly();
             if (cable != null) nbt = cable.toNbt();
         } else if (Mods.GTCEU) {
-            GTCompat.GTAnalysis analysis = GTCompat.GTAnalysis.analyze(be);
-            GTCompat.GTAnalysis color = analysis == null ? null : analysis.colorOnly();
+            GTCompat.GTMachineAnalysis analysis = GTCompat.GTMachineAnalysis.analyze(be);
+            GTCompat.GTMachineAnalysis color = analysis == null ? null : analysis.colorOnly();
             if (color != null) nbt = color.toNbt();
         }
         return nbt == null ? null : nbt.toString();

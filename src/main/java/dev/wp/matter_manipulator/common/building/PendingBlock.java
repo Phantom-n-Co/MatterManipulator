@@ -76,7 +76,7 @@ public class PendingBlock {
         }
         boolean gt = false;
         if (Mods.GTCEU) {
-            ITileAnalysis gtAnalysis = GTCompat.GTAnalysis.analyze(be);
+            ITileAnalysis gtAnalysis = GTCompat.GTMachineAnalysis.analyze(be);
             if (gtAnalysis != null) {
                 addAnalysis(gtAnalysis);
                 gt = true;

@@ -16,12 +16,14 @@ import net.minecraft.nbt.IntTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.capabilities.ICapabilityProvider;
+import net.minecraftforge.common.util.FakePlayerFactory;
 import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.level.LevelEvent;
@@ -31,14 +33,27 @@ import com.gregtechceu.gtceu.api.block.MetaMachineBlock;
 import com.gregtechceu.gtceu.api.block.property.GTBlockStateProperties;
 import com.gregtechceu.gtceu.api.blockentity.MetaMachineBlockEntity;
 import com.gregtechceu.gtceu.api.blockentity.PipeBlockEntity;
+import com.gregtechceu.gtceu.api.capability.IControllable;
 import com.gregtechceu.gtceu.api.capability.ICoverable;
 import com.gregtechceu.gtceu.api.capability.IElectricItem;
 import com.gregtechceu.gtceu.api.capability.forge.GTCapability;
 import com.gregtechceu.gtceu.api.cover.CoverBehavior;
 import com.gregtechceu.gtceu.api.data.RotationState;
+import com.gregtechceu.gtceu.api.machine.MetaMachine;
+import com.gregtechceu.gtceu.api.machine.feature.IAutoOutputFluid;
+import com.gregtechceu.gtceu.api.machine.feature.IAutoOutputItem;
+import com.gregtechceu.gtceu.api.machine.feature.IDataStickInteractable;
 import com.gregtechceu.gtceu.api.machine.feature.IDropSaveMachine;
+import com.gregtechceu.gtceu.api.machine.feature.IHasCircuitSlot;
+import com.gregtechceu.gtceu.api.machine.feature.IMufflableMachine;
+import com.gregtechceu.gtceu.api.machine.feature.IRecipeLogicMachine;
+import com.gregtechceu.gtceu.api.machine.feature.IVoidable;
+import com.gregtechceu.gtceu.api.machine.feature.multiblock.IDistinctPart;
+import com.gregtechceu.gtceu.api.machine.feature.multiblock.IMultiController;
 import com.gregtechceu.gtceu.api.pattern.util.RelativeDirection;
+import com.gregtechceu.gtceu.common.data.GTItems;
 import com.gregtechceu.gtceu.common.data.machines.GTAEMachines;
+import com.gregtechceu.gtceu.common.item.IntCircuitBehaviour;
 import com.gregtechceu.gtceu.integration.ae2.machine.MEPatternBufferPartMachine;
 import com.gregtechceu.gtceu.integration.ae2.machine.MEPatternBufferProxyPartMachine;
 import com.gregtechceu.gtceu.integration.ae2.machine.feature.multiblock.IMEStockingPart;
@@ -85,6 +100,14 @@ public class GTCompat {
         if (be instanceof MetaMachineBlockEntity mbe) {
             mbe.metaMachine.getCoverContainer().onLoad();
         }
+    }
+
+    /** The cover container of a GT machine or pipe (both can carry covers), or null for anything else. */
+    @Nullable
+    public static ICoverable coverContainerOf(BlockEntity be) {
+        if (be instanceof MetaMachineBlockEntity mbe) return mbe.metaMachine.getCoverContainer();
+        if (be instanceof PipeBlockEntity<?, ?> pipe) return pipe.getCoverContainer();
+        return null;
     }
 
     /**
@@ -208,8 +231,8 @@ public class GTCompat {
 
     /** Returns all cover items that would need to be supplied to fully reproduce this machine's covers. */
     public static List<ItemStack> captureCovers(BlockEntity be) {
-        if (!(be instanceof MetaMachineBlockEntity mbe)) return List.of();
-        ICoverable covers = mbe.metaMachine.getCoverContainer();
+        ICoverable covers = coverContainerOf(be);
+        if (covers == null) return List.of();
         List<ItemStack> items = new ArrayList<>();
         for (Direction dir : Direction.values()) {
             CoverBehavior cover = covers.getCoverAtSide(dir);
@@ -230,8 +253,8 @@ public class GTCompat {
      * handing it back would mint a free cover.
      */
     public static void filterCovers(BlockEntity be, MMInventory inv) {
-        if (!(be instanceof MetaMachineBlockEntity mbe)) return;
-        ICoverable covers = mbe.metaMachine.getCoverContainer();
+        ICoverable covers = coverContainerOf(be);
+        if (covers == null) return;
         boolean creative = inv.getPlayer().isCreative();
         for (Direction dir : Direction.values()) {
             CoverBehavior cover = covers.getCoverAtSide(dir);
@@ -261,8 +284,8 @@ public class GTCompat {
      * never both detached here and dropped by the machine. No-op (empty list) for non-GT machines.
      */
     public static List<ItemStack> detachCovers(BlockEntity be) {
-        if (!(be instanceof MetaMachineBlockEntity mbe)) return List.of();
-        ICoverable covers = mbe.metaMachine.getCoverContainer();
+        ICoverable covers = coverContainerOf(be);
+        if (covers == null) return List.of();
         List<ItemStack> items = new ArrayList<>();
         for (Direction dir : Direction.values()) {
             CoverBehavior cover = covers.getCoverAtSide(dir);
@@ -379,14 +402,17 @@ public class GTCompat {
     }
 
     /**
-     * Parsed GregTech tile state for a copied machine or pipe: the player-facing config NBT (a
-     * whitelist of {@link #ANALYSIS_KEYS}, including the {@code "cover"} blob) plus the cover items
-     * for the required-items tally. Reproduces the machine through the same recreate-then-reinit path
-     * the build loop used before, so GT init order (ctor → load → onLoad) stays correct. Facing lives
-     * in the block state and is handled by {@code BuildGenerator}, not here.
+     * Semantic copy of a GregTech machine or pipe. Instead of round-tripping a whitelist of raw NBT keys,
+     * this reads the player-facing settings through GregTech's own API at capture (paint, auto-output,
+     * voiding, muffled, circuit, working-enabled, recipe type, distinct, batch, covers, ME-part AE config,
+     * plus the machine's own {@code copyConfig}) and re-applies them with the matching setters on the live
+     * placed machine — the same path GregTech's "memory card" tool uses, so machine-specific logic and the
+     * managed-field client sync run correctly. The legacy whitelist NBT is still captured as
+     * {@link #previewNbt}: it feeds the ghost preview (covers/paint) and a defensive fallback if the
+     * semantic path can't run. Facing lives in the block state and is handled by {@code BuildGenerator}.
      */
-    public static class GTAnalysis implements ITileAnalysis {
-        /** Player-facing config kept from a GT machine's NBT; drops runtime/positional state. */
+    public static class GTMachineAnalysis implements ITileAnalysis {
+        /** Legacy whitelist kept only for the ghost preview + the fallback restore (not the primary apply). */
         private static final String[] ANALYSIS_KEYS = {
                 "ownerUUID", "paintingColor", "cover", "isFlipped",
                 "workingMode", "voidingMode", "batchEnabled", "isWorkingEnabled", "workingEnabled",
@@ -397,57 +423,167 @@ public class GTCompat {
                 "autoPull", "ticksPerCycle", "minStackSize",
         };
 
-        private CompoundTag config;
+        /** Semantic settings, captured via getters and re-applied via setters (MM's own stable keys). */
+        private CompoundTag semantic = new CompoundTag();
+        /** Cover container config (per-side {@code {id,item,data}}) from {@code ICoverable.copyConfig}. */
+        private CompoundTag coverConfig = new CompoundTag();
+        /** ME bus/hatch AE config, copied through the data-stick API, or null if not applicable. */
+        @Nullable
+        private CompoundTag dataStick;
+        /** Cover items needed to reproduce the covers, for the required-items tally. */
         @Nullable
         private List<ItemStack> coverItems;
+        /** Legacy whitelist NBT slice — powers the ghost preview and the defensive apply fallback. */
+        private CompoundTag previewNbt = new CompoundTag();
 
-        /** Captures a machine/pipe's config, or null if {@code be} is neither. */
+        /** Captures a machine/pipe's config semantically (+ the preview/fallback slice), or null otherwise. */
         @Nullable
-        public static GTAnalysis analyze(BlockEntity be) {
+        public static GTMachineAnalysis analyze(BlockEntity be) {
             if (!(be instanceof MetaMachineBlockEntity) && !(be instanceof PipeBlockEntity)) return null;
-            CompoundTag full = be.saveWithFullMetadata();
-            CompoundTag config = new CompoundTag();
-            if (full.contains("id")) config.putString("id", full.getString("id"));
-            for (String key : ANALYSIS_KEYS) {
-                Tag value = full.get(key);
-                if (value != null) config.put(key, value.copy());
-            }
-            GTAnalysis a = new GTAnalysis();
-            a.config = config;
+            GTMachineAnalysis a = new GTMachineAnalysis();
+            a.previewNbt = captureWhitelist(be);
             a.coverItems = captureCovers(be);
+            ICoverable covers = coverContainerOf(be);
+            if (covers != null) a.coverConfig = covers.copyConfig(new CompoundTag());
+            if (be instanceof MetaMachineBlockEntity mbe) {
+                MetaMachine machine = mbe.metaMachine;
+                a.semantic = captureMachineConfig(machine);
+                if (!isPatternBufferFamily(machine) && machine instanceof IDataStickInteractable dsi) {
+                    a.dataStick = captureDataStick(dsi, be);
+                }
+            } else if (be instanceof PipeBlockEntity<?, ?> pipe) {
+                a.semantic = capturePipeConfig(pipe);
+            }
             return a;
         }
 
-        /** Rebuilds an analysis from previously captured config NBT (see {@link #toNbt}). */
-        public static GTAnalysis fromConfig(CompoundTag config) {
-            GTAnalysis a = new GTAnalysis();
-            a.config = config.copy();
+        /** Rebuilds an analysis from previously persisted NBT (cables mode; see {@link #toNbt}). */
+        public static GTMachineAnalysis fromConfig(CompoundTag config) {
+            GTMachineAnalysis a = new GTMachineAnalysis();
+            if (config.contains("semantic")) a.semantic = config.getCompound("semantic").copy();
+            if (config.contains("coverConfig")) a.coverConfig = config.getCompound("coverConfig").copy();
+            if (config.contains("dataStick")) a.dataStick = config.getCompound("dataStick").copy();
+            if (config.contains("preview")) a.previewNbt = config.getCompound("preview").copy();
             return a;
         }
 
-        /** A reduced analysis keeping only a pipe's paint color (cables mode), or null if unpainted. */
+        /** A reduced analysis keeping only a pipe/machine's paint color (cables mode), or null if unpainted. */
         @Nullable
-        public GTAnalysis colorOnly() {
-            if (!config.contains("paintingColor")) return null;
-            CompoundTag c = new CompoundTag();
-            if (config.contains("id")) c.putString("id", config.getString("id"));
-            c.put("paintingColor", config.get("paintingColor").copy());
-            GTAnalysis a = new GTAnalysis();
-            a.config = c;
+        public GTMachineAnalysis colorOnly() {
+            if (!semantic.contains("paint")) return null;
+            GTMachineAnalysis a = new GTMachineAnalysis();
+            a.semantic.putInt("paint", semantic.getInt("paint"));
+            // Carry the block id so BuildGenerator.attachCableAnalysis can route the persisted tag.
+            if (previewNbt.contains("id")) a.previewNbt.putString("id", previewNbt.getString("id"));
             return a;
         }
 
-        /** The captured config NBT, for persisting a cables-mode analysis on the tool. */
+        /** Compact, self-describing NBT for persisting a cables-mode analysis on the tool. */
         public CompoundTag toNbt() {
-            return config.copy();
+            CompoundTag t = new CompoundTag();
+            t.put("semantic", semantic.copy());
+            if (!coverConfig.isEmpty()) t.put("coverConfig", coverConfig.copy());
+            if (dataStick != null) t.put("dataStick", dataStick.copy());
+            if (!previewNbt.isEmpty()) t.put("preview", previewNbt.copy());
+            // Surface the block id at top level so attachCableAnalysis can route on it.
+            if (previewNbt.contains("id")) t.putString("id", previewNbt.getString("id"));
+            return t;
         }
 
         @Override
         public boolean apply(BlockApplyContext ctx) {
+            BlockEntity be = ctx.getBlockEntity();
+            try {
+                if (be instanceof MetaMachineBlockEntity mbe) {
+                    applyMachine(mbe.metaMachine, be, ctx);
+                } else if (be instanceof PipeBlockEntity<?, ?> pipe) {
+                    applyPipe(pipe, be, ctx);
+                } else {
+                    return applyFallback(ctx); // placed BE isn't a live GT machine/pipe — restore from NBT
+                }
+                be.setChanged();
+                if (needsClientSync(be)) scheduleClientSync(ctx.level(), ctx.pos());
+                return true;
+            } catch (Exception e) {
+                // The semantic path failed (unexpected machine shape, API drift); restore from the
+                // captured NBT so the paste still carries its config.
+                return applyFallback(ctx);
+            }
+        }
+
+        private void applyMachine(MetaMachine m, BlockEntity be, BlockApplyContext ctx) {
+            ServerPlayer player = serverPlayer(ctx);
+            if (semantic.contains("paint")) m.setPaintingColor(semantic.getInt("paint"));
+            if (m instanceof IAutoOutputItem ao) {
+                if (semantic.contains("outItemSide"))
+                    ao.setOutputFacingItems(Direction.byName(semantic.getString("outItemSide")));
+                if (semantic.contains("outItemAuto")) ao.setAutoOutputItems(semantic.getBoolean("outItemAuto"));
+                if (semantic.contains("outItemAllowIn"))
+                    ao.setAllowInputFromOutputSideItems(semantic.getBoolean("outItemAllowIn"));
+            }
+            if (m instanceof IAutoOutputFluid af) {
+                if (semantic.contains("outFluidSide"))
+                    af.setOutputFacingFluids(Direction.byName(semantic.getString("outFluidSide")));
+                if (semantic.contains("outFluidAuto")) af.setAutoOutputFluids(semantic.getBoolean("outFluidAuto"));
+                if (semantic.contains("outFluidAllowIn"))
+                    af.setAllowInputFromOutputSideFluids(semantic.getBoolean("outFluidAllowIn"));
+            }
+            if (m instanceof IMufflableMachine mm && semantic.contains("muffled"))
+                mm.setMuffled(semantic.getBoolean("muffled"));
+            if (m instanceof IHasCircuitSlot cm && semantic.contains("circuit"))
+                cm.getCircuitInventory().setStackInSlot(0, IntCircuitBehaviour.stack(semantic.getInt("circuit")));
+            if (m instanceof IControllable ic && semantic.contains("workingEnabled"))
+                ic.setWorkingEnabled(semantic.getBoolean("workingEnabled"));
+            if (m instanceof IVoidable iv && semantic.contains("voiding"))
+                iv.setVoidingMode(voidingMode(semantic.getInt("voiding")));
+            if (m instanceof IRecipeLogicMachine rlm && semantic.contains("recipeType"))
+                rlm.setActiveRecipeType(semantic.getInt("recipeType"));
+            if (m instanceof IDistinctPart dp && semantic.contains("distinct"))
+                dp.setDistinct(semantic.getBoolean("distinct"));
+            if (m instanceof IMultiController mc && semantic.contains("batch"))
+                mc.setBatchEnabled(semantic.getBoolean("batch"));
+            if (m instanceof IMEStockingPart sp) {
+                if (semantic.contains("minStackSize")) sp.setMinStackSize(semantic.getInt("minStackSize"));
+                if (semantic.contains("ticksPerCycle")) sp.setTicksPerCycle(semantic.getInt("ticksPerCycle"));
+            }
+            // Covers: place them (unpaid), then charge each via the shared filter (removes the unaffordable).
+            m.getCoverContainer().pasteConfig(player, coverConfig);
+            filterCovers(be, ctx.inv());
+            // ME bus/hatch AE config via the data-stick API (FakePlayer to suppress GregTech's chat message).
+            if (dataStick != null && m instanceof IDataStickInteractable dsi && !isPatternBufferFamily(m)) {
+                applyDataStick(dsi, dataStick, ctx.level());
+            }
+            // Machine-specific catch-all (GregTech-authored; usually empty for stock machines).
+            if (semantic.contains("machineConfig")) m.pasteConfig(player, semantic.getCompound("machineConfig"));
+            // A fresh copy belongs to the player pasting it, like a normally placed machine.
+            if (ctx.player() != null) m.setOwnerUUID(ctx.player().getUUID());
+        }
+
+        private void applyPipe(PipeBlockEntity<?, ?> pipe, BlockEntity be, BlockApplyContext ctx) {
+            if (semantic.contains("paint")) pipe.setPaintingColor(semantic.getInt("paint"));
+            if (semantic.contains("connections")) {
+                int connections = semantic.getInt("connections");
+                for (Direction dir : Direction.values()) {
+                    if ((connections & (1 << dir.ordinal())) != 0) pipe.setConnection(dir, true, false);
+                }
+            }
+            if (semantic.contains("blocked")) {
+                int blocked = semantic.getInt("blocked");
+                for (Direction dir : Direction.values()) {
+                    if ((blocked & (1 << dir.ordinal())) != 0) pipe.setBlocked(dir, true);
+                }
+            }
+            pipe.getCoverContainer().pasteConfig(serverPlayer(ctx), coverConfig);
+            filterCovers(be, ctx.inv());
+        }
+
+        /** Legacy whitelist restore via recreate-then-reinit; the defensive fallback only. */
+        private boolean applyFallback(BlockApplyContext ctx) {
+            if (previewNbt.isEmpty()) return true;
             ServerLevel level = ctx.level();
             BlockPos pos = ctx.pos();
             BlockState state = level.getBlockState(pos);
-            CompoundTag tag = config.copy();
+            CompoundTag tag = previewNbt.copy();
             tag.putInt("x", pos.getX());
             tag.putInt("y", pos.getY());
             tag.putInt("z", pos.getZ());
@@ -462,7 +598,7 @@ public class GTCompat {
             }
             BlockEntity be = level.getBlockEntity(pos);
             if (be != null) {
-                filterCovers(be, ctx.inv()); // re-installs + charges covers (no give-back)
+                filterCovers(be, ctx.inv());
                 reinitCovers(be);
                 be.setChanged();
                 if (needsClientSync(be)) scheduleClientSync(level, pos);
@@ -479,13 +615,21 @@ public class GTCompat {
 
         @Override
         public void transform(MMTransform transform) {
-            transformMachineNbt(config, transform);
+            rotateDir(semantic, "outItemSide", transform);
+            rotateDir(semantic, "outFluidSide", transform);
+            rotateConnectionMask(semantic, "connections", transform);
+            rotateConnectionMask(semantic, "blocked", transform);
+            transformCoverConfig(coverConfig, transform);
+            transformMachineNbt(previewNbt, transform);
         }
 
         @Override
         public ITileAnalysis copy() {
-            GTAnalysis dup = new GTAnalysis();
-            dup.config = config.copy();
+            GTMachineAnalysis dup = new GTMachineAnalysis();
+            dup.semantic = semantic.copy();
+            dup.coverConfig = coverConfig.copy();
+            dup.dataStick = dataStick == null ? null : dataStick.copy();
+            dup.previewNbt = previewNbt.copy();
             if (coverItems != null) {
                 dup.coverItems = new ArrayList<>(coverItems.size());
                 for (ItemStack s : coverItems) dup.coverItems.add(s.copy());
@@ -495,8 +639,133 @@ public class GTCompat {
 
         @Override
         public void contributePreviewNbt(CompoundTag out) {
-            for (String key : config.getAllKeys()) {
-                out.put(key, config.get(key).copy());
+            for (String key : previewNbt.getAllKeys()) {
+                out.put(key, previewNbt.get(key).copy());
+            }
+        }
+
+        // ── capture helpers ────────────────────────────────────────────────────────
+
+        private static CompoundTag captureWhitelist(BlockEntity be) {
+            CompoundTag full = be.saveWithFullMetadata();
+            CompoundTag config = new CompoundTag();
+            if (full.contains("id")) config.putString("id", full.getString("id"));
+            for (String key : ANALYSIS_KEYS) {
+                Tag value = full.get(key);
+                if (value != null) config.put(key, value.copy());
+            }
+            return config;
+        }
+
+        private static CompoundTag captureMachineConfig(MetaMachine m) {
+            CompoundTag t = new CompoundTag();
+            t.putInt("paint", m.getPaintingColor());
+            if (m instanceof IAutoOutputItem ao && ao.getOutputFacingItems() != null) {
+                t.putString("outItemSide", ao.getOutputFacingItems().getSerializedName());
+                t.putBoolean("outItemAuto", ao.isAutoOutputItems());
+                t.putBoolean("outItemAllowIn", ao.isAllowInputFromOutputSideItems());
+            }
+            if (m instanceof IAutoOutputFluid af && af.getOutputFacingFluids() != null) {
+                t.putString("outFluidSide", af.getOutputFacingFluids().getSerializedName());
+                t.putBoolean("outFluidAuto", af.isAutoOutputFluids());
+                t.putBoolean("outFluidAllowIn", af.isAllowInputFromOutputSideFluids());
+            }
+            if (m instanceof IMufflableMachine mm) t.putBoolean("muffled", mm.isMuffled());
+            if (m instanceof IHasCircuitSlot cm && cm.isCircuitSlotEnabled()) {
+                int circuit = IntCircuitBehaviour.getCircuitConfiguration(cm.getCircuitInventory().getStackInSlot(0));
+                if (circuit != 0) t.putInt("circuit", circuit);
+            }
+            if (m instanceof IControllable ic) t.putBoolean("workingEnabled", ic.isWorkingEnabled());
+            if (m instanceof IVoidable iv) t.putInt("voiding", iv.getVoidingMode().ordinal());
+            if (m instanceof IRecipeLogicMachine rlm) t.putInt("recipeType", rlm.getActiveRecipeType());
+            if (m instanceof IDistinctPart dp) t.putBoolean("distinct", dp.isDistinct());
+            if (m instanceof IMultiController mc) t.putBoolean("batch", mc.isBatchEnabled());
+            // ME stocking bus/hatch auto-stock tuning — not carried by the data stick or copyConfig.
+            if (m instanceof IMEStockingPart sp) {
+                t.putInt("minStackSize", sp.getMinStackSize());
+                t.putInt("ticksPerCycle", sp.getTicksPerCycle());
+            }
+            CompoundTag machineConfig = m.copyConfig(new CompoundTag());
+            if (!machineConfig.isEmpty()) t.put("machineConfig", machineConfig);
+            return t;
+        }
+
+        private static CompoundTag capturePipeConfig(PipeBlockEntity<?, ?> pipe) {
+            CompoundTag t = new CompoundTag();
+            t.putInt("paint", pipe.getPaintingColor());
+            t.putInt("connections", pipe.getConnections());
+            t.putInt("blocked", pipe.getBlockedConnections());
+            return t;
+        }
+
+        @Nullable
+        private static CompoundTag captureDataStick(IDataStickInteractable dsi, BlockEntity be) {
+            if (!(be.getLevel() instanceof ServerLevel level)) return null;
+            try {
+                ItemStack carrier = GTItems.TOOL_DATA_STICK.asStack();
+                dsi.onDataStickShiftUse(FakePlayerFactory.getMinecraft(level), carrier);
+                CompoundTag tag = carrier.getTag();
+                return tag == null || tag.isEmpty() ? null : tag.copy();
+            } catch (Exception e) {
+                return null; // some IDataStickInteractable wrote nothing useful; skip it
+            }
+        }
+
+        // ── apply helpers ────────────────────────────────────────────────────────
+
+        private static void applyDataStick(IDataStickInteractable dsi, CompoundTag tag, ServerLevel level) {
+            try {
+                ItemStack carrier = GTItems.TOOL_DATA_STICK.asStack();
+                carrier.setTag(tag.copy());
+                dsi.onDataStickUse(FakePlayerFactory.getMinecraft(level), carrier);
+            } catch (Exception e) {
+                // GregTech reads the config before sending its chat message; a failure here is the message.
+            }
+        }
+
+        private static ServerPlayer serverPlayer(BlockApplyContext ctx) {
+            return ctx.player() instanceof ServerPlayer sp ? sp : FakePlayerFactory.getMinecraft(ctx.level());
+        }
+
+        private static IVoidable.VoidingMode voidingMode(int ordinal) {
+            IVoidable.VoidingMode[] values = IVoidable.VoidingMode.VALUES;
+            return ordinal >= 0 && ordinal < values.length ? values[ordinal] : IVoidable.VoidingMode.VOID_NONE;
+        }
+
+        private static boolean isPatternBufferFamily(MetaMachine m) {
+            return m instanceof MEPatternBufferPartMachine || m instanceof MEPatternBufferProxyPartMachine;
+        }
+
+        // ── transform helpers ────────────────────────────────────────────────────────
+
+        private static void rotateDir(CompoundTag tag, String key, MMTransform transform) {
+            if (!tag.contains(key, Tag.TAG_STRING)) return;
+            Direction d = Direction.byName(tag.getString(key));
+            if (d != null) tag.putString(key, transform.apply(d).getSerializedName());
+        }
+
+        private static void rotateConnectionMask(CompoundTag tag, String key, MMTransform transform) {
+            if (!tag.contains(key, Tag.TAG_INT)) return;
+            int mask = tag.getInt(key);
+            int rotated = 0;
+            for (Direction dir : Direction.values()) {
+                if ((mask & (1 << dir.ordinal())) != 0) rotated |= 1 << transform.apply(dir).ordinal();
+            }
+            tag.putInt(key, rotated);
+        }
+
+        private static void transformCoverConfig(CompoundTag coverConfig, MMTransform transform) {
+            if (coverConfig.isEmpty()) return;
+            CompoundTag src = coverConfig.copy();
+            for (Direction side : Direction.values()) coverConfig.remove(side.getSerializedName());
+            for (Direction side : Direction.values()) {
+                Tag blob = src.get(side.getSerializedName());
+                if (blob == null) continue;
+                Tag moved = blob.copy();
+                if (moved instanceof CompoundTag c) {
+                    rewriteCoverSide(c, side.ordinal(), transform.apply(side).ordinal());
+                }
+                coverConfig.put(transform.apply(side).getSerializedName(), moved);
             }
         }
     }
@@ -510,8 +779,8 @@ public class GTCompat {
      * Rotates/flips the orientation baked into a GT machine's NBT in place: permutes the per-side
      * cover sub-tags (and the {@code attachedSide} int inside each), rotates the auto-I/O facing keys,
      * and toggles a multiblock controller's {@code isFlipped} on a mirroring transform. No-op for NBT
-     * that isn't a GregTech machine. Shared by {@link GTAnalysis} (copy) and {@code RawTileAnalysis}
-     * (move), so a rotated paste behaves the same either way.
+     * that isn't a GregTech machine. Shared by {@link GTMachineAnalysis} (the copy preview/fallback slice)
+     * and {@code RawTileAnalysis} (move), so a rotated paste behaves the same either way.
      */
     public static void transformMachineNbt(CompoundTag tag, MMTransform transform) {
         if (!tag.getString("id").startsWith("gtceu:")) return;
