@@ -324,6 +324,7 @@ public class GTCompat {
                 "activeRecipeType", "outputFacingItems", "outputFacingFluids", "inputFacingItems",
                 "inputFacingFluids", "autoOutputItems", "autoOutputFluids",
                 "allowInputFromOutputSideItems", "allowInputFromOutputSideFluids",
+                "autoPull", "ticksPerCycle", "minStackSize",
         };
 
         private CompoundTag config;
