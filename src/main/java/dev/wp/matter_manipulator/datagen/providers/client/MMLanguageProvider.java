@@ -47,7 +47,9 @@ public class MMLanguageProvider extends LanguageProvider {
         addInfoKeys();
     }
 
-    /** Transform screen button/header labels. */
+    /**
+     * Transform screen button/header labels.
+     */
     private void addTransformKeys() {
         add("mm.transform.info", "Flip: %s\nUp: %s\nForward: %s");
         add("mm.transform.button.rotate_x-", "Rotate X-");
@@ -67,7 +69,9 @@ public class MMLanguageProvider extends LanguageProvider {
         add("mm.transform.header.stacking", "Stacking");
     }
 
-    /** Radial menu labels. */
+    /**
+     * Radial menu labels.
+     */
     private void addRadialMenuKeys() {
         add("mm.gui.set_mode", "Set Mode");
         add("mm.gui.set_remove_mode", "Set Remove Mode");
@@ -120,61 +124,75 @@ public class MMLanguageProvider extends LanguageProvider {
         add("mm.gui.set_cable", "Set Cable");
         add("mm.gui.start_build", "Start Build");
         add("mm.gui.cancel_build", "Cancel Build");
+        add("mm.gui.smart_copy", "Smart Copy");
+        add("mm.gui.back", "Back");
+        add("mm.gui.replace_cribs", "Replace CRIBs with Proxies");
+        add("mm.gui.link_external_hubs", "Link External Hubs");
+        add("mm.gui.tether_empty_hubs", "Tether Unlinked Hubs");
     }
 
-    /** Chat feedback messages. */
+    /**
+     * Chat feedback messages.
+     */
     private void addInfoKeys() {
-        add("mm.info.building", "Building %s blocks...");
-        add("mm.info.error.out_of_eu", "Matter Manipulator ran out of energy.");
-        add("mm.info.error.could_not_place", "Could not place %s remaining blocks.");
-        add("mm.info.finished_placing", "Finished placing blocks.");
-        add("mm.info.process_move", "Moved %s blocks (%s remaining)");
-        add("mm.info.finished_move", "Finished moving blocks.");
-        add("mm.info.warning.could_not_find", "Could not find item, %s block(s) will be skipped:");
-        add("mm.info.placed_remaining", "Placed %s blocks (%s remaining)");
-        add("mm.info.warning.protected_area", "Tried to break/place a block in a protected area!");
-        add("mm.info.added", "Added %s to %s");
-        add("mm.info.set", "Set %s to: %s");
-        add("mm.info.set_block_to_replace_with", "Set block to replace with to: %s");
-        add("mm.info.added_block_to_exchange_whitelist", "Added block to exchange whitelist: %s");
-        add("mm.info.set_exchange_whitelist_to_only_contain", "Set exchange whitelist to only contain: %s");
-        add("mm.info.set_cable", "Set cables to: %s");
-        add("mm.info.cleared_cable", "Cleared cable block.");
-        add("mm.info.error.cannot_mark_copy", "Cannot mark array: copy region is invalid");
-        add("mm.info.error.cannot_mark_paste", "Cannot mark array: paste coordinate is invalid");
-        add("mm.info.error.must_have_copy_region", "Must have copy region marked.");
-        add("mm.info.error.must_have_paste_region", "Must have paste region marked to detect missing items.");
-        add("mm.info.required_items", "Required items:");
-        add("mm.info.required_fluids", "Required fluids:");
-        add("mm.info.none", "None");
-        add("mm.info.uplink_bound", "Bound to AE2 uplink at %s.");
-        add("mm.info.uplink_cleared", "Cleared AE2 uplink binding.");
-        add("mm.info.error.not_an_uplink", "That isn't an AE2 uplink block.");
-        add("mm.info.error.no_uplink", "No AE2 uplink is bound.");
-        add("mm.info.plan_created", "Plan created — request the Build Plan from your ME terminal to craft it.");
-        add("mm.info.autocraft_started", "Auto-crafting the plan's materials into your ME network.");
-        add("mm.info.error.autocraft_failed", "The network could not craft the plan's materials.");
-        add("mm.info.plan_full", "The uplink has no free plan slots; clear some plans first.");
-        add("mm.info.plan_cleared", "Cleared %s plan(s) from the uplink.");
-        add("mm.info.locked", "Positions are locked. Press the lock key to unlock.");
-        add("mm.info.transform_reset", "Transform reset.");
-        add("mm.info.coord_set", "Coord %s set to %s");
-        add("mm.info.corner_a_set", "Corner A set at %s. Right-click to set corner B.");
-        add("mm.info.corner_b_set", "Corner B set at %s.");
-        add("mm.info.copy_a_set", "Copy A set. Right-click to set copy B.");
-        add("mm.info.copy_b_set", "Copy B set.");
-        add("mm.info.cut_a_set", "Cut A set. Right-click to set cut B.");
-        add("mm.info.cut_b_set", "Cut B set.");
-        add("mm.info.paste_set", "Paste target set.");
-        add("mm.info.coords_moved", "Coordinates moved.");
-        add("mm.info.array_marked", "Array span set to %s x %s x %s.");
+        add(infoKey("building"), "Building %s blocks...");
+        add(infoKey("error.out_of_eu"), "Matter Manipulator ran out of energy.");
+        add(infoKey("error.could_not_place"), "Could not place %s remaining blocks.");
+        add(infoKey("finished_placing"), "Finished placing blocks.");
+        add(infoKey("process_move"), "Moved %s blocks (%s remaining)");
+        add(infoKey("finished_move"), "Finished moving blocks.");
+        add(infoKey("replace_cribs"), "Replace CRIBs with proxies: %s");
+        add(infoKey("link_external_hubs"), "Link external wireless hubs: %s");
+        add(infoKey("tether_empty_hubs"), "Tether unlinked wireless hubs: %s");
+        add(infoKey("warning.could_not_find"), "Could not find item, %s block(s) will be skipped:");
+        add(infoKey("placed_remaining"), "Placed %s blocks (%s remaining)");
+        add(infoKey("warning.protected_area"), "Tried to break/place a block in a protected area!");
+        add(infoKey("added"), "Added %s to %s");
+        add(infoKey("set"), "Set %s to: %s");
+        add(infoKey("set_block_to_replace_with"), "Set block to replace with to: %s");
+        add(infoKey("added_block_to_exchange_whitelist"), "Added block to exchange whitelist: %s");
+        add(infoKey("set_exchange_whitelist_to_only_contain"), "Set exchange whitelist to only contain: %s");
+        add(infoKey("set_cable"), "Set cables to: %s");
+        add(infoKey("cleared_cable"), "Cleared cable block.");
+        add(infoKey("error.cannot_mark_copy"), "Cannot mark array: copy region is invalid");
+        add(infoKey("error.cannot_mark_paste"), "Cannot mark array: paste coordinate is invalid");
+        add(infoKey("error.must_have_copy_region"), "Must have copy region marked.");
+        add(infoKey("error.must_have_paste_region"), "Must have paste region marked to detect missing items.");
+        add(infoKey("required_items"), "Required items:");
+        add(infoKey("required_fluids"), "Required fluids:");
+        add(infoKey("none"), "None");
+        add(infoKey("uplink_bound"), "Bound to AE2 uplink at %s.");
+        add(infoKey("uplink_cleared"), "Cleared AE2 uplink binding.");
+        add(infoKey("error.not_an_uplink"), "That isn't an AE2 uplink block.");
+        add(infoKey("error.no_uplink"), "No AE2 uplink is bound.");
+        add(infoKey("plan_created"), "Plan created — request the Build Plan from your ME terminal to craft it.");
+        add(infoKey("autocraft_started"), "Auto-crafting the plan's materials into your ME network.");
+        add(infoKey("error.autocraft_failed"), "The network could not craft the plan's materials.");
+        add(infoKey("plan_full"), "The uplink has no free plan slots; clear some plans first.");
+        add(infoKey("plan_cleared"), "Cleared %s plan(s) from the uplink.");
+        add(infoKey("locked"), "Positions are locked. Press the lock key to unlock.");
+        add(infoKey("transform_reset"), "Transform reset.");
+        add(infoKey("coord_set"), "Coord %s set to %s");
+        add(infoKey("corner_a_set"), "Corner A set at %s. Right-click to set corner B.");
+        add(infoKey("corner_b_set"), "Corner B set at %s.");
+        add(infoKey("copy_a_set"), "Copy A set. Right-click to set copy B.");
+        add(infoKey("copy_b_set"), "Copy B set.");
+        add(infoKey("cut_a_set"), "Cut A set. Right-click to set cut B.");
+        add(infoKey("cut_b_set"), "Cut B set.");
+        add(infoKey("paste_set"), "Paste target set.");
+        add(infoKey("coords_moved"), "Coordinates moved.");
+        add(infoKey("array_marked"), "Array span set to %s x %s x %s.");
+    }
+
+    private String infoKey(String key) {
+        return "mm.info." + key;
     }
 
     private String guiKey(String key) {
-        return "gui.matter_manipulator." + key;
+        return "gui." + MMMod.MODID + "." + key;
     }
 
     private String keyKey(String key) {
-        return "key.matter_manipulator." + key;
+        return "key." + MMMod.MODID + "." + key;
     }
 }

@@ -66,6 +66,27 @@ public class MMConfig {
     public boolean locked = false;
 
     /**
+     * Smart copy (COPYING): replace a captured GTCEu ME Pattern Buffer (CRIB) with a Pattern Buffer
+     * Proxy linked back to the original buffer, instead of copying the buffer wholesale. Opt-in; kept
+     * out of {@code equals}/{@code hashCode} as it doesn't change the ghost geometry.
+     */
+    public boolean replaceCribsWithProxies = false;
+
+    /**
+     * Smart copy (COPYING): when copying ExtendedAE wireless connectors, also restore links to
+     * connectors/hubs OUTSIDE the copied region (keeping their original frequency). Off = only
+     * re-link pairs that were both copied. Opt-in; kept out of {@code equals}/{@code hashCode}.
+     */
+    public boolean linkExternalHubs = false;
+
+    /**
+     * Smart copy (COPYING): an ExtendedAE wireless hub copied with NO existing links is pasted as a
+     * single wireless connector tethered (new frequency) to a free port on the original hub — extending
+     * the source hub's reach instead of cloning an empty hub. Opt-in; out of {@code equals}/{@code hashCode}.
+     */
+    public boolean tetherEmptyHubs = false;
+
+    /**
      * AE2 uplink the manipulator is bound to (null if unbound). When set, builds source items,
      * fluids, and (with the Power P2P upgrade) energy from that network, and planning can request
      * auto-crafting through it.
@@ -100,6 +121,9 @@ public class MMConfig {
         next.action = this.action;
         next.blockSelectMode = this.blockSelectMode;
         next.locked = this.locked;
+        next.replaceCribsWithProxies = this.replaceCribsWithProxies;
+        next.linkExternalHubs = this.linkExternalHubs;
+        next.tetherEmptyHubs = this.tetherEmptyHubs;
         next.uplink = this.uplink;
         return next;
     }

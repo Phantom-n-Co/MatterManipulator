@@ -11,6 +11,8 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
+import java.util.Map;
+
 import javax.annotation.Nullable;
 
 /**
@@ -27,11 +29,27 @@ public class BlockApplyContext {
     private final ServerLevel level;
     private final BlockPos pos;
     private final MMInventory inv;
+    @Nullable
+    private final Map<Long, Long> wirelessRemap;
 
     public BlockApplyContext(ServerLevel level, BlockPos pos, MMInventory inv) {
+        this(level, pos, inv, null);
+    }
+
+    public BlockApplyContext(ServerLevel level, BlockPos pos, MMInventory inv, @Nullable Map<Long, Long> wirelessRemap) {
         this.level = level;
         this.pos = pos;
         this.inv = inv;
+        this.wirelessRemap = wirelessRemap;
+    }
+
+    /**
+     * Build-scoped original→fresh frequency remap for ExtendedAE wireless re-linking, shared across
+     * every block in one build so a copied connector pair settles on one new frequency. Null outside a build.
+     */
+    @Nullable
+    public Map<Long, Long> wirelessRemap() {
+        return wirelessRemap;
     }
 
     public ServerLevel level() {

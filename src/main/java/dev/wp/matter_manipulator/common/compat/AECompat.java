@@ -28,6 +28,8 @@ import appeng.api.parts.IPartItem;
 import appeng.api.stacks.AEFluidKey;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.GenericStack;
+import appeng.core.definitions.AEItems;
+import appeng.crafting.pattern.EncodedPatternItem;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
@@ -204,6 +206,18 @@ public class AECompat {
         if (level.getBlockEntity(pos) instanceof IPartHost host) {
             host.markForUpdate();
         }
+    }
+
+    /**
+     * If {@code encoded} is an AE2 encoded pattern, pays for up to {@code count} of it with BLANK
+     * patterns (player inventory + bound network) and returns how many blanks were consumed. The caller
+     * then places the captured encoded stack — whose NBT already holds the recipe — for that many,
+     * fabricating it from a blank (mirrors the original {@code PatternItemProvider}). Returns 0 for
+     * non-patterns, so no other item is ever substituted.
+     */
+    public static int payWithBlankPattern(MMInventory inv, ItemStack encoded, int count) {
+        if (count <= 0 || !(encoded.getItem() instanceof EncodedPatternItem)) return 0;
+        return inv.consumeUpTo(new ItemStack(AEItems.BLANK_PATTERN.asItem()), count);
     }
 
     // ── Uplink network bridge ───────────────────────────────────────────────────────

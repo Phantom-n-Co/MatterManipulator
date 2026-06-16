@@ -6,6 +6,7 @@ import dev.wp.matter_manipulator.common.building.shapes.ShapeCylinder;
 import dev.wp.matter_manipulator.common.building.shapes.ShapeLine;
 import dev.wp.matter_manipulator.common.building.shapes.ShapeSphere;
 import dev.wp.matter_manipulator.common.compat.AECompat;
+import dev.wp.matter_manipulator.common.compat.ExtendedAECompat;
 import dev.wp.matter_manipulator.common.compat.GTCompat;
 import dev.wp.matter_manipulator.common.items.manipulator.MMConfig;
 import dev.wp.matter_manipulator.common.items.manipulator.PlaceMode;
@@ -117,6 +118,19 @@ public class BuildGenerator {
         if (rawBlocks.isEmpty()) return Collections.emptyList();
 
         boolean identity = cfg.transform.isIdentity();
+
+        // Wireless smart-copy region bounds (ExtendedAE), used to classify links as internal/external.
+        boolean wireless = Mods.AE2 && Mods.EXTENDED_AE && !moving;
+        BlockPos regionMin = null, regionMax = null;
+        if (wireless) {
+            var ca = cfg.coordA.pos;
+            var cb = cfg.coordB.pos;
+            regionMin = new BlockPos(
+                    Math.min(ca.getX(), cb.getX()), Math.min(ca.getY(), cb.getY()), Math.min(ca.getZ(), cb.getZ()));
+            regionMax = new BlockPos(
+                    Math.max(ca.getX(), cb.getX()), Math.max(ca.getY(), cb.getY()), Math.max(ca.getZ(), cb.getZ()));
+        }
+
         var baseBlocks = new ArrayList<PendingBlock>();
         for (var pb : rawBlocks) {
             Vector3i transformedRel = cfg.transform.apply(new Vector3i(pb.relPos.getX(), pb.relPos.getY(), pb.relPos.getZ()));
@@ -146,13 +160,52 @@ public class BuildGenerator {
                 blockState = GTCompat.transformBlockState(blockState, original, cfg.transform);
             }
 
+            // Smart copy (COPYING): a captured GTCEu ME Pattern Buffer (CRIB) becomes a Pattern Buffer
+            // Proxy linked back to the original buffer's world position (COPY leaves it in place, so the
+            // proxy slaves to it). This replaces the buffer's analyses with just the proxy link.
+            BlockPos cribMaster = null;
+            if (Mods.GTCEU && !moving && cfg.replaceCribsWithProxies) {
+                BlockPos worldPos = cfg.coordA.pos.offset(pb.relPos.getX(), pb.relPos.getY(), pb.relPos.getZ());
+                if (GTCompat.isPatternBuffer(level.getBlockEntity(worldPos))) {
+                    cribMaster = worldPos;
+                    blockState = GTCompat.proxyState(blockState);
+                }
+            }
+
+            // Wireless smart-copy: a hub with no links inside the copy area becomes a connector tethered
+            // to the original hub (which keeps free ports for each subsequent paste).
+            BlockPos hubTether = null;
+            if (wireless && cribMaster == null && cfg.tetherEmptyHubs) {
+                BlockPos worldPos = cfg.coordA.pos.offset(pb.relPos.getX(), pb.relPos.getY(), pb.relPos.getZ());
+                if (ExtendedAECompat.isTetherableHub(level.getBlockEntity(worldPos), regionMin, regionMax)) {
+                    hubTether = worldPos;
+                    blockState = ExtendedAECompat.connectorState();
+                }
+            }
+
             // 4. Rotate the analyses' orientation (cover sides, AE part sides, isFlipped).
             var out = new PendingBlock(
                     new BlockPos(transformedRel.x(), transformedRel.y(), transformedRel.z()),
                     new BlockSpec(blockState),
                     pb.buildOrder);
-            for (var analysis : pb.analyses) out.analyses.add(analysis.copy());
-            if (!identity) out.transform(cfg.transform);
+            if (cribMaster != null) {
+                out.addAnalysis(new GTCompat.CribProxyAnalysis(cribMaster));
+            } else if (hubTether != null) {
+                out.addAnalysis(ExtendedAECompat.tetherToHub(hubTether));
+            } else {
+                for (var analysis : pb.analyses) out.analyses.add(analysis.copy());
+                if (!identity) out.transform(cfg.transform);
+                // Wireless smart-copy: capture a connector/hub's links so they re-form on paste.
+                if (wireless) {
+                    BlockPos worldPos = cfg.coordA.pos.offset(
+                            pb.relPos.getX(), pb.relPos.getY(), pb.relPos.getZ());
+                    var wbe = level.getBlockEntity(worldPos);
+                    if (ExtendedAECompat.isWireless(wbe)) {
+                        var wa = ExtendedAECompat.captureWireless(wbe, regionMin, regionMax, cfg.linkExternalHubs);
+                        if (wa != null) out.addAnalysis(wa);
+                    }
+                }
+            }
             baseBlocks.add(out);
         }
 

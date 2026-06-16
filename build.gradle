@@ -7,6 +7,21 @@ plugins {
     id 'com.diffplug.spotless' version '8.1.0'
 }
 
+sourceSets {
+    main.resources {
+        srcDir 'src/generated/resources'
+    }
+
+    client {
+        compileClasspath += main.output
+        runtimeClasspath += main.output + main.runtimeClasspath + client.runtimeClasspath
+    }
+
+    extra {
+        compileClasspath += main.output
+        runtimeClasspath += main.output + main.runtimeClasspath
+    }
+}
 
 configurations {
     runtimeClasspath.extendsFrom(localRuntime)
@@ -137,13 +152,16 @@ legacyForge {
 
         client {
             client()
+            sourceSet = sourceSets.client
+            programArguments.addAll('--refresh-dependencies')
             systemProperty 'forge.enabledGameTestNamespaces', project.mod_id
         }
 
         server {
             server()
-            programArgument '--nogui'
-            systemProperty 'forge.enabledGameTestNamespaces', project.mod_id
+            sourceSet = sourceSets.extra
+            systemProperty('forge.enabledGameTestNamespaces', project.mod_id)
+            programArguments.addAll('--nogui', '--world', 'world-extra')
         }
 
         gameTestServer {
@@ -153,7 +171,10 @@ legacyForge {
 
         data {
             data()
-            programArguments.addAll '--mod', project.mod_id, '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()
+            sourceSet = sourceSets.main
+
+            programArguments.addAll('--mod', project.mod_id, '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath())
+            programArguments.addAll('--existing-mod', 'gtceu')
         }
     }
 
@@ -243,6 +264,11 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
     expand replaceProperties
     from "src/main/templates"
     into "build/generated/sources/modMetadata"
+}
+
+processResources {
+    exclude '.cache'
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
 }
 
 sourceSets.main.resources.srcDir generateModMetadata

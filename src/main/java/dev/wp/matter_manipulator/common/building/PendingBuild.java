@@ -94,6 +94,12 @@ public class PendingBuild {
     /** Block protection warns the player only once per build (mirrors the original's flag). */
     private boolean warnedProtected = false;
 
+    /**
+     * Build-scoped ExtendedAE wireless frequency remap (original→fresh). Shared across the whole build
+     * so both copies of a connector pair settle on one new frequency and link to each other.
+     */
+    private final Map<Long, Long> wirelessRemap = new HashMap<>();
+
     private PendingBuild(
             UUID playerId,
             MMTier tier,
@@ -137,7 +143,13 @@ public class PendingBuild {
         for (var pb : blocks) {
             translated.add(pb.at(anchor.offset(pb.relPos)));
         }
-        translated.sort(Comparator.comparingInt(pb -> pb.buildOrder));
+        // Sort by build order, THEN by block state, then by position. Grouping identical states
+        // adjacently is what lets the two-phase loop's homogeneous batch fill the whole place speed;
+        // sorting by build order alone leaves mixed states interleaved, so each batch (and thus each
+        // tick) places only a tiny run. Mirrors the original's (buildOrder, spec, coord) comparator.
+        translated.sort(Comparator.comparingInt((PendingBlock pb) -> pb.buildOrder)
+                .thenComparingInt(pb -> pb.spec.state.hashCode())
+                .thenComparingLong(pb -> pb.relPos.asLong()));
         ACTIVE.put(
                 player.getUUID(),
                 new PendingBuild(player.getUUID(), tier, translated, moving, sourceMin, sourceMax, cableMode));
@@ -241,7 +253,7 @@ public class PendingBuild {
             // needlessly destroying a matching block.
             if (existing.equals(next.spec.state)) {
                 var block = queue.removeFirst();
-                if (!block.analyses.isEmpty()) block.apply(new BlockApplyContext(level, pos, inv));
+                if (!block.analyses.isEmpty()) block.apply(new BlockApplyContext(level, pos, inv, wirelessRemap));
                 if (moving) movedPositions.add(pos.asLong());
                 continue;
             }
@@ -341,7 +353,7 @@ public class PendingBuild {
                 // directly rather than via the item's placement — calling setPlacedBy would re-orient
                 // directional and GT machines toward the player and break copy rotation.
                 level.setBlockAndUpdate(pos, pb.spec.state);
-                if (!pb.analyses.isEmpty()) pb.apply(new BlockApplyContext(level, pos, inv));
+                if (!pb.analyses.isEmpty()) pb.apply(new BlockApplyContext(level, pos, inv, wirelessRemap));
             }
 
             if (moving) movedPositions.add(pos.asLong());
@@ -479,6 +491,8 @@ public class PendingBuild {
         if (be == null) return;
         // Machines that save their contents into the dropped item already keep them
         if (Mods.GTCEU && GTCompat.savesContentsToItem(be)) return;
+        // An ME stocking bus's handler is the network, not local storage — never reclaim it
+        if (Mods.GTCEU && GTCompat.isStockingPart(be)) return;
         IItemHandler handler = be.getCapability(ForgeCapabilities.ITEM_HANDLER).resolve().orElse(null);
         if (handler == null) return;
         for (int slot = 0; slot < handler.getSlots(); slot++) {
@@ -490,6 +504,8 @@ public class PendingBuild {
     /** Drains a replaced tank's fluids back to the player (network or, failing that, voided). */
     private static void drainTanks(@Nullable BlockEntity be, MMInventory inv) {
         if (be == null) return;
+        // An ME stocking hatch's tank is the network, not local storage — never drain it
+        if (Mods.GTCEU && GTCompat.isStockingPart(be)) return;
         IFluidHandler handler = be.getCapability(ForgeCapabilities.FLUID_HANDLER).resolve().orElse(null);
         if (handler == null) return;
         // drain() removes one fluid type per call; bounded in case a handler refills itself

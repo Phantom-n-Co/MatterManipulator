@@ -1,6 +1,8 @@
 package dev.wp.matter_manipulator.common.building.analysis;
 
+import dev.wp.matter_manipulator.common.compat.AECompat;
 import dev.wp.matter_manipulator.common.items.manipulator.MMTransform;
+import dev.wp.matter_manipulator.common.utils.Mods;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -49,12 +51,21 @@ public class InventoryAnalysis implements ITileAnalysis {
             int slot = slotTag.getInt("Slot");
             ItemStack stack = ItemStack.of(slotTag);
             if (stack.isEmpty() || slot < 0 || slot >= modifiable.getSlots()) continue;
-            int available = creative
-                    ? stack.getCount()
-                    : Math.min(stack.getCount(), ctx.inv().countInInventory(stack));
-            if (available <= 0) continue;
-            ctx.inv().consume(stack.copyWithCount(available));
-            modifiable.setStackInSlot(slot, stack.copyWithCount(available));
+            int want = stack.getCount();
+            int paid;
+            if (creative) {
+                paid = want;
+            } else {
+                // Draw from the player AND the bound network (countAvailable), then consume the same way.
+                paid = (int) Math.min(want, ctx.inv().countAvailable(stack));
+                if (paid > 0) ctx.inv().consume(stack.copyWithCount(paid));
+                // An AE2 encoded pattern the player can't supply is fabricated from a blank pattern.
+                if (paid < want && Mods.AE2) {
+                    paid += AECompat.payWithBlankPattern(ctx.inv(), stack, want - paid);
+                }
+            }
+            if (paid <= 0) continue;
+            modifiable.setStackInSlot(slot, stack.copyWithCount(paid));
         }
         return true;
     }

@@ -18,7 +18,9 @@ import dev.wp.matter_manipulator.common.networking.PacketToggleLock;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.core.BlockPos;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraftforge.api.distmarker.Dist;
@@ -93,6 +95,16 @@ public class ClientEvents {
         while (MMKeyMappings.RESET.consumeClick()) {}
     }
 
+    /**
+     * Plays a short client-side UI click as feedback for a manipulator action (mark/pick/toggle). The
+     * modern stand-in for the original's per-action {@code SoundResource}; pitch distinguishes actions.
+     */
+    private static void playActionSound(float pitch) {
+        Minecraft.getInstance()
+                .getSoundManager()
+                .play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, pitch));
+    }
+
     @SubscribeEvent
     public static void onMouseScroll(InputEvent.MouseScrollingEvent event) {
         drainClicks();
@@ -113,6 +125,7 @@ public class ClientEvents {
 
         if (mc.hitResult instanceof BlockHitResult bhr && mc.hitResult.getType() == HitResult.Type.BLOCK) {
             MMNetwork.CHANNEL.sendToServer(new PacketMMBPressed(bhr.getBlockPos(), true));
+            playActionSound(1.4f);
         } else {
             MMNetwork.CHANNEL.sendToServer(new PacketMMBPressed(BlockPos.ZERO, false));
         }
@@ -137,6 +150,7 @@ public class ClientEvents {
 
         if (MMKeyMappings.LOCK_POSITIONS.consumeClick()) {
             MMNetwork.CHANNEL.sendToServer(new PacketToggleLock());
+            playActionSound(1.0f);
             return;
         }
 
@@ -151,6 +165,7 @@ public class ClientEvents {
                 }
             }
             MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.MARK_CUT_A, null));
+            playActionSound(0.9f);
             return;
         }
 
@@ -165,6 +180,7 @@ public class ClientEvents {
                 }
             }
             MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.MARK_COPY_A, null));
+            playActionSound(1.2f);
             return;
         }
 
@@ -175,6 +191,7 @@ public class ClientEvents {
                 MMNetwork.CHANNEL.sendToServer(new PacketSetPlaceMode(PlaceMode.COPYING));
             }
             MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.MARK_PASTE_A, null));
+            playActionSound(1.5f);
             return;
         }
 
@@ -183,6 +200,7 @@ public class ClientEvents {
             if (MMModConfig.RESET_TRANSFORM.get()) {
                 MMNetwork.CHANNEL.sendToServer(new PacketResetTransform());
             }
+            playActionSound(0.7f);
             return;
         }
     }

@@ -168,5 +168,26 @@ public class MMNetwork {
                 PacketClearPlan::encode,
                 PacketClearPlan::decode,
                 PacketClearPlan::handle);
+
+        CHANNEL.registerMessage(
+                nextId++,
+                PacketToggleReplaceCribs.class,
+                PacketToggleReplaceCribs::encode,
+                PacketToggleReplaceCribs::decode,
+                PacketToggleReplaceCribs::handle);
+
+        CHANNEL.registerMessage(
+                nextId++,
+                PacketToggleLinkExternalHubs.class,
+                PacketToggleLinkExternalHubs::encode,
+                PacketToggleLinkExternalHubs::decode,
+                PacketToggleLinkExternalHubs::handle);
+
+        CHANNEL.registerMessage(
+                nextId++,
+                PacketToggleTetherEmptyHubs.class,
+                PacketToggleTetherEmptyHubs::encode,
+                PacketToggleTetherEmptyHubs::decode,
+                PacketToggleTetherEmptyHubs::handle);
     }
 }

@@ -3,6 +3,7 @@ package dev.wp.matter_manipulator.client.gui;
 import dev.wp.matter_manipulator.client.gui.RadialMenu.RadialMenuClickHandler;
 import dev.wp.matter_manipulator.client.gui.RadialMenu.RadialMenuOption;
 
+import net.minecraft.client.resources.language.I18n;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 
@@ -78,9 +79,16 @@ public class RadialMenuBuilder {
 
     public static class RadialMenuOptionBuilderLeaf<Parent> extends RadialMenuOptionBuilder<Parent> {
         private RadialMenuClickHandler onClicked;
+        private boolean keepOpen = false;
 
         RadialMenuOptionBuilderLeaf(Parent parent) {
             super(parent);
+        }
+
+        /** Keep the menu open after this option is clicked (e.g. for toggles), instead of closing it. */
+        public RadialMenuOptionBuilderLeaf<Parent> keepOpen() {
+            this.keepOpen = true;
+            return this;
         }
 
         public RadialMenuOptionBuilderLeaf<Parent> label(String s) {
@@ -127,6 +135,7 @@ public class RadialMenuBuilder {
             opt.weight = this.weight;
             opt.hidden = this.hidden;
             opt.onClick = this.onClicked;
+            opt.keepOpen = this.keepOpen;
             menu.options.add(opt);
         }
     }
@@ -135,9 +144,16 @@ public class RadialMenuBuilder {
 
     public static class RadialMenuOptionBuilderBranch<Parent> extends RadialMenuOptionBuilder<Parent> {
         private final List<RadialMenuOptionBuilder<RadialMenuOptionBuilderBranch<Parent>>> children = new ArrayList<>();
+        private boolean backButton = false;
 
         RadialMenuOptionBuilderBranch(Parent parent) {
             super(parent);
+        }
+
+        /** Adds a "Back" option inside this sub-menu that returns to the menu it was opened from. */
+        public RadialMenuOptionBuilderBranch<Parent> backButton() {
+            this.backButton = true;
+            return this;
         }
 
         public RadialMenuOptionBuilderBranch<Parent> label(String s) {
@@ -184,9 +200,22 @@ public class RadialMenuBuilder {
             opt.weight = this.weight;
             opt.hidden = this.hidden;
             opt.keepOpen = true;
+            boolean addBack = this.backButton;
             opt.onClick = (_menu, _opt, _btn) -> {
+                // Snapshot the menu we're leaving so the Back option can restore it.
+                List<RadialMenuOption> previous = addBack ? new ArrayList<>(_menu.options) : null;
                 _menu.options.clear();
                 for (var child : children) child.apply(_menu);
+                if (addBack) {
+                    RadialMenuOption back = new RadialMenuOption();
+                    back.label = () -> I18n.get("mm.gui.back");
+                    back.keepOpen = true;
+                    back.onClick = (m, o, b) -> {
+                        m.options.clear();
+                        m.options.addAll(previous);
+                    };
+                    _menu.options.add(back);
+                }
             };
             menu.options.add(opt);
         }

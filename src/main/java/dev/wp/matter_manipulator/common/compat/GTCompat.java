@@ -38,6 +38,10 @@ import com.gregtechceu.gtceu.api.cover.CoverBehavior;
 import com.gregtechceu.gtceu.api.data.RotationState;
 import com.gregtechceu.gtceu.api.machine.feature.IDropSaveMachine;
 import com.gregtechceu.gtceu.api.pattern.util.RelativeDirection;
+import com.gregtechceu.gtceu.common.data.machines.GTAEMachines;
+import com.gregtechceu.gtceu.integration.ae2.machine.MEPatternBufferPartMachine;
+import com.gregtechceu.gtceu.integration.ae2.machine.MEPatternBufferProxyPartMachine;
+import com.gregtechceu.gtceu.integration.ae2.machine.feature.multiblock.IMEStockingPart;
 import com.lowdragmc.lowdraglib.syncdata.blockentity.IAutoSyncBlockEntity;
 
 import java.util.ArrayList;
@@ -92,6 +96,72 @@ public class GTCompat {
         return be instanceof MetaMachineBlockEntity mbe
                 && mbe.metaMachine instanceof IDropSaveMachine dropSave
                 && dropSave.saveBreak();
+    }
+
+    /**
+     * True if this machine is an ME stocking input bus/hatch — its item/fluid handler is backed by the
+     * AE2 network, not local storage. The build's removal refund must NOT drain it, or removing one
+     * would siphon the entire network into the player. Identified by GTCEu's {@link IMEStockingPart}.
+     */
+    public static boolean isStockingPart(BlockEntity be) {
+        return be instanceof MetaMachineBlockEntity mbe && mbe.metaMachine instanceof IMEStockingPart;
+    }
+
+    /** True if {@code be} is a GTCEu ME Pattern Buffer (the modern "crafting input bus" / CRIB). */
+    public static boolean isPatternBuffer(@Nullable BlockEntity be) {
+        return be instanceof MetaMachineBlockEntity mbe && mbe.metaMachine instanceof MEPatternBufferPartMachine;
+    }
+
+    /**
+     * The ME Pattern Buffer Proxy block's state for the smart-copy CRIB→proxy swap, carrying the
+     * captured buffer's front facing so the proxy lands oriented like the original.
+     */
+    public static BlockState proxyState(BlockState bufferState) {
+        BlockState proxy = GTAEMachines.ME_PATTERN_BUFFER_PROXY.getBlock().defaultBlockState();
+        if (proxy.getBlock() instanceof MetaMachineBlock pb) {
+            RotationState rs = pb.getRotationState();
+            if (rs != RotationState.NONE && bufferState.hasProperty(rs.property) && proxy.hasProperty(rs.property)) {
+                proxy = proxy.setValue(rs.property, bufferState.getValue(rs.property));
+            }
+        }
+        return proxy;
+    }
+
+    /**
+     * Smart-copy result for a captured ME Pattern Buffer (CRIB): a placed Pattern Buffer Proxy that is
+     * linked back to the original buffer's world position. COPY leaves the source buffer in place, so
+     * every pasted proxy slaves to it (mirrors the original mod's CRIB→proxy). The proxy block itself is
+     * the charged item; this analysis only establishes the link on apply.
+     */
+    public static class CribProxyAnalysis implements ITileAnalysis {
+        private final BlockPos master;
+
+        public CribProxyAnalysis(BlockPos master) {
+            this.master = master;
+        }
+
+        @Override
+        public boolean apply(BlockApplyContext ctx) {
+            BlockEntity be = ctx.getBlockEntity();
+            if (be instanceof MetaMachineBlockEntity mbe
+                    && mbe.metaMachine instanceof MEPatternBufferProxyPartMachine proxy) {
+                proxy.setBuffer(master);
+                be.setChanged();
+                if (needsClientSync(be)) scheduleClientSync(ctx.level(), ctx.pos());
+            }
+            return true;
+        }
+
+        @Override
+        public void collectRequiredItems(RequiredItems out) {}
+
+        @Override
+        public void transform(MMTransform transform) {} // master is absolute; the source buffer doesn't move
+
+        @Override
+        public ITileAnalysis copy() {
+            return new CribProxyAnalysis(master);
+        }
     }
 
     private record PendingSync(ServerLevel level, BlockPos pos, long queuedAt) {}

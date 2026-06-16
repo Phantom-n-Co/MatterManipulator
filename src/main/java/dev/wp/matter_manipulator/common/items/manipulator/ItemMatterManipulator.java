@@ -25,6 +25,9 @@ import dev.wp.matter_manipulator.common.networking.PacketSetPlaceMode;
 import dev.wp.matter_manipulator.common.networking.PacketSetRemoveMode;
 import dev.wp.matter_manipulator.common.networking.PacketSetShape;
 import dev.wp.matter_manipulator.common.networking.PacketStartBuild;
+import dev.wp.matter_manipulator.common.networking.PacketToggleLinkExternalHubs;
+import dev.wp.matter_manipulator.common.networking.PacketToggleReplaceCribs;
+import dev.wp.matter_manipulator.common.networking.PacketToggleTetherEmptyHubs;
 import dev.wp.matter_manipulator.common.utils.Mods;
 
 import net.minecraft.ChatFormatting;
@@ -52,6 +55,7 @@ import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.energy.IEnergyStorage;
 
 import java.util.List;
+import java.util.function.Supplier;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -206,7 +210,7 @@ public class ItemMatterManipulator extends Item {
         // Mode-specific options
         switch (cfg.placeMode) {
             case GEOMETRY -> addGeometryOptions(b);
-            case COPYING -> addCopyingOptions(b);
+            case COPYING -> addCopyingOptions(b, player);
             case MOVING -> addMovingOptions(b);
             case EXCHANGING -> addExchangingOptions(b);
             case CABLES -> addCableOptions(b);
@@ -283,7 +287,9 @@ public class ItemMatterManipulator extends Item {
     }
 
     @OnlyIn(Dist.CLIENT)
-    private void addCopyingOptions(RadialMenuBuilder b) {
+    private void addCopyingOptions(RadialMenuBuilder b, Player player) {
+        // Live config read so the smart-copy toggle labels reflect their current state each frame.
+        Supplier<MMConfig> live = () -> MMState.of(player.getMainHandItem()).getConfig();
         b.option()
                 .label(I18n.get("mm.gui.mark_copy"))
                 .onClicked(() -> {
@@ -354,6 +360,34 @@ public class ItemMatterManipulator extends Item {
                 .done();
 
         addEditTransformOption(b);
+
+        // Copy-exclusive smart-copy settings in their own sub-menu. Toggles keep the menu open and show
+        // live [ON]/[OFF]; the sub-menu has a Back option. Hidden entirely when no smart-copy mod is present.
+        b.branch()
+                .label(I18n.get("mm.gui.smart_copy"))
+                .hidden(!Mods.GTCEU && !Mods.EXTENDED_AE)
+                .backButton()
+                .option()
+                .label(() -> I18n.get("mm.gui.replace_cribs") + (live.get().replaceCribsWithProxies ? " [ON]" : " [OFF]"))
+                .hidden(!Mods.GTCEU)
+                .keepOpen()
+                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketToggleReplaceCribs()))
+                .done()
+                .option()
+                .label(() ->
+                        I18n.get("mm.gui.link_external_hubs") + (live.get().linkExternalHubs ? " [ON]" : " [OFF]"))
+                .hidden(!Mods.EXTENDED_AE)
+                .keepOpen()
+                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketToggleLinkExternalHubs()))
+                .done()
+                .option()
+                .label(() ->
+                        I18n.get("mm.gui.tether_empty_hubs") + (live.get().tetherEmptyHubs ? " [ON]" : " [OFF]"))
+                .hidden(!Mods.EXTENDED_AE)
+                .keepOpen()
+                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketToggleTetherEmptyHubs()))
+                .done()
+                .done();
 
         b.option()
                 .label(I18n.get("mm.gui.mark_paste"))
