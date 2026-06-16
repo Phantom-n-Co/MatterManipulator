@@ -33,7 +33,7 @@ public class PacketToggleTetherEmptyHubs {
             cfg.tetherEmptyHubs = !cfg.tetherEmptyHubs;
 
             player.sendSystemMessage(Component.translatable(
-                    MODID + "info.tether_empty_hubs", cfg.tetherEmptyHubs ? "ON" : "OFF"));
+                    MODID + ".info.tether_empty_hubs", cfg.tetherEmptyHubs ? "ON" : "OFF"));
 
             state.saveIfDirty();
         });

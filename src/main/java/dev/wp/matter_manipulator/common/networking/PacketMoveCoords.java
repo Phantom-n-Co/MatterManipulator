@@ -58,7 +58,7 @@ public class PacketMoveCoords {
 
             var cfg = state.mutate();
             if (cfg.locked) {
-                MMUtils.sendErrorToPlayer(player, MODID + "info.locked");
+                MMUtils.sendErrorToPlayer(player, MODID + ".info.locked");
                 return;
             }
 
@@ -121,6 +121,6 @@ public class PacketMoveCoords {
 
         cfg.coordA = new Location(dim, lookingAt);
         cfg.coordB = new Location(dim, newB);
-        MMUtils.sendInfoToPlayer(player, MODID + "info.coords_moved");
+        MMUtils.sendInfoToPlayer(player, MODID + ".info.coords_moved");
     }
 }

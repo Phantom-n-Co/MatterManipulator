@@ -33,7 +33,7 @@ public class PacketToggleReplaceCribs {
             cfg.replaceCribsWithProxies = !cfg.replaceCribsWithProxies;
 
             player.sendSystemMessage(Component.translatable(
-                    MODID + "info.replace_cribs", cfg.replaceCribsWithProxies ? "ON" : "OFF"));
+                    MODID + ".info.replace_cribs", cfg.replaceCribsWithProxies ? "ON" : "OFF"));
 
             state.saveIfDirty();
         });

@@ -71,9 +71,9 @@ public class ManipulatorActions {
         }
 
         if (add) {
-            MMUtils.sendInfoToPlayer(player, MODID + "info.added", displayName(block), what);
+            MMUtils.sendInfoToPlayer(player, MODID + ".info.added", displayName(block), what);
         } else {
-            MMUtils.sendInfoToPlayer(player, MODID + "info.set", what, displayName(block));
+            MMUtils.sendInfoToPlayer(player, MODID + ".info.set", what, displayName(block));
         }
     }
 
@@ -82,7 +82,7 @@ public class ManipulatorActions {
         BlockSpec block = BlockSpec.fromWorld(player.serverLevel(), pos);
         cfg.replaceWith = new WeightedSpecList();
         cfg.replaceWith.add(block, 1);
-        MMUtils.sendInfoToPlayer(player, MODID + "info.set_block_to_replace_with", displayName(block));
+        MMUtils.sendInfoToPlayer(player, MODID + ".info.set_block_to_replace_with", displayName(block));
     }
 
     public static void exchangeAddWhitelist(ServerPlayer player, MMConfig cfg, BlockPos pos) {
@@ -90,7 +90,7 @@ public class ManipulatorActions {
         if (block.isAir()) return;
         if (cfg.replaceWhitelist == null) cfg.replaceWhitelist = new WeightedSpecList();
         cfg.replaceWhitelist.add(block, 1);
-        MMUtils.sendInfoToPlayer(player, MODID + "info.added_block_to_exchange_whitelist", displayName(block));
+        MMUtils.sendInfoToPlayer(player, MODID + ".info.added_block_to_exchange_whitelist", displayName(block));
     }
 
     public static void exchangeSetWhitelist(ServerPlayer player, MMConfig cfg, BlockPos pos) {
@@ -98,7 +98,7 @@ public class ManipulatorActions {
         if (block.isAir()) return;
         cfg.replaceWhitelist = new WeightedSpecList();
         cfg.replaceWhitelist.add(block, 1);
-        MMUtils.sendInfoToPlayer(player, MODID + "info.set_exchange_whitelist_to_only_contain", displayName(block));
+        MMUtils.sendInfoToPlayer(player, MODID + ".info.set_exchange_whitelist_to_only_contain", displayName(block));
     }
 
     /** Picking air clears the cable block. */
@@ -108,9 +108,9 @@ public class ManipulatorActions {
         cfg.cables = block;
         cfg.cableTile = captureCableTile(level, pos);
         if (block.isAir()) {
-            MMUtils.sendInfoToPlayer(player, MODID + "info.cleared_cable");
+            MMUtils.sendInfoToPlayer(player, MODID + ".info.cleared_cable");
         } else {
-            MMUtils.sendInfoToPlayer(player, MODID + "info.set_cable", displayName(block));
+            MMUtils.sendInfoToPlayer(player, MODID + ".info.set_cable", displayName(block));
         }
     }
 

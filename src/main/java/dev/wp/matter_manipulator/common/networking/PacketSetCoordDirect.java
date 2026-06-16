@@ -50,7 +50,7 @@ public class PacketSetCoordDirect {
             var cfg = state.mutate();
 
             if (cfg.locked) {
-                MMUtils.sendErrorToPlayer(player, MODID + "info.locked");
+                MMUtils.sendErrorToPlayer(player, MODID + ".info.locked");
                 return;
             }
 

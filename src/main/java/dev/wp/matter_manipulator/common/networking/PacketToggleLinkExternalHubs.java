@@ -33,7 +33,7 @@ public class PacketToggleLinkExternalHubs {
             cfg.linkExternalHubs = !cfg.linkExternalHubs;
 
             player.sendSystemMessage(Component.translatable(
-                    MODID + "info.link_external_hubs", cfg.linkExternalHubs ? "ON" : "OFF"));
+                    MODID + ".info.link_external_hubs", cfg.linkExternalHubs ? "ON" : "OFF"));
 
             state.saveIfDirty();
         });

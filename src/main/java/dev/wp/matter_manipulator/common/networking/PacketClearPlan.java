@@ -31,14 +31,14 @@ public class PacketClearPlan {
             if (state == null) return;
             var cfg = state.getConfig();
             if (!Mods.AE2 || cfg.uplink == null) {
-                MMUtils.sendErrorToPlayer(player, MODID + "info.error.no_uplink");
+                MMUtils.sendErrorToPlayer(player, MODID + ".info.error.no_uplink");
                 return;
             }
             int cleared = AECompat.uplinkClearPlan(player.serverLevel(), cfg.uplink, player.getUUID());
             if (cleared < 0) {
-                MMUtils.sendErrorToPlayer(player, MODID + "info.error.no_uplink");
+                MMUtils.sendErrorToPlayer(player, MODID + ".info.error.no_uplink");
             } else {
-                MMUtils.sendInfoToPlayer(player, MODID + "info.plan_cleared", cleared);
+                MMUtils.sendInfoToPlayer(player, MODID + ".info.plan_cleared", cleared);
             }
         });
         ctx.get().setPacketHandled(true);

@@ -287,14 +287,14 @@ public class UplinkLogic {
             } catch (Exception ex) {
                 MMMod.LOGGER.debug("uplink: auto-craft calculation failed", ex);
                 e.calc = null;
-                notifyOwner(e.owner, level, MODID + "info.error.autocraft_failed");
+                notifyOwner(e.owner, level, MODID + ".info.error.autocraft_failed");
                 removeSlot(i);
                 continue;
             }
             e.calc = null;
 
             if (plan == null || !plan.missingItems().isEmpty()) {
-                notifyOwner(e.owner, level, MODID + "info.error.autocraft_failed");
+                notifyOwner(e.owner, level, MODID + ".info.error.autocraft_failed");
                 removeSlot(i);
                 continue;
             }
@@ -304,7 +304,7 @@ public class UplinkLogic {
                 e.link = result.link();
                 onDirty.run();
             } else {
-                notifyOwner(e.owner, level, MODID + "info.error.autocraft_failed");
+                notifyOwner(e.owner, level, MODID + ".info.error.autocraft_failed");
                 removeSlot(i);
             }
         }
