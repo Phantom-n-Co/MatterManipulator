@@ -103,6 +103,14 @@ public class PendingBlock {
     public boolean apply(BlockApplyContext ctx) {
         boolean ok = true;
         for (ITileAnalysis a : analyses) ok &= a.apply(ctx);
+        // The block was placed (and neighbours notified) before the analyses ran, so re-notify now that
+        // the BE carries its restored state — mirrors the original PendingBlock.apply's post-apply
+        // notifyBlockOfNeighborChange + AE2 part-cache reset, letting pasted parts/machines integrate
+        // (e.g. a storage bus scanning its adjacent inventory) without waiting for the next block update.
+        var level = ctx.level();
+        BlockPos pos = ctx.pos();
+        level.updateNeighborsAt(pos, level.getBlockState(pos).getBlock());
+        if (Mods.AE2) AECompat.markHostForUpdate(level, pos);
         return ok;
     }
 

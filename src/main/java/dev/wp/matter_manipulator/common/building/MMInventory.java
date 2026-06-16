@@ -6,6 +6,7 @@ import dev.wp.matter_manipulator.common.utils.Mods;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraftforge.fluids.FluidStack;
 
 import javax.annotation.Nullable;
 
@@ -61,6 +62,32 @@ public class MMInventory {
         if (remaining > 0 && uplinkActive()) {
             remaining -= (int) AECompat.uplinkExtract(level, uplink, required, remaining);
         }
+    }
+
+    /**
+     * Consumes up to {@code max} of {@code proto} from the player inventory then the bound network,
+     * returning how many were actually taken (≤ max). Used by the build loop's bulk item consume, which
+     * places as many blocks as the player can afford and re-queues the rest. Creative pays nothing and
+     * reports {@code max} as "taken" so every block places.
+     */
+    public int consumeUpTo(ItemStack proto, int max) {
+        if (max <= 0 || proto.isEmpty()) return 0;
+        if (player.isCreative()) return max;
+        int taken = takeFromInventory(proto, max);
+        if (taken < max && uplinkActive()) {
+            taken += (int) AECompat.uplinkExtract(level, uplink, proto, max - taken);
+        }
+        return taken;
+    }
+
+    /**
+     * Returns a drained tank's fluid to the bound network if one is present. Loose fluid can't sit in a
+     * vanilla inventory, so without an uplink (or for whatever doesn't fit) it is voided — the same loss
+     * a normal block break would incur.
+     */
+    public void giveFluid(FluidStack fluid) {
+        if (fluid.isEmpty() || player.isCreative()) return;
+        if (uplinkActive()) AECompat.uplinkInsertFluid(level, uplink, fluid);
     }
 
     /** Removes up to {@code max} of {@code required} from the player inventory; returns the amount taken. */

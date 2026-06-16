@@ -153,6 +153,59 @@ public class AECompat {
         }
     }
 
+    /**
+     * Removal counterpart of {@link #captureAEItems}: detaches every part and facade and empties the
+     * cell/upgrade/storage inventories, returning everything that should be refunded to the player when
+     * the build overwrites this AE2 block. Mirrors the original {@code AbstractBuildable.resetAEMachine}
+     * — AE blocks are disassembled by hand (not via {@code Block.getDrops}), so the build loop must not
+     * also drop them. {@code removePartFromSide}/{@code removeFacade} detach without spilling.
+     */
+    public static List<ItemStack> dismantle(BlockEntity be) {
+        List<ItemStack> drops = new ArrayList<>();
+        if (be instanceof IPartHost partHost) {
+            for (Direction dir : PART_SIDES) {
+                IPart part = partHost.getPart(dir);
+                if (part == null) continue;
+                drops.add(new ItemStack(part.getPartItem()));
+                if (part instanceof ISegmentedInventory seg) collectSegmented(seg, drops);
+                partHost.removePartFromSide(dir);
+            }
+            IFacadeContainer fc = partHost.getFacadeContainer();
+            for (Direction dir : Direction.values()) {
+                IFacadePart facade = fc.getFacade(dir);
+                if (facade == null) continue;
+                drops.add(facade.getItemStack().copy());
+                fc.removeFacade(partHost, dir);
+            }
+        } else if (be instanceof ISegmentedInventory seg) {
+            collectSegmented(seg, drops);
+            clearSegmented(seg);
+        }
+        return drops;
+    }
+
+    private static void clearSegmented(ISegmentedInventory seg) {
+        for (ResourceLocation key : ITEM_KEYS) {
+            InternalInventory internal = seg.getSubInventory(key);
+            if (internal == null) continue;
+            for (int i = 0; i < internal.size(); i++) {
+                if (!internal.getStackInSlot(i).isEmpty()) internal.setItemDirect(i, ItemStack.EMPTY);
+            }
+        }
+    }
+
+    /**
+     * Nudges a freshly pasted cable bus to refresh, so attached parts (storage/import buses) re-scan
+     * their adjacent inventory and the host re-broadcasts to clients. The modern equivalent of the
+     * original's AE2 part-cache reset; combined with the build loop's neighbour notification this lets
+     * a pasted bus connect immediately instead of after the next block update. No-op for non-AE blocks.
+     */
+    public static void markHostForUpdate(ServerLevel level, BlockPos pos) {
+        if (level.getBlockEntity(pos) instanceof IPartHost host) {
+            host.markForUpdate();
+        }
+    }
+
     // ── Uplink network bridge ───────────────────────────────────────────────────────
     // The manipulator stores only the bound block's Location; these resolve the live uplink and
     // expose its network to the build/plan code, which never imports AE2 directly.
@@ -216,6 +269,15 @@ public class AECompat {
         if (u == null || want.isEmpty() || amount <= 0) return 0;
         AEFluidKey key = AEFluidKey.of(want);
         return key == null ? 0 : (int) u.getUplink().extract(key, amount);
+    }
+
+    /** Inserts a fluid into the uplink's network; returns the mB that did not fit (all of it if unbound). */
+    public static int uplinkInsertFluid(ServerLevel level, @Nullable Location loc, FluidStack stack) {
+        UplinkBlockEntity u = resolveUplink(level, loc);
+        if (u == null || stack.isEmpty()) return stack.getAmount();
+        AEFluidKey key = AEFluidKey.of(stack);
+        if (key == null) return stack.getAmount();
+        return (int) u.getUplink().insert(key, stack.getAmount());
     }
 
     /** Draws power from the uplink network; {@code ae} is in AE units, returns AE obtained. */

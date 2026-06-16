@@ -1,7 +1,6 @@
 package dev.wp.matter_manipulator.common.building;
 
 import dev.wp.matter_manipulator.BlockTags;
-import dev.wp.matter_manipulator.MMMod;
 import dev.wp.matter_manipulator.common.building.analysis.BlockApplyContext;
 import dev.wp.matter_manipulator.common.compat.AECompat;
 import dev.wp.matter_manipulator.common.compat.GTCompat;
@@ -31,7 +30,10 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.common.Tags;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
+import net.minecraftforge.fluids.FluidStack;
+import net.minecraftforge.fluids.capability.IFluidHandler;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.network.PacketDistributor;
 
@@ -51,6 +53,14 @@ import java.util.UUID;
 
 import javax.annotation.Nullable;
 
+/**
+ * The per-player active build. {@link #doTick} mirrors the original mod's two-phase
+ * {@code PendingBuild.tryPlaceBlocks}: it first selects a homogeneous batch of one block type that
+ * passes protection / removability / dependency / power checks, then bulk-consumes the items and
+ * places what the player can afford (re-queuing the rest). Block removal refunds the existing block
+ * through {@link #removeBlock}, and captured tile state is reproduced via the analyses
+ * ({@link PendingBlock#apply}). MOVING rides the same loop via the {@code moving} flag.
+ */
 public class PendingBuild {
     private static final Map<UUID, PendingBuild> ACTIVE = new HashMap<>();
 
@@ -80,6 +90,9 @@ public class PendingBuild {
 
     /** CABLES mode: placed GT pipes are auto-connected to their neighbours after placement. */
     private final boolean cableMode;
+
+    /** Block protection warns the player only once per build (mirrors the original's flag). */
+    private boolean warnedProtected = false;
 
     private PendingBuild(
             UUID playerId,
@@ -165,166 +178,187 @@ public class PendingBuild {
 
         var cfg = state.getConfig();
         var inv = new MMInventory(player, cfg.uplink);
+        boolean powerEff = state.hasUpgrade(MMUpgrades.POWER_EFF.bit);
 
         // Power P2P: refill the energy buffer from the bound network before spending this batch.
         if (Mods.AE2 && cfg.uplink != null && state.hasUpgrade(MMUpgrades.POWER_P2P.bit)) {
             topUpFromNetwork(level, cfg.uplink, state);
         }
 
-        int placed = 0;
-        int shuffleCount = 0;
-        boolean fullCycle = false;
-
         int speed = state.getPlaceSpeed(tier);
 
-        // One aggregated teleport sound per tick batch, not per block
+        // ── Phase A: pick a homogeneous batch of one block type, charging nothing yet ──
+        // Power is verified cumulatively here but only spent per actually-placed block in Phase B, so a
+        // block we select but can't place (out of items) doesn't drain energy.
+        List<PendingBlock> toPlace = new ArrayList<>(speed);
+        LongList costs = new LongArrayList(speed);
+        long batchPower = 0;
+        int shuffleCount = 0;
+        boolean fullCycle = false;
+        boolean outOfPower = false;
+
+        while (toPlace.size() < speed && !queue.isEmpty()) {
+            var next = queue.peekFirst();
+            BlockPos pos = next.relPos;
+
+            // Out-of-world Y → drop
+            if (pos.getY() < level.getMinBuildHeight() || pos.getY() >= level.getMaxBuildHeight()) {
+                queue.removeFirst();
+                continue;
+            }
+
+            // Unloaded chunk → defer (re-queue); terminating via shuffleCount
+            if (!level.isLoaded(pos)) {
+                queue.addLast(queue.removeFirst());
+                if (++shuffleCount > queue.size()) {
+                    fullCycle = true;
+                    break;
+                }
+                continue;
+            }
+
+            // Block protection (placement) → drop + warn once
+            if (!BuildProtection.canPlace(level, pos, player)) {
+                warnProtectedOnce(player);
+                queue.removeFirst();
+                continue;
+            }
+
+            // A batch is one block type, so stop selecting once the spec changes.
+            if (!toPlace.isEmpty() && !next.spec.state.equals(toPlace.get(0).spec.state)) break;
+
+            BlockState existing = level.getBlockState(pos);
+
+            // Nothing to do for air-on-air
+            if (next.spec.isAir() && existing.isAir()) {
+                queue.removeFirst();
+                continue;
+            }
+
+            // In-place reconfigure: the block is already what we want, so just (re)apply its tile
+            // state, charging only the analysis-installed items (no block item, no remove/replace, no
+            // EU). This is the original's areEquivalent branch and keeps exchange/config from
+            // needlessly destroying a matching block.
+            if (existing.equals(next.spec.state)) {
+                var block = queue.removeFirst();
+                if (!block.analyses.isEmpty()) block.apply(new BlockApplyContext(level, pos, inv));
+                if (moving) movedPositions.add(pos.asLong());
+                continue;
+            }
+
+            // The existing block must be removable
+            if (!existing.isAir()) {
+                if (!state.hasCapability(tier, MMCapability.ALLOW_REMOVING)) {
+                    queue.removeFirst();
+                    continue;
+                }
+                if (!canReplace(level, pos, existing, cfg.removeMode, cfg.placeMode)) {
+                    queue.addLast(queue.removeFirst());
+                    if (++shuffleCount > queue.size()) {
+                        fullCycle = true;
+                        break;
+                    }
+                    continue;
+                }
+                if (!BuildProtection.canBreak(level, pos, player)) {
+                    warnProtectedOnce(player);
+                    queue.removeFirst();
+                    continue;
+                }
+            }
+
+            // Placement dependency (e.g. a torch needs a wall)
+            if (!next.spec.state.canSurvive(new SimulatedLevelReader(level, pos), pos)) {
+                queue.addLast(queue.removeFirst());
+                if (++shuffleCount > queue.size()) {
+                    fullCycle = true;
+                    break;
+                }
+                continue;
+            }
+
+            long cost = energyCost(level, pos, existing, next, player, powerEff);
+            if (!player.isCreative() && !state.hasCharge(batchPower + cost)) {
+                outOfPower = true;
+                break;
+            }
+
+            toPlace.add(queue.removeFirst());
+            costs.add(cost);
+            batchPower += cost;
+            shuffleCount = 0;
+        }
+
+        // Nothing to place this tick
+        if (toPlace.isEmpty()) {
+            if (outOfPower) {
+                MMUtils.sendErrorToPlayer(player, "mm.info.error.out_of_eu"); // pause; build persists
+            } else if (queue.isEmpty()) {
+                finish(player, level);
+            } else if (fullCycle) {
+                giveUp(player, inv);
+            }
+            return;
+        }
+
+        // ── Bulk item consume (mirrors the original CONSUME_PARTIAL + refund-on-shortfall) ──
+        // MOVING and item-less/free blocks (air, fluids, AE cable bus) pay nothing here; AE parts are
+        // charged by the analysis on apply.
+        PendingBlock first = toPlace.get(0);
+        ItemStack perBlock = moving ? ItemStack.EMPTY : first.spec.toStack();
+        int affordable = toPlace.size();
+        if (!perBlock.isEmpty()) {
+            int perCount = perBlock.getCount();
+            int paid = inv.consumeUpTo(perBlock, toPlace.size() * perCount);
+            affordable = paid / perCount;
+            int remainder = paid - affordable * perCount;
+            if (remainder > 0) inv.give(perBlock.copyWithCount(remainder));
+            if (affordable < toPlace.size()) {
+                MMUtils.sendWarningToPlayer(player, "mm.info.warning.could_not_find", toPlace.size() - affordable);
+            }
+        }
+
+        // ── Phase B: place the blocks we can afford ──
+        int placed = 0;
         int soundCount = 0;
         double soundX = 0, soundY = 0, soundZ = 0;
 
-        while (placed < speed && !queue.isEmpty()) {
-            var pb = queue.poll();
+        int i = 0;
+        for (; i < affordable; i++) {
+            PendingBlock pb = toPlace.get(i);
+            BlockPos pos = pb.relPos;
+            BlockState existing = level.getBlockState(pos);
 
-            // Skip out-of-world Y
-            if (pb.relPos.getY() < level.getMinBuildHeight() || pb.relPos.getY() >= level.getMaxBuildHeight()) {
-                continue;
+            if (!existing.isAir()) {
+                // A MOVING destination inside the source box is a block being relocated; refunding it
+                // would duplicate it, so removeBlock clears it rather than refunding.
+                boolean relocatedSource = moving && inSourceBox(pos);
+                removeBlock(level, pos, existing, player, stack, inv, relocatedSource);
             }
 
-            // Defer unloaded chunks
-            if (!level.isLoaded(pb.relPos)) {
-                queue.addLast(pb);
-                if (++shuffleCount > queue.size()) {
-                    fullCycle = true;
-                    break;
-                }
-                continue;
+            if (!pb.spec.isAir()) {
+                // The BlockState is authoritative (it already carries facing/orientation), so we set it
+                // directly rather than via the item's placement — calling setPlacedBy would re-orient
+                // directional and GT machines toward the player and break copy rotation.
+                level.setBlockAndUpdate(pos, pb.spec.state);
+                if (!pb.analyses.isEmpty()) pb.apply(new BlockApplyContext(level, pos, inv));
             }
 
-            // Range check
-            if (tier.range > 0) {
-                double distSq = player.blockPosition().distSqr(pb.relPos);
-                if (distSq > (long) tier.range * tier.range) continue;
-            }
-
-            var existingState = level.getBlockState(pb.relPos);
-
-            // Skip if block is already correct (no tile data to restore)
-            if (existingState.equals(pb.spec.state) && pb.analyses.isEmpty()) {
-                if (moving) movedPositions.add(pb.relPos.asLong());
-                placed++;
-                continue;
-            }
-
-            // Check whether we're allowed to replace the existing block
-            if (!existingState.isAir()) {
-                if (!state.hasCapability(tier, MMCapability.ALLOW_REMOVING)) {
-                    queue.addLast(pb);
-                    if (++shuffleCount > queue.size()) {
-                        fullCycle = true;
-                        break;
-                    }
-                    continue;
-                }
-                if (!canReplace(level, pb.relPos, existingState, cfg.removeMode, cfg.placeMode)) {
-                    queue.addLast(pb);
-                    if (++shuffleCount > queue.size()) {
-                        fullCycle = true;
-                        break;
-                    }
-                    continue;
-                }
-            }
-
-            // Dry-run placement check to catch blocks with unmet placement requirements
-            var simulated = new SimulatedLevelReader(level, pb.relPos);
-            if (!pb.spec.state.canSurvive(simulated, pb.relPos)) {
-                // Dependency not met (e.g. torch neighbor), shuffle to back
-                queue.addLast(pb);
-                if (++shuffleCount > queue.size()) {
-                    fullCycle = true;
-                    break;
-                }
-                continue;
-            }
-
-            // Energy cost
-            double hardness = Math.max(existingState.getDestroySpeed(level, pb.relPos), 0);
-            double dist = player.position().distanceTo(Vec3.atCenterOf(pb.relPos));
-            boolean hasTile = level.getBlockEntity(pb.relPos) != null;
-            long feCost = computeFECost(hardness, dist, hasTile);
-
-            if (!player.isCreative() && !state.hasCharge(feCost)) {
-                queue.addFirst(pb);
-                MMUtils.sendErrorToPlayer(player, "mm.info.error.out_of_eu");
-                LongList errors = new LongArrayList();
-                for (var remaining : queue) errors.add(remaining.relPos.asLong());
-                sendStatus(player, errors, LongList.of());
-                ACTIVE.remove(playerId);
-                return;
-            }
-
-            // Item check — MOVING relocates existing blocks and needs no items
-            var required = moving ? ItemStack.EMPTY : pb.spec.toStack();
-            if (!required.isEmpty() && !inv.canConsume(required)) {
-                queue.addLast(pb);
-                if (++shuffleCount > queue.size()) {
-                    MMMod.LOGGER.debug("Skipping {} — no items available", pb.relPos);
-                    fullCycle = true;
-                    break;
-                }
-                continue;
-            }
-
-            // Pay for the block before restoring tile data, so content filtering
-            // can't spend the same item on the container's stored contents
-            inv.consume(required);
-
-            // Remove existing block first
-            if (!existingState.isAir()) {
-                // A MOVING destination inside the source box overwrites a block that is
-                // itself being relocated — claiming its drops would duplicate it.
-                boolean relocatedSource = moving && inSourceBox(pb.relPos);
-                if (!relocatedSource && !dropBlacklisted(existingState)) {
-                    var drops = Block.getDrops(
-                            existingState, level, pb.relPos, level.getBlockEntity(pb.relPos), player, stack);
-                    for (var drop : drops) {
-                        inv.give(drop);
-                    }
-                    reclaimContents(level.getBlockEntity(pb.relPos), inv);
-                }
-                // Remove the BE first: the block's onRemove would otherwise spill the
-                // contents on the ground (they were reclaimed or relocated above).
-                if (level.getBlockEntity(pb.relPos) != null) {
-                    level.removeBlockEntity(pb.relPos);
-                }
-                level.setBlockAndUpdate(pb.relPos, Blocks.AIR.defaultBlockState());
-            }
-
-            // Place the new block
-            level.setBlockAndUpdate(pb.relPos, pb.spec.state);
-
-            // Reproduce captured tile state (machine config + covers, AE parts/facades, container
-            // contents, tank fluids) through the analyses. MOVING carries a verbatim RawTileAnalysis;
-            // COPYING carries per-concern analyses that charge the player as they install. Each owns
-            // its own recreate/reinit/sync, so there is no mode branching here.
-            if (!pb.analyses.isEmpty()) {
-                pb.apply(new BlockApplyContext(level, pb.relPos, inv));
-            }
-
-            if (moving) movedPositions.add(pb.relPos.asLong());
-
+            if (moving) movedPositions.add(pos.asLong());
             // Cable mode connects GT pipes to their neighbours (they don't auto-connect on place).
-            if (cableMode && Mods.GTCEU) GTCompat.connectPipe(level, pb.relPos);
+            if (cableMode && Mods.GTCEU) GTCompat.connectPipe(level, pos);
 
-            state.consumeCharge(feCost);
+            if (!player.isCreative()) state.consumeCharge(costs.getLong(i));
 
             soundCount++;
-            soundX += pb.relPos.getX() + 0.5;
-            soundY += pb.relPos.getY() + 0.5;
-            soundZ += pb.relPos.getZ() + 0.5;
-
+            soundX += pos.getX() + 0.5;
+            soundY += pos.getY() + 0.5;
+            soundZ += pos.getZ() + 0.5;
             placed++;
-            shuffleCount = 0;
         }
+
+        // Re-queue blocks selected but not placed (item shortfall) for a later tick
+        for (; i < toPlace.size(); i++) queue.addFirst(toPlace.get(i));
 
         if (soundCount > 0) {
             // Volume scales with distance so far-away batches stay audible
@@ -334,15 +368,32 @@ public class PendingBuild {
         }
 
         if (queue.isEmpty()) {
-            // MOVING mode: remove source blocks after all destination blocks are placed
-            if (sourceMin != null && sourceMax != null) {
-                clearSourceRegion(level);
-            }
-            ACTIVE.remove(playerId);
-            MMUtils.sendInfoToPlayer(player, "mm.info.finished_placing");
-            sendStatus(player, LongList.of(), LongList.of());
-        } else if (fullCycle && placed == 0) {
+            finish(player, level);
+        } else if (placed > 0) {
+            // MOVING reports incremental progress like the original; placement stays quiet per-tick.
+            if (moving) MMUtils.sendInfoToPlayer(player, "mm.info.process_move", placed, queue.size());
+        } else if (outOfPower) {
+            MMUtils.sendErrorToPlayer(player, "mm.info.error.out_of_eu"); // pause; build persists
+        } else {
+            // No progress and not a power pause (blocked placement or missing items) → report and end.
             giveUp(player, inv);
+        }
+    }
+
+    /** Ends the build: clears the MOVING source region, drops the active entry, and reports completion. */
+    private void finish(Player player, ServerLevel level) {
+        if (sourceMin != null && sourceMax != null) {
+            clearSourceRegion(level, player);
+        }
+        ACTIVE.remove(playerId);
+        MMUtils.sendInfoToPlayer(player, moving ? "mm.info.finished_move" : "mm.info.finished_placing");
+        sendStatus(player, LongList.of(), LongList.of());
+    }
+
+    private void warnProtectedOnce(Player player) {
+        if (!warnedProtected) {
+            MMUtils.sendWarningToPlayer(player, "mm.info.warning.protected_area");
+            warnedProtected = true;
         }
     }
 
@@ -379,6 +430,48 @@ public class PendingBuild {
     }
 
     /**
+     * Removes the existing block, refunding it to the player. Ore and drop-blacklisted blocks are
+     * voided (so the manipulator can't fortune-mine), and a MOVING block being relocated is cleared
+     * rather than refunded (it would otherwise duplicate). AE2 blocks are disassembled by hand and GT
+     * machines hand back their covers; everything is given through the {@link MMInventory} (network →
+     * inventory → dropped). The block entity is removed before the block so its {@code onRemove} can't
+     * also spill the contents we just reclaimed.
+     */
+    private void removeBlock(
+            ServerLevel level,
+            BlockPos pos,
+            BlockState existing,
+            Player player,
+            ItemStack tool,
+            MMInventory inv,
+            boolean relocatedSource) {
+        BlockEntity be = level.getBlockEntity(pos);
+
+        if (relocatedSource || dropBlacklisted(existing) || existing.is(Tags.Blocks.ORES)) {
+            if (be != null) level.removeBlockEntity(pos);
+            level.setBlockAndUpdate(pos, Blocks.AIR.defaultBlockState());
+            return;
+        }
+
+        if (Mods.AE2 && be != null && AECompat.isAEBlock(be)) {
+            // AE blocks drop nothing through Block.getDrops; disassemble them by hand.
+            for (ItemStack s : AECompat.dismantle(be)) inv.give(s);
+        } else if (Mods.GTCEU && be != null && GTCompat.isGTMachine(be)) {
+            for (ItemStack s : GTCompat.detachCovers(be)) inv.give(s); // before getDrops → no double count
+            reclaimContents(be, inv); // items; self-skips machines that bake contents into their drop
+            for (ItemStack s : Block.getDrops(existing, level, pos, be, player, tool)) inv.give(s);
+        } else {
+            reclaimContents(be, inv);
+            drainTanks(be, inv);
+            ItemStack item = new ItemStack(existing.getBlock());
+            if (!item.isEmpty()) inv.give(item);
+        }
+
+        if (be != null) level.removeBlockEntity(pos);
+        level.setBlockAndUpdate(pos, Blocks.AIR.defaultBlockState());
+    }
+
+    /**
      * Gives a replaced container's contents to the player. The block entity is removed
      * before the block afterwards, so the block's own onRemove can't also spill them.
      */
@@ -391,6 +484,19 @@ public class PendingBuild {
         for (int slot = 0; slot < handler.getSlots(); slot++) {
             ItemStack stack = handler.getStackInSlot(slot);
             if (!stack.isEmpty()) inv.give(stack.copy());
+        }
+    }
+
+    /** Drains a replaced tank's fluids back to the player (network or, failing that, voided). */
+    private static void drainTanks(@Nullable BlockEntity be, MMInventory inv) {
+        if (be == null) return;
+        IFluidHandler handler = be.getCapability(ForgeCapabilities.FLUID_HANDLER).resolve().orElse(null);
+        if (handler == null) return;
+        // drain() removes one fluid type per call; bounded in case a handler refills itself
+        for (int i = 0; i < 1024; i++) {
+            FluidStack drained = handler.drain(Integer.MAX_VALUE, IFluidHandler.FluidAction.EXECUTE);
+            if (drained.isEmpty()) break;
+            inv.giveFluid(drained);
         }
     }
 
@@ -443,32 +549,54 @@ public class PendingBuild {
         };
     }
 
-    /** MOVING mode: remove every non-air, non-bedrock block in the source region. */
-    private void clearSourceRegion(ServerLevel level) {
+    /**
+     * MOVING mode: remove every non-air, non-bedrock block in the source region. A protected source
+     * block is left in place (it was never captured/relocated), and a destination that overlapped the
+     * source box ({@code movedPositions}) is the already-moved block, so it is skipped too.
+     */
+    private void clearSourceRegion(ServerLevel level, Player player) {
         if (sourceMin == null || sourceMax == null) return;
         for (int x = sourceMin.getX(); x <= sourceMax.getX(); x++) {
             for (int y = sourceMin.getY(); y <= sourceMax.getY(); y++) {
                 for (int z = sourceMin.getZ(); z <= sourceMax.getZ(); z++) {
                     var pos = new BlockPos(x, y, z);
-                    // Destination overlapping the source box — already the moved block
                     if (movedPositions.contains(pos.asLong())) continue;
                     var state = level.getBlockState(pos);
-                    if (!state.isAir() && state.getDestroySpeed(level, pos) >= 0) {
-                        // Contents were relocated via NBT: remove the BE first so the
-                        // block's onRemove can't spill (and thus duplicate) them.
-                        if (level.getBlockEntity(pos) != null) {
-                            level.removeBlockEntity(pos);
-                        }
-                        level.setBlockAndUpdate(pos, Blocks.AIR.defaultBlockState());
+                    if (state.isAir() || state.getDestroySpeed(level, pos) < 0) continue;
+                    if (!BuildProtection.canBreak(level, pos, player)) continue;
+                    // Contents were relocated via NBT: remove the BE first so the
+                    // block's onRemove can't spill (and thus duplicate) them.
+                    if (level.getBlockEntity(pos) != null) {
+                        level.removeBlockEntity(pos);
                     }
+                    level.setBlockAndUpdate(pos, Blocks.AIR.defaultBlockState());
                 }
             }
         }
     }
 
-    /** FE = 128 × √(hardness+1) × dist^1.25 × (hasTile ? 16 : 1), minimum 1. */
+    /**
+     * Energy for removing the existing block plus placing the new one: each is
+     * {@code 128 × (1 + √hardness) × dist^1.25 × (hasTile ? 16 : 1)}, halved by the Power Efficiency
+     * upgrade. Mirrors the original's per-action {@code tryConsumePower}.
+     */
+    private long energyCost(
+            ServerLevel level, BlockPos pos, BlockState existing, PendingBlock pb, Player player, boolean powerEff) {
+        double dist = player.position().distanceTo(Vec3.atCenterOf(pos));
+        long cost = 0;
+        if (!existing.isAir()) {
+            cost += computeFECost(existing.getDestroySpeed(level, pos), dist, level.getBlockEntity(pos) != null);
+        }
+        if (!pb.spec.isAir()) {
+            cost += computeFECost(pb.spec.state.getDestroySpeed(level, pos), dist, pb.spec.state.hasBlockEntity());
+        }
+        if (powerEff) cost = Math.max(1, cost / 2);
+        return cost;
+    }
+
+    /** FE = 128 × (1 + √hardness) × dist^1.25 × (hasTile ? 16 : 1), minimum 1. */
     public static long computeFECost(double hardness, double dist, boolean hasTile) {
-        double base = 128.0 * Math.sqrt(Math.max(hardness, 0) + 1.0);
+        double base = 128.0 * (1.0 + Math.sqrt(Math.max(hardness, 0)));
         double distMult = dist > 1.0 ? Math.pow(dist, 1.25) : 1.0;
         double tileMult = hasTile ? 16.0 : 1.0;
         return Math.max(1L, (long) (base * distMult * tileMult));

@@ -184,6 +184,30 @@ public class GTCompat {
     }
 
     /**
+     * Detaches every cover from a machine that is about to be removed and returns the items they drop.
+     * Unlike {@link #filterCovers} (COPYING: charges fabricated covers, no give-back), this is the
+     * removal counterpart — the covers genuinely existed, so the player keeps them. Covers are removed
+     * from the container <em>before</em> the build loop computes {@code Block.getDrops}, so a cover is
+     * never both detached here and dropped by the machine. No-op (empty list) for non-GT machines.
+     */
+    public static List<ItemStack> detachCovers(BlockEntity be) {
+        if (!(be instanceof MetaMachineBlockEntity mbe)) return List.of();
+        ICoverable covers = mbe.metaMachine.getCoverContainer();
+        List<ItemStack> items = new ArrayList<>();
+        for (Direction dir : Direction.values()) {
+            CoverBehavior cover = covers.getCoverAtSide(dir);
+            if (cover == null) continue;
+            ItemStack item = cover.getPickItem();
+            if (!item.isEmpty()) items.add(item.copy());
+            for (ItemStack extra : cover.getAdditionalDrops()) {
+                if (!extra.isEmpty()) items.add(extra.copy());
+            }
+            covers.removeCover(false, dir, null); // detach without dropping; we hand the items back ourselves
+        }
+        return items;
+    }
+
+    /**
      * Capability provider exposing the manipulator as a GregTech electric item (EU), so it charges
      * in GT chargers up to {@code Long.MAX_VALUE}. Created only when GregTech is present; without it
      * the item exposes Forge Energy (FE) instead.

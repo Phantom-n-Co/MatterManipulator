@@ -15,6 +15,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.TagParser;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Mirror;
 import net.minecraft.world.level.block.Rotation;
@@ -27,12 +28,22 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import javax.annotation.Nullable;
+
 public class BuildGenerator {
     public static List<PendingBlock> generateBlocks(MMConfig cfg, Level level) {
+        return generateBlocks(cfg, level, null);
+    }
+
+    /**
+     * @param builder the player whose build this is, or null for the client preview / required-items
+     *                pass. Only used by MOVING to skip protected source blocks at capture (server build only).
+     */
+    public static List<PendingBlock> generateBlocks(MMConfig cfg, Level level, @Nullable Player builder) {
         return switch (cfg.placeMode) {
             case GEOMETRY -> generateGeometry(cfg, level);
             case EXCHANGING -> generateExchanging(cfg, level);
-            case COPYING, MOVING -> generateCopyMove(cfg, level, cfg.placeMode == PlaceMode.MOVING);
+            case COPYING, MOVING -> generateCopyMove(cfg, level, cfg.placeMode == PlaceMode.MOVING, builder);
             case CABLES -> generateCables(cfg, level);
             default -> Collections.emptyList();
         };
@@ -98,10 +109,11 @@ public class BuildGenerator {
         return blocks;
     }
 
-    private static List<PendingBlock> generateCopyMove(MMConfig cfg, Level level, boolean moving) {
+    private static List<PendingBlock> generateCopyMove(
+            MMConfig cfg, Level level, boolean moving, @Nullable Player builder) {
         if (cfg.coordA == null || cfg.coordB == null || cfg.coordC == null) return Collections.emptyList();
 
-        var rawBlocks = BlockAnalyzer.analyzeRegion(level, cfg.coordA.pos, cfg.coordB.pos, moving);
+        var rawBlocks = BlockAnalyzer.analyzeRegion(level, cfg.coordA.pos, cfg.coordB.pos, moving, builder);
         if (rawBlocks.isEmpty()) return Collections.emptyList();
 
         boolean identity = cfg.transform.isIdentity();

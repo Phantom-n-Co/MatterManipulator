@@ -128,6 +128,8 @@ public class MMLanguageProvider extends LanguageProvider {
         add("mm.info.error.out_of_eu", "Matter Manipulator ran out of energy.");
         add("mm.info.error.could_not_place", "Could not place %s remaining blocks.");
         add("mm.info.finished_placing", "Finished placing blocks.");
+        add("mm.info.process_move", "Moved %s blocks (%s remaining)");
+        add("mm.info.finished_move", "Finished moving blocks.");
         add("mm.info.warning.could_not_find", "Could not find item, %s block(s) will be skipped:");
         add("mm.info.placed_remaining", "Placed %s blocks (%s remaining)");
         add("mm.info.warning.protected_area", "Tried to break/place a block in a protected area!");

@@ -57,7 +57,7 @@ public class PacketStartBuild {
             return;
         }
 
-        List<PendingBlock> blocks = BuildGenerator.generateBlocks(cfg, level);
+        List<PendingBlock> blocks = BuildGenerator.generateBlocks(cfg, level, player);
 
         if (blocks.isEmpty()) {
             player.sendSystemMessage(Component.literal("No blocks to build. Check selection and palette."));
