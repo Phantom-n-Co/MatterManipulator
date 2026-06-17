@@ -1,8 +1,8 @@
 package dev.wp.matter_manipulator.datagen.providers.client;
 
 import dev.wp.matter_manipulator.common.items.MMItems;
-
 import dev.wp.matter_manipulator.common.items.manipulator.MMTier;
+
 import net.minecraftforge.common.data.LanguageProvider;
 import net.minecraftforge.data.event.GatherDataEvent;
 
@@ -227,7 +227,7 @@ public class MMLanguageProvider extends LanguageProvider {
     }
 
     private String toRoman(int num) {
-        String[] roman = {"", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX"};
+        String[] roman = { "", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX" };
         return roman[num];
     }
 }
