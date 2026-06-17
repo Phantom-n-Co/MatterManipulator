@@ -57,6 +57,8 @@ public class MMItemModelProvider extends ItemModelProvider {
 
         if (AEUplinkRegistrar.UPLINK_ITEM.getId() != null)
             this.withExistingParent(AEUplinkRegistrar.UPLINK_ITEM.getId().getPath(), modLoc("block/ae2_uplink"));
+        if (AEUplinkRegistrar.PLAN_TOKEN.getId() != null)
+            basicItem(AEUplinkRegistrar.PLAN_TOKEN.getId());
     }
 
     private void blocks() {
