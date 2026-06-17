@@ -130,10 +130,7 @@ repositories {
     }
 }
 
-base {
-    archivesName = mod_id
-}
-
+base { archivesName = mod_id }
 java { sourceCompatibility = targetCompatibility = JavaVersion.VERSION_17 }
 
 legacyForge {
