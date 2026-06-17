@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "matter_manipulator:item/upgrade/power_eff"
+  }
+}

@@ -16,18 +16,42 @@ public class MMItemModelProvider extends ItemModelProvider {
     @Override
     protected void registerModels() {
         this.blocks();
-        handheldItem(MMItems.MANIPULATOR_PROTO);
-        handheldItem(MMItems.MANIPULATOR_MK1);
-        handheldItem(MMItems.MANIPULATOR_MK2);
-        handheldItem(MMItems.MANIPULATOR_MK3);
-        basicItem(AEUplinkRegistrar.PLAN_TOKEN.get());
+        this.items();
     }
 
     private void handheldItem(RegistryObject<?> item) {
-        if (item.getId() != null)
-            this.withExistingParent(item.getId().getPath(), "item/handheld")
-                    .texture("layer0", MMMod.MODID + ":item/" + item.getId().getPath());
-        else LOGGER.error("Item model for {} is missing registry name", item.get());
+        if (item.getId() == null) {
+            LOGGER.error("Item model for {} is missing registry name", item.get());
+            return;
+        }
+        this.withExistingParent(item.getId().getPath(), "item/handheld")
+                .texture("layer0", MMMod.MODID + ":item/" + item.getId().getPath());
+    }
+
+    private void items() {
+        for (var name : MMItems.ITEMS.getEntries()) {
+            if (name.getId() == null) {
+                LOGGER.error("Item model for {} is missing registry name", name.get());
+                continue;
+            }
+
+
+            if (name.getId().getPath().contains("upgrade")) {
+                this.withExistingParent(name.getId().getPath(), "item/generated")
+                        .texture("layer0", modLoc("item/upgrade/" + name.getId().getPath().replace("upgrade_", "")));
+                continue;
+            }
+
+            if (name.getId().getPath().contains("manipulator")) {
+                handheldItem(name);
+                continue;
+            }
+
+            basicItem(name.get());
+        }
+
+        if (AEUplinkRegistrar.UPLINK_ITEM.getId() != null)
+            this.withExistingParent(AEUplinkRegistrar.UPLINK_ITEM.getId().getPath(), modLoc("block/ae2_uplink"));
     }
 
     private void blocks() {
