@@ -1,11 +1,9 @@
 package dev.wp.matter_manipulator.common.items.manipulator;
 
 import dev.wp.matter_manipulator.common.building.BlockSpec;
-import dev.wp.matter_manipulator.common.compat.AECompat;
-import dev.wp.matter_manipulator.common.compat.GTCompat;
+import dev.wp.matter_manipulator.common.compat.CompatRegistry;
 import dev.wp.matter_manipulator.common.data.WeightedSpecList;
 import dev.wp.matter_manipulator.common.utils.MMUtils;
-import dev.wp.matter_manipulator.common.utils.Mods;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
@@ -123,16 +121,7 @@ public class ManipulatorActions {
     private static String captureCableTile(ServerLevel level, BlockPos pos) {
         BlockEntity be = level.getBlockEntity(pos);
         if (be == null) return null;
-        CompoundTag nbt = null;
-        if (Mods.AE2 && AECompat.isAEBlock(be)) {
-            AECompat.AEAnalysis analysis = AECompat.AEAnalysis.analyze(be);
-            AECompat.AEAnalysis cable = analysis == null ? null : analysis.cableOnly();
-            if (cable != null) nbt = cable.toNbt();
-        } else if (Mods.GTCEU) {
-            GTCompat.GTMachineAnalysis analysis = GTCompat.GTMachineAnalysis.analyze(be);
-            GTCompat.GTMachineAnalysis color = analysis == null ? null : analysis.colorOnly();
-            if (color != null) nbt = color.toNbt();
-        }
+        CompoundTag nbt = CompatRegistry.analyzeCable(be);
         return nbt == null ? null : nbt.toString();
     }
 

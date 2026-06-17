@@ -3,6 +3,7 @@ package dev.wp.matter_manipulator.common.building;
 import dev.wp.matter_manipulator.BlockTags;
 import dev.wp.matter_manipulator.common.building.analysis.BlockApplyContext;
 import dev.wp.matter_manipulator.common.compat.AECompat;
+import dev.wp.matter_manipulator.common.compat.CompatRegistry;
 import dev.wp.matter_manipulator.common.compat.GTCompat;
 import dev.wp.matter_manipulator.common.config.MMModConfig;
 import dev.wp.matter_manipulator.common.items.MMUpgrades;
@@ -467,18 +468,18 @@ public class PendingBuild {
             return;
         }
 
-        if (Mods.AE2 && be != null && AECompat.isAEBlock(be)) {
-            // AE blocks drop nothing through Block.getDrops; disassemble them by hand.
-            for (ItemStack s : AECompat.dismantle(be)) inv.give(s);
-        } else if (Mods.GTCEU && be != null && GTCompat.isGTMachine(be)) {
-            for (ItemStack s : GTCompat.detachCovers(be)) inv.give(s); // before getDrops → no double count
-            reclaimContents(be, inv); // items; self-skips machines that bake contents into their drop
-            for (ItemStack s : Block.getDrops(existing, level, pos, be, player, tool)) inv.give(s);
+        if (be != null && CompatRegistry.fullyDismantle(be, inv)) {
+            // AE blocks drop nothing through Block.getDrops; dismantle handed everything back.
         } else {
-            reclaimContents(be, inv);
-            drainTanks(be, inv);
-            ItemStack item = new ItemStack(existing.getBlock());
-            if (!item.isEmpty()) inv.give(item);
+            CompatRegistry.salvageBeforeDrops(be, inv); // GT covers before getDrops → no double count
+            reclaimContents(be, inv); // items; self-skips machines that bake contents into their drop
+            if (be != null && CompatRegistry.usesNativeDrops(be)) {
+                for (ItemStack s : Block.getDrops(existing, level, pos, be, player, tool)) inv.give(s);
+            } else {
+                drainTanks(be, inv);
+                ItemStack item = new ItemStack(existing.getBlock());
+                if (!item.isEmpty()) inv.give(item);
+            }
         }
 
         if (be != null) level.removeBlockEntity(pos);
@@ -491,10 +492,9 @@ public class PendingBuild {
      */
     private static void reclaimContents(@Nullable BlockEntity be, MMInventory inv) {
         if (be == null) return;
-        // Machines that save their contents into the dropped item already keep them
-        if (Mods.GTCEU && GTCompat.savesContentsToItem(be)) return;
-        // An ME stocking bus's handler is the network, not local storage — never reclaim it
-        if (Mods.GTCEU && GTCompat.isStockingPart(be)) return;
+        // Machines that bake contents into their dropped item, or whose handler is the AE network
+        // (an ME stocking bus), keep their own contents — never reclaim them here.
+        if (CompatRegistry.skipContentReclaim(be)) return;
         IItemHandler handler = be.getCapability(ForgeCapabilities.ITEM_HANDLER).resolve().orElse(null);
         if (handler == null) return;
         for (int slot = 0; slot < handler.getSlots(); slot++) {
@@ -507,7 +507,7 @@ public class PendingBuild {
     private static void drainTanks(@Nullable BlockEntity be, MMInventory inv) {
         if (be == null) return;
         // An ME stocking hatch's tank is the network, not local storage — never drain it
-        if (Mods.GTCEU && GTCompat.isStockingPart(be)) return;
+        if (CompatRegistry.skipTankDrain(be)) return;
         IFluidHandler handler = be.getCapability(ForgeCapabilities.FLUID_HANDLER).resolve().orElse(null);
         if (handler == null) return;
         // drain() removes one fluid type per call; bounded in case a handler refills itself

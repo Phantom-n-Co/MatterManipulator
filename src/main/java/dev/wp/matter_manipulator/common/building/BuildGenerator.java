@@ -1,11 +1,12 @@
 package dev.wp.matter_manipulator.common.building;
 
+import dev.wp.matter_manipulator.common.building.analysis.ITileAnalysis;
 import dev.wp.matter_manipulator.common.building.shapes.ShapeBlock;
 import dev.wp.matter_manipulator.common.building.shapes.ShapeCube;
 import dev.wp.matter_manipulator.common.building.shapes.ShapeCylinder;
 import dev.wp.matter_manipulator.common.building.shapes.ShapeLine;
 import dev.wp.matter_manipulator.common.building.shapes.ShapeSphere;
-import dev.wp.matter_manipulator.common.compat.AECompat;
+import dev.wp.matter_manipulator.common.compat.CompatRegistry;
 import dev.wp.matter_manipulator.common.compat.ExtendedAECompat;
 import dev.wp.matter_manipulator.common.compat.GTCompat;
 import dev.wp.matter_manipulator.common.items.manipulator.MMConfig;
@@ -269,10 +270,7 @@ public class BuildGenerator {
             return;
         }
         String id = nbt.getString("id");
-        if (Mods.AE2 && id.equals("ae2:cable_bus")) {
-            pb.addAnalysis(AECompat.AEAnalysis.fromData(nbt));
-        } else if (Mods.GTCEU && id.startsWith("gtceu:")) {
-            pb.addAnalysis(GTCompat.GTMachineAnalysis.fromConfig(nbt));
-        }
+        ITileAnalysis analysis = CompatRegistry.reconstructCable(id, nbt);
+        if (analysis != null) pb.addAnalysis(analysis);
     }
 }

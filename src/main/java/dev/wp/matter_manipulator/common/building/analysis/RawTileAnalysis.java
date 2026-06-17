@@ -1,9 +1,7 @@
 package dev.wp.matter_manipulator.common.building.analysis;
 
-import dev.wp.matter_manipulator.common.compat.AECompat;
-import dev.wp.matter_manipulator.common.compat.GTCompat;
+import dev.wp.matter_manipulator.common.compat.CompatRegistry;
 import dev.wp.matter_manipulator.common.items.manipulator.MMTransform;
-import dev.wp.matter_manipulator.common.utils.Mods;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
@@ -37,23 +35,14 @@ public class RawTileAnalysis implements ITileAnalysis {
         tag.putInt("z", pos.getZ());
 
         BlockEntity be = level.getBlockEntity(pos);
-        if (Mods.GTCEU && be != null && GTCompat.isGTMachine(be)) {
-            // GT machines must initialize in chunk-load order (ctor → load → onLoad).
-            BlockEntity recreated = BlockEntity.loadStatic(pos, state, tag);
-            if (recreated != null) {
-                level.setBlockEntity(recreated);
-            } else {
-                be.load(tag);
-            }
-        } else if (be != null) {
-            be.load(tag);
+        if (!CompatRegistry.restoreRaw(level, pos, state, tag)) {
+            if (be != null) be.load(tag);
         }
 
         be = level.getBlockEntity(pos);
         if (be != null) {
-            if (Mods.GTCEU) GTCompat.reinitCovers(be); // no-op for non-GT
+            CompatRegistry.afterRawLoad(level, pos, be);
             be.setChanged();
-            if (Mods.GTCEU && GTCompat.needsClientSync(be)) GTCompat.scheduleClientSync(level, pos);
         }
         return true;
     }
@@ -65,8 +54,7 @@ public class RawTileAnalysis implements ITileAnalysis {
 
     @Override
     public void transform(MMTransform transform) {
-        if (Mods.GTCEU) GTCompat.transformMachineNbt(data, transform);
-        if (Mods.AE2) AECompat.transformCableBusNbt(data, transform);
+        CompatRegistry.transformRawNbt(data, transform);
     }
 
     @Override

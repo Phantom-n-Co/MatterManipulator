@@ -1,6 +1,9 @@
 package dev.wp.matter_manipulator;
 
+import dev.wp.matter_manipulator.common.compat.AECompatHandler;
+import dev.wp.matter_manipulator.common.compat.CompatRegistry;
 import dev.wp.matter_manipulator.common.compat.GTCompat;
+import dev.wp.matter_manipulator.common.compat.GTCompatHandler;
 import dev.wp.matter_manipulator.common.compat.ae.AEUplinkRegistrar;
 import dev.wp.matter_manipulator.common.config.MMModConfig;
 import dev.wp.matter_manipulator.common.items.MMItems;
@@ -50,6 +53,12 @@ public class MMMod {
         if (Mods.GTCEU) {
             event.enqueueWork(GTCompat::registerEvents);
         }
+        // Per-BlockEntity tile compat. Each handler imports its mod's types, so it is only ever
+        // instantiated behind the matching gate; AE2 registers first to keep AE-before-GT precedence.
+        event.enqueueWork(() -> {
+            if (Mods.AE2) CompatRegistry.register(new AECompatHandler());
+            if (Mods.GTCEU) CompatRegistry.register(new GTCompatHandler());
+        });
     }
 
     public static ResourceLocation id(String path) {

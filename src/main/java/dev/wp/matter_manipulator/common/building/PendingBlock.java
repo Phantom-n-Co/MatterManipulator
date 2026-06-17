@@ -7,10 +7,8 @@ import dev.wp.matter_manipulator.common.building.analysis.InventoryAnalysis;
 import dev.wp.matter_manipulator.common.building.analysis.RawTileAnalysis;
 import dev.wp.matter_manipulator.common.building.analysis.RequiredItems;
 import dev.wp.matter_manipulator.common.building.analysis.VanillaMiscAnalysis;
-import dev.wp.matter_manipulator.common.compat.AECompat;
-import dev.wp.matter_manipulator.common.compat.GTCompat;
+import dev.wp.matter_manipulator.common.compat.CompatRegistry;
 import dev.wp.matter_manipulator.common.items.manipulator.MMTransform;
-import dev.wp.matter_manipulator.common.utils.Mods;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
@@ -70,19 +68,14 @@ public class PendingBlock {
             addAnalysis(RawTileAnalysis.of(be.saveWithFullMetadata()));
             return;
         }
-        if (Mods.AE2 && AECompat.isAEBlock(be)) {
-            addAnalysis(AECompat.AEAnalysis.analyze(be));
-            return; // AE re-initialises its own grid and reproduces parts/contents wholesale
+        CompatRegistry.TileMatch match = CompatRegistry.analyze(be);
+        if (match != null) {
+            addAnalysis(match.analysis());
+            // AE re-initialises its own grid and reproduces parts/contents wholesale.
+            if (match.exclusive()) return;
+        } else {
+            addAnalysis(VanillaMiscAnalysis.analyze(be));
         }
-        boolean gt = false;
-        if (Mods.GTCEU) {
-            ITileAnalysis gtAnalysis = GTCompat.GTMachineAnalysis.analyze(be);
-            if (gtAnalysis != null) {
-                addAnalysis(gtAnalysis);
-                gt = true;
-            }
-        }
-        if (!gt) addAnalysis(VanillaMiscAnalysis.analyze(be));
         addAnalysis(InventoryAnalysis.analyze(be));
         addAnalysis(FluidAnalysis.analyze(be));
     }
@@ -110,7 +103,7 @@ public class PendingBlock {
         var level = ctx.level();
         BlockPos pos = ctx.pos();
         level.updateNeighborsAt(pos, level.getBlockState(pos).getBlock());
-        if (Mods.AE2) AECompat.markHostForUpdate(level, pos);
+        CompatRegistry.afterPaste(level, pos, level.getBlockEntity(pos));
         return ok;
     }
 
