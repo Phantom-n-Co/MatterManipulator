@@ -672,7 +672,13 @@ public class GTCompat {
             }
             if (m instanceof IMufflableMachine mm) t.putBoolean("muffled", mm.isMuffled());
             if (m instanceof IHasCircuitSlot cm && cm.isCircuitSlotEnabled()) {
-                int circuit = IntCircuitBehaviour.getCircuitConfiguration(cm.getCircuitInventory().getStackInSlot(0));
+                var circInv = cm.getCircuitInventory();
+                int circuit = 0;
+                for (int i = 0; i < circInv.getSlots(); i++) {
+                    if (circInv.getStackInSlot(i).isEmpty()) continue;
+                    if (!IntCircuitBehaviour.isIntegratedCircuit(circInv.getStackInSlot(i))) continue;
+                    circuit = IntCircuitBehaviour.getCircuitConfiguration(circInv.getStackInSlot(i));
+                }
                 if (circuit != 0) t.putInt("circuit", circuit);
             }
             if (m instanceof IControllable ic) t.putBoolean("workingEnabled", ic.isWorkingEnabled());
