@@ -7,6 +7,8 @@ import net.minecraft.data.recipes.RecipeProvider;
 import net.minecraft.data.recipes.SpecialRecipeBuilder;
 import net.minecraftforge.data.event.GatherDataEvent;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.util.function.Consumer;
 
 public class MMRecipeProvider extends RecipeProvider {
@@ -15,7 +17,7 @@ public class MMRecipeProvider extends RecipeProvider {
     }
 
     @Override
-    protected void buildRecipes(Consumer<FinishedRecipe> writer) {
+    protected void buildRecipes(@NotNull Consumer<FinishedRecipe> writer) {
         SpecialRecipeBuilder.special(MMRecipes.UPGRADE_INSTALL.get())
                 .save(writer, "matter_manipulator:upgrade_install");
     }

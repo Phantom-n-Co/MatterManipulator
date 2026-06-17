@@ -50,7 +50,7 @@ public final class AEUplinkRegistrar {
             BlockEntityType.BlockEntitySupplier<T> factory,
             Class<T> beClass,
             BlockEntityTicker<T> serverTicker) {
-        return (RegistryObject<BlockEntityType<T>>) (RegistryObject<?>) BLOCK_ENTITY_TYPES.register(id, () -> {
+        return BLOCK_ENTITY_TYPES.register(id, () -> {
             var blk = block.get();
             var type = BlockEntityType.Builder.of(factory, blk).build(null);
             blk.setBlockEntity((Class) beClass, (BlockEntityType) type, null, (BlockEntityTicker) serverTicker);

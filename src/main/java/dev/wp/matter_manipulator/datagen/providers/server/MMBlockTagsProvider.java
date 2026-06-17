@@ -8,6 +8,8 @@ import net.minecraftforge.common.Tags;
 import net.minecraftforge.common.data.BlockTagsProvider;
 import net.minecraftforge.data.event.GatherDataEvent;
 
+import org.jetbrains.annotations.NotNull;
+
 public class MMBlockTagsProvider extends BlockTagsProvider {
     public MMBlockTagsProvider(GatherDataEvent event) {
         super(
@@ -18,7 +20,13 @@ public class MMBlockTagsProvider extends BlockTagsProvider {
     }
 
     @Override
-    protected void addTags(HolderLookup.Provider provider) {
-        tag(BlockTags.DROP_BLACKLISTED).addTags(Tags.Blocks.ORES);
+    protected void addTags(@NotNull HolderLookup.Provider provider) {
+        this.tag(BlockTags.DROP_BLACKLISTED).addTag(Tags.Blocks.ORES);
+    }
+
+    @Override
+    @NotNull
+    public String getName() {
+        return this.getClass().getCanonicalName();
     }
 }

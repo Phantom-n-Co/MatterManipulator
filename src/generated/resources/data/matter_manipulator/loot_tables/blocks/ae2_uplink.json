@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "bonus_rolls": 0.0,
+      "conditions": [
+        {
+          "condition": "minecraft:survives_explosion"
+        }
+      ],
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "matter_manipulator:ae2_uplink"
+        }
+      ],
+      "rolls": 1.0
+    }
+  ],
+  "random_sequence": "matter_manipulator:blocks/ae2_uplink"
+}
