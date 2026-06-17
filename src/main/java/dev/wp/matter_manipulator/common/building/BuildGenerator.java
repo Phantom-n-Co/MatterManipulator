@@ -142,7 +142,7 @@ public class BuildGenerator {
             // 1. Vanilla rotation/mirror: rotates shape/axis (logs, stairs) and horizontal facing.
             var rm = cfg.transform.deriveRotationMirror();
             if (rm.mirror() != Mirror.NONE) blockState = blockState.mirror(rm.mirror());
-            if (rm.rotation() != Rotation.NONE) blockState = blockState.rotate(rm.rotation());
+            if (rm.rotation() != Rotation.NONE) blockState = blockState.rotate(level, pb.relPos, rm.rotation());
 
             // 2. Override each facing property with the full transform (handles vertical facing).
             for (Property<?> prop : original.getProperties()) {

@@ -50,11 +50,9 @@ public class GTCompatHandler implements CompatHandler {
         if (be == null || !GTCompat.isGTMachine(be)) return false;
         // GT machines must initialize in chunk-load order (ctor → load → onLoad).
         BlockEntity recreated = BlockEntity.loadStatic(pos, state, tag);
-        if (recreated != null) {
-            level.setBlockEntity(recreated);
-        } else {
-            be.load(tag);
-        }
+        if (recreated != null) level.setBlockEntity(recreated);
+        else be.load(tag);
+
         return true;
     }
 
