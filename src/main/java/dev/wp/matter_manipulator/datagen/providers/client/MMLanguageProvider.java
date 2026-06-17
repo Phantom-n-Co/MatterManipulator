@@ -2,6 +2,7 @@ package dev.wp.matter_manipulator.datagen.providers.client;
 
 import dev.wp.matter_manipulator.common.items.MMItems;
 
+import dev.wp.matter_manipulator.common.items.manipulator.MMTier;
 import net.minecraftforge.common.data.LanguageProvider;
 import net.minecraftforge.data.event.GatherDataEvent;
 
@@ -20,6 +21,25 @@ public class MMLanguageProvider extends LanguageProvider {
         add(MMItems.MANIPULATOR_MK1.get(), "Matter Manipulator MK I");
         add(MMItems.MANIPULATOR_MK2.get(), "Matter Manipulator MK II");
         add(MMItems.MANIPULATOR_MK3.get(), "Matter Manipulator MK III");
+
+        for (var tier : MMTier.values()) {
+            String mark = tier.ordinal() == 0 ? "proto_" : "mk" + tier.ordinal() + "_";
+            mark = "part_" + mark;
+
+            String tierName = tier.ordinal() == 0 ? "Prototype" : "MK " + toRoman(tier.ordinal());
+
+            add(itemKey(mark + "frame"), tierName + " Frame");
+            add(itemKey(mark + "lens"), tierName + " Lens");
+            add(itemKey(mark + "computer_core"), tierName + " Computer Core");
+            add(itemKey(mark + "power_core"), tierName + " Power Core");
+            add(itemKey(mark + "teleporter_core"), tierName + " Teleporter Core");
+        }
+
+        add(itemKey("upgrade_blank"), "Blank Upgrade");
+        add(itemKey("upgrade_power_p2p"), "Power P2P Upgrade");
+        add(itemKey("upgrade_mining"), "Mining Upgrade");
+        add(itemKey("upgrade_speed"), "Speed Upgrade");
+        add(itemKey("upgrade_power_eff"), "Power Efficiency Upgrade");
 
         // AE2 uplink block (registered only with AE2; key added unconditionally so the name
         // resolves whenever the block is present).
@@ -204,5 +224,10 @@ public class MMLanguageProvider extends LanguageProvider {
 
     private String keyKey(String key) {
         return "key." + MODID + "." + key;
+    }
+
+    private String toRoman(int num) {
+        String[] roman = {"", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX"};
+        return roman[num];
     }
 }

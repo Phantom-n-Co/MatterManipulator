@@ -66,10 +66,5 @@ public final class AEUplinkRegistrar {
         MENU_TYPES.register(modBus);
     }
 
-    /** Append the uplink item to the mod creative tab. Call only when AE2 is loaded. */
-    public static void addToCreativeTab(CreativeModeTab.Output output) {
-        output.accept(UPLINK_ITEM.get());
-    }
-
     private AEUplinkRegistrar() {}
 }

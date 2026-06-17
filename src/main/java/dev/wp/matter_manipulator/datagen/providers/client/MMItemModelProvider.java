@@ -35,10 +35,15 @@ public class MMItemModelProvider extends ItemModelProvider {
                 continue;
             }
 
-
-            if (name.getId().getPath().contains("upgrade")) {
+            if (name.getId().getPath().startsWith("upgrade")) {
                 this.withExistingParent(name.getId().getPath(), "item/generated")
                         .texture("layer0", modLoc("item/upgrade/" + name.getId().getPath().replace("upgrade_", "")));
+                continue;
+            }
+
+            if (name.getId().getPath().startsWith("part_")){
+                this.withExistingParent(name.getId().getPath(), "item/generated")
+                        .texture("layer0", modLoc("item/part/" + name.getId().getPath().replace("part_", "")));
                 continue;
             }
 
