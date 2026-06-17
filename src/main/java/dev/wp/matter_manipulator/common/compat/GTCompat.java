@@ -557,6 +557,8 @@ public class GTCompat {
             if (semantic.contains("machineConfig")) m.pasteConfig(player, semantic.getCompound("machineConfig"));
             // A fresh copy belongs to the player pasting it, like a normally placed machine.
             if (ctx.player() != null) m.setOwnerUUID(ctx.player().getUUID());
+            m.onUnload();
+            m.onLoad();
         }
 
         private void applyPipe(PipeBlockEntity<?, ?> pipe, BlockEntity be, BlockApplyContext ctx) {
