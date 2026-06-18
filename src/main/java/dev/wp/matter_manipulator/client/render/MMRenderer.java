@@ -12,7 +12,6 @@ import dev.wp.matter_manipulator.common.items.manipulator.ShapeType;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.item.ItemStack;
@@ -79,9 +78,9 @@ public class MMRenderer {
 
         try {
             switch (cfg.placeMode) {
-                case GEOMETRY, EXCHANGING -> renderAreaMode(ps, mc, cfg);
-                case CABLES -> renderCableMode(ps, mc, cfg);
-                case COPYING, MOVING -> renderCopyMode(ps, mc, cfg);
+                case GEOMETRY, EXCHANGING -> renderAreaMode(ps, cfg);
+                case CABLES -> renderCableMode(ps, cfg);
+                case COPYING, MOVING -> renderCopyMode(ps, cfg);
             }
             GhostBlockRenderer.render(ps, cfg.placeMode, event.getFrustum());
             GhostBlockRenderer.renderStatusBoxes(ps);
@@ -98,7 +97,7 @@ public class MMRenderer {
 
     // ── GEOMETRY / EXCHANGING ─────────────────────────────────────────────────────
 
-    private static void renderAreaMode(PoseStack ps, Minecraft mc, MMConfig cfg) {
+    private static void renderAreaMode(PoseStack ps, MMConfig cfg) {
         if (cfg.coordA != null && cfg.coordB != null) {
             BlockPos a = cfg.coordA.pos, b = cfg.coordB.pos;
 
@@ -106,9 +105,6 @@ public class MMRenderer {
                 // Shape blocks themselves are shown as ghost-block hints
                 hudText = analysisCache.size() + " blocks";
             } else {
-                var bufSource = mc.renderBuffers().bufferSource();
-                var linesBuf = bufSource.getBuffer(RenderType.lines());
-
                 double x0 = Math.min(a.getX(), b.getX());
                 double y0 = Math.min(a.getY(), b.getY());
                 double z0 = Math.min(a.getZ(), b.getZ());
@@ -117,10 +113,8 @@ public class MMRenderer {
                 double z1 = Math.max(a.getZ(), b.getZ()) + 1;
 
                 BoxRenderer.drawFilledBox(ps, x0, y0, z0, x1, y1, z1, TR, TG, TB, 0.3f);
-                LevelRenderer.renderLineBox(ps, linesBuf, x0, y0, z0, x1, y1, z1, TR, TG, TB, TA);
 
                 hudText = dims(a, b);
-                bufSource.endBatch(RenderType.lines());
             }
         } else {
             hudText = "";
@@ -129,14 +123,11 @@ public class MMRenderer {
 
     // ── CABLES ───────────────────────────────────────────────────────────────────
 
-    private static void renderCableMode(PoseStack ps, Minecraft mc, MMConfig cfg) {
+    private static void renderCableMode(PoseStack ps, MMConfig cfg) {
         // The cable line itself is shown as ghost-block hints; draw the selection box around it too.
         if (cfg.coordA != null && cfg.coordB != null) {
             BlockPos a = cfg.coordA.pos;
             BlockPos b = pinToAxis(a, cfg.coordB.pos);
-
-            var bufSource = mc.renderBuffers().bufferSource();
-            var linesBuf = bufSource.getBuffer(RenderType.lines());
 
             double x0 = Math.min(a.getX(), b.getX()),
                     y0 = Math.min(a.getY(), b.getY()),
@@ -146,8 +137,6 @@ public class MMRenderer {
                     z1 = Math.max(a.getZ(), b.getZ()) + 1;
 
             BoxRenderer.drawFilledBox(ps, x0, y0, z0, x1, y1, z1, TR, TG, TB, 0.3f);
-            LevelRenderer.renderLineBox(ps, linesBuf, x0, y0, z0, x1, y1, z1, TR, TG, TB, TA);
-            bufSource.endBatch(RenderType.lines());
 
             int len = Math.max(
                     Math.max(Math.abs(a.getX() - b.getX()), Math.abs(a.getY() - b.getY())),
@@ -161,11 +150,8 @@ public class MMRenderer {
 
     // ── COPYING / MOVING ─────────────────────────────────────────────────────────
 
-    private static void renderCopyMode(PoseStack ps, Minecraft mc, MMConfig cfg) {
+    private static void renderCopyMode(PoseStack ps, MMConfig cfg) {
         // Ghost-block previews at the paste destination are drawn by GhostBlockRenderer
-        var bufSource = mc.renderBuffers().bufferSource();
-        var linesBuf = bufSource.getBuffer(RenderType.lines());
-
         if (cfg.coordA != null && cfg.coordB != null) {
             BlockPos a = cfg.coordA.pos, b = cfg.coordB.pos;
             double x0 = Math.min(a.getX(), b.getX());
@@ -177,7 +163,6 @@ public class MMRenderer {
 
             // Source box (teal)
             BoxRenderer.drawFilledBox(ps, x0, y0, z0, x1, y1, z1, TR, TG, TB, 0.3f);
-            LevelRenderer.renderLineBox(ps, linesBuf, x0, y0, z0, x1, y1, z1, TR, TG, TB, TA);
             hudText = dims(a, b);
 
             // Paste box (orange) — covers the FULL copied region (not just occupied cells), with
@@ -190,13 +175,10 @@ public class MMRenderer {
                 double px1 = c.getX() + bb[3] + 1, py1 = c.getY() + bb[4] + 1, pz1 = c.getZ() + bb[5] + 1;
 
                 BoxRenderer.drawFilledBox(ps, px0, py0, pz0, px1, py1, pz1, OR, OG, OB, 0.3f);
-                LevelRenderer.renderLineBox(ps, linesBuf, px0, py0, pz0, px1, py1, pz1, OR, OG, OB, TA);
             }
         } else {
             hudText = "";
         }
-
-        bufSource.endBatch(RenderType.lines());
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────────

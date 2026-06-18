@@ -2,6 +2,7 @@ package dev.wp.matter_manipulator.client.render;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 
@@ -61,25 +62,28 @@ public class BoxRenderer {
         var buffers = Minecraft.getInstance().renderBuffers().bufferSource();
         VertexConsumer vc = buffers.getBuffer(MMRenderType.FANCY_BOX);
 
+        // Only draw the near walls, never the far ones.
+        Vec3 cam = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
+
         // Each face = origin corner + two edge vectors, with UVs forming a continuous unwrap across the box.
         // spotless:off
         // ── bottom (y-) ──────────────────────────────────────────────────────────
-        face(vc, pose, t, r, g, b, a,
+        if (cam.y <= fy0) face(vc, pose, t, r, g, b, a,
                 fx0, fy0, fz0, 0, 0,      dX, 0, 0, dX, 0,      0, 0, dZ, 0, dZ);
         // ── top (y+) ─────────────────────────────────────────────────────────────
-        face(vc, pose, t, r, g, b, a,
+        if (cam.y >= fy1) face(vc, pose, t, r, g, b, a,
                 fx0, fy1, fz0, dY, 0,     0, 0, dZ, 0, dZ,      dX, 0, 0, dX, 0);
         // ── west (x-) ────────────────────────────────────────────────────────────
-        face(vc, pose, t, r, g, b, a,
+        if (cam.x <= fx0) face(vc, pose, t, r, g, b, a,
                 fx0, fy0, fz0, 0, 0,      0, 0, dZ, 0, dZ,      0, dY, 0, dY, 0);
         // ── east (x+) ────────────────────────────────────────────────────────────
-        face(vc, pose, t, r, g, b, a,
+        if (cam.x >= fx1) face(vc, pose, t, r, g, b, a,
                 fx1, fy1, fz1, dX + dY, dZ,   0, -dY, 0, -dY, 0,   0, 0, -dZ, 0, -dZ);
         // ── north (z-) ───────────────────────────────────────────────────────────
-        face(vc, pose, t, r, g, b, a,
+        if (cam.z <= fz0) face(vc, pose, t, r, g, b, a,
                 fx0, fy0, fz0, 0, 0,      dX, 0, 0, dX, 0,      0, dY, 0, 0, dY);
         // ── south (z+) ───────────────────────────────────────────────────────────
-        face(vc, pose, t, r, g, b, a,
+        if (cam.z >= fz1) face(vc, pose, t, r, g, b, a,
                 fx0, fy0, fz1, dZ, 0,     0, dY, 0, 0, dY,      dX, 0, 0, dX, 0);
         // spotless:on
 
