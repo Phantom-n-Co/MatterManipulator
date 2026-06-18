@@ -7,7 +7,7 @@ import dev.wp.matter_manipulator.common.items.manipulator.MMState;
 import dev.wp.matter_manipulator.common.items.manipulator.MMTransform;
 import dev.wp.matter_manipulator.common.items.manipulator.PlaceMode;
 import dev.wp.matter_manipulator.common.networking.MMNetwork;
-import dev.wp.matter_manipulator.common.networking.PacketResetTransform;
+import dev.wp.matter_manipulator.common.networking.PacketConfigAction;
 import dev.wp.matter_manipulator.common.networking.PacketRotateTransform;
 import dev.wp.matter_manipulator.common.networking.PacketSetArraySpan;
 import dev.wp.matter_manipulator.common.networking.PacketSetCoordDirect;
@@ -111,7 +111,7 @@ public class TransformScreen extends Screen {
 
         addRenderableWidget(Button.builder(
                 Component.translatable(MODID + ".transform.button.reset"),
-                b -> MMNetwork.CHANNEL.sendToServer(new PacketResetTransform()))
+                b -> MMNetwork.CHANNEL.sendToServer(new PacketConfigAction(PacketConfigAction.Action.RESET_TRANSFORM)))
                 .bounds(x + 90, y + 24, 40, 18)
                 .build());
     }

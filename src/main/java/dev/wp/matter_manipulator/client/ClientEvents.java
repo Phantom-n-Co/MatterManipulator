@@ -10,13 +10,10 @@ import dev.wp.matter_manipulator.common.items.manipulator.PendingAction;
 import dev.wp.matter_manipulator.common.items.manipulator.PlaceMode;
 import dev.wp.matter_manipulator.common.networking.MMNetwork;
 import dev.wp.matter_manipulator.common.networking.PacketCancelBuild;
-import dev.wp.matter_manipulator.common.networking.PacketClearCoords;
+import dev.wp.matter_manipulator.common.networking.PacketConfigAction;
 import dev.wp.matter_manipulator.common.networking.PacketMMBPressed;
-import dev.wp.matter_manipulator.common.networking.PacketResetTransform;
 import dev.wp.matter_manipulator.common.networking.PacketSetPendingAction;
-import dev.wp.matter_manipulator.common.networking.PacketSetPlaceMode;
 import dev.wp.matter_manipulator.common.networking.PacketStartBuild;
-import dev.wp.matter_manipulator.common.networking.PacketToggleLock;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
@@ -153,19 +150,20 @@ public class ClientEvents {
         }
 
         if (MMKeyMappings.LOCK_POSITIONS.consumeClick()) {
-            MMNetwork.CHANNEL.sendToServer(new PacketToggleLock());
+            MMNetwork.CHANNEL.sendToServer(new PacketConfigAction(PacketConfigAction.Action.TOGGLE_LOCK));
             playActionSound(1.0f);
             return;
         }
 
         if (MMKeyMappings.CUT.consumeClick()) {
             if (MMState.of(held).getConfig().placeMode != PlaceMode.MOVING) {
-                MMNetwork.CHANNEL.sendToServer(new PacketSetPlaceMode(PlaceMode.MOVING));
+                MMNetwork.CHANNEL.sendToServer(
+                        new PacketConfigAction(PacketConfigAction.Action.SET_PLACE_MODE, PlaceMode.MOVING.ordinal()));
             }
             if (MMModConfig.PASTE_AUTO_CLEAR.get()) {
-                MMNetwork.CHANNEL.sendToServer(new PacketClearCoords());
+                MMNetwork.CHANNEL.sendToServer(new PacketConfigAction(PacketConfigAction.Action.CLEAR_COORDS));
                 if (MMModConfig.RESET_TRANSFORM.get()) {
-                    MMNetwork.CHANNEL.sendToServer(new PacketResetTransform());
+                    MMNetwork.CHANNEL.sendToServer(new PacketConfigAction(PacketConfigAction.Action.RESET_TRANSFORM));
                 }
             }
             MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.MARK_CUT_A, null));
@@ -175,12 +173,13 @@ public class ClientEvents {
 
         if (MMKeyMappings.COPY.consumeClick()) {
             if (MMState.of(held).getConfig().placeMode != PlaceMode.COPYING) {
-                MMNetwork.CHANNEL.sendToServer(new PacketSetPlaceMode(PlaceMode.COPYING));
+                MMNetwork.CHANNEL.sendToServer(
+                        new PacketConfigAction(PacketConfigAction.Action.SET_PLACE_MODE, PlaceMode.COPYING.ordinal()));
             }
             if (MMModConfig.PASTE_AUTO_CLEAR.get()) {
-                MMNetwork.CHANNEL.sendToServer(new PacketClearCoords());
+                MMNetwork.CHANNEL.sendToServer(new PacketConfigAction(PacketConfigAction.Action.CLEAR_COORDS));
                 if (MMModConfig.RESET_TRANSFORM.get()) {
-                    MMNetwork.CHANNEL.sendToServer(new PacketResetTransform());
+                    MMNetwork.CHANNEL.sendToServer(new PacketConfigAction(PacketConfigAction.Action.RESET_TRANSFORM));
                 }
             }
             MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.MARK_COPY_A, null));
@@ -192,7 +191,8 @@ public class ClientEvents {
             var state = MMState.of(held);
             var mode = state.getConfig().placeMode;
             if (mode != PlaceMode.COPYING && mode != PlaceMode.MOVING) {
-                MMNetwork.CHANNEL.sendToServer(new PacketSetPlaceMode(PlaceMode.COPYING));
+                MMNetwork.CHANNEL.sendToServer(
+                        new PacketConfigAction(PacketConfigAction.Action.SET_PLACE_MODE, PlaceMode.COPYING.ordinal()));
             }
             MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.MARK_PASTE_A, null));
             playActionSound(1.5f);
@@ -200,9 +200,9 @@ public class ClientEvents {
         }
 
         if (MMKeyMappings.RESET.consumeClick()) {
-            MMNetwork.CHANNEL.sendToServer(new PacketClearCoords());
+            MMNetwork.CHANNEL.sendToServer(new PacketConfigAction(PacketConfigAction.Action.CLEAR_COORDS));
             if (MMModConfig.RESET_TRANSFORM.get()) {
-                MMNetwork.CHANNEL.sendToServer(new PacketResetTransform());
+                MMNetwork.CHANNEL.sendToServer(new PacketConfigAction(PacketConfigAction.Action.RESET_TRANSFORM));
             }
             playActionSound(0.7f);
             return;

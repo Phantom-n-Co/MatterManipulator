@@ -10,23 +10,13 @@ import dev.wp.matter_manipulator.common.building.PendingBuild;
 import dev.wp.matter_manipulator.common.compat.GTCompat;
 import dev.wp.matter_manipulator.common.config.MMModConfig;
 import dev.wp.matter_manipulator.common.networking.MMNetwork;
-import dev.wp.matter_manipulator.common.networking.PacketClearBlocks;
-import dev.wp.matter_manipulator.common.networking.PacketClearCoords;
 import dev.wp.matter_manipulator.common.networking.PacketClearPlan;
-import dev.wp.matter_manipulator.common.networking.PacketClearWhitelist;
+import dev.wp.matter_manipulator.common.networking.PacketConfigAction;
 import dev.wp.matter_manipulator.common.networking.PacketMoveCoords;
 import dev.wp.matter_manipulator.common.networking.PacketRequestRequiredItems;
-import dev.wp.matter_manipulator.common.networking.PacketResetArray;
-import dev.wp.matter_manipulator.common.networking.PacketResetTransform;
 import dev.wp.matter_manipulator.common.networking.PacketSetCoord;
 import dev.wp.matter_manipulator.common.networking.PacketSetPendingAction;
-import dev.wp.matter_manipulator.common.networking.PacketSetPlaceMode;
-import dev.wp.matter_manipulator.common.networking.PacketSetRemoveMode;
-import dev.wp.matter_manipulator.common.networking.PacketSetShape;
 import dev.wp.matter_manipulator.common.networking.PacketToggleBuild;
-import dev.wp.matter_manipulator.common.networking.PacketToggleLinkExternalHubs;
-import dev.wp.matter_manipulator.common.networking.PacketToggleReplaceCribs;
-import dev.wp.matter_manipulator.common.networking.PacketToggleTetherEmptyHubs;
 import dev.wp.matter_manipulator.common.utils.Mods;
 
 import net.minecraft.ChatFormatting;
@@ -160,40 +150,48 @@ public class ItemMatterManipulator extends Item {
                     .hidden(!hasRemove)
                     .option()
                     .label(I18n.get("gui." + MODID + "remove_none"))
-                    .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetRemoveMode(RemoveMode.NONE)))
+                    .onClicked(() -> MMNetwork.CHANNEL.sendToServer(
+                            new PacketConfigAction(PacketConfigAction.Action.SET_REMOVE_MODE, RemoveMode.NONE.ordinal())))
                     .done()
                     .option()
                     .label(I18n.get("gui." + MODID + "remove_replaceable"))
-                    .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetRemoveMode(RemoveMode.REPLACEABLE)))
+                    .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketConfigAction(
+                            PacketConfigAction.Action.SET_REMOVE_MODE, RemoveMode.REPLACEABLE.ordinal())))
                     .done()
                     .option()
                     .label(I18n.get("gui." + MODID + "remove_all"))
-                    .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetRemoveMode(RemoveMode.ALL)))
+                    .onClicked(() -> MMNetwork.CHANNEL.sendToServer(
+                            new PacketConfigAction(PacketConfigAction.Action.SET_REMOVE_MODE, RemoveMode.ALL.ordinal())))
                     .done()
                     .done()
                     .option()
                     .label(I18n.get("gui." + MODID + "geometry"))
-                    .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPlaceMode(PlaceMode.GEOMETRY)))
+                    .onClicked(() -> MMNetwork.CHANNEL.sendToServer(
+                            new PacketConfigAction(PacketConfigAction.Action.SET_PLACE_MODE, PlaceMode.GEOMETRY.ordinal())))
                     .done()
                     .option()
                     .label(I18n.get("gui." + MODID + "copying"))
                     .hidden(!hasCopy)
-                    .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPlaceMode(PlaceMode.COPYING)))
+                    .onClicked(() -> MMNetwork.CHANNEL.sendToServer(
+                            new PacketConfigAction(PacketConfigAction.Action.SET_PLACE_MODE, PlaceMode.COPYING.ordinal())))
                     .done()
                     .option()
                     .label(I18n.get("gui." + MODID + "moving"))
                     .hidden(!hasMove)
-                    .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPlaceMode(PlaceMode.MOVING)))
+                    .onClicked(() -> MMNetwork.CHANNEL.sendToServer(
+                            new PacketConfigAction(PacketConfigAction.Action.SET_PLACE_MODE, PlaceMode.MOVING.ordinal())))
                     .done()
                     .option()
                     .label(I18n.get("gui." + MODID + "exchanging"))
                     .hidden(!hasExch)
-                    .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPlaceMode(PlaceMode.EXCHANGING)))
+                    .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketConfigAction(
+                            PacketConfigAction.Action.SET_PLACE_MODE, PlaceMode.EXCHANGING.ordinal())))
                     .done()
                     .option()
                     .label(I18n.get("gui." + MODID + "cables"))
                     .hidden(!hasCable)
-                    .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetPlaceMode(PlaceMode.CABLES)))
+                    .onClicked(() -> MMNetwork.CHANNEL.sendToServer(
+                            new PacketConfigAction(PacketConfigAction.Action.SET_PLACE_MODE, PlaceMode.CABLES.ordinal())))
                     .done()
                     .done();
         } else if (hasRemove) {
@@ -201,15 +199,18 @@ public class ItemMatterManipulator extends Item {
                     .label(I18n.get("gui." + MODID + "set_remove_mode"))
                     .option()
                     .label(I18n.get("gui." + MODID + "remove_none"))
-                    .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetRemoveMode(RemoveMode.NONE)))
+                    .onClicked(() -> MMNetwork.CHANNEL.sendToServer(
+                            new PacketConfigAction(PacketConfigAction.Action.SET_REMOVE_MODE, RemoveMode.NONE.ordinal())))
                     .done()
                     .option()
                     .label(I18n.get("gui." + MODID + "remove_replaceable"))
-                    .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetRemoveMode(RemoveMode.REPLACEABLE)))
+                    .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketConfigAction(
+                            PacketConfigAction.Action.SET_REMOVE_MODE, RemoveMode.REPLACEABLE.ordinal())))
                     .done()
                     .option()
                     .label(I18n.get("gui." + MODID + "remove_all"))
-                    .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetRemoveMode(RemoveMode.ALL)))
+                    .onClicked(() -> MMNetwork.CHANNEL.sendToServer(
+                            new PacketConfigAction(PacketConfigAction.Action.SET_REMOVE_MODE, RemoveMode.ALL.ordinal())))
                     .done()
                     .done();
         }
@@ -258,26 +259,30 @@ public class ItemMatterManipulator extends Item {
                 .done()
                 .option()
                 .label(I18n.get("gui." + MODID + "clear_all"))
-                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketClearBlocks()))
+                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketConfigAction(PacketConfigAction.Action.CLEAR_BLOCKS)))
                 .done()
                 .done();
         b.branch()
                 .label(I18n.get("gui." + MODID + "set_shape"))
                 .option()
                 .label(I18n.get("gui." + MODID + "line"))
-                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetShape(ShapeType.LINE)))
+                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(
+                        new PacketConfigAction(PacketConfigAction.Action.SET_SHAPE, ShapeType.LINE.ordinal())))
                 .done()
                 .option()
                 .label(I18n.get("gui." + MODID + "cube"))
-                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetShape(ShapeType.CUBE)))
+                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(
+                        new PacketConfigAction(PacketConfigAction.Action.SET_SHAPE, ShapeType.CUBE.ordinal())))
                 .done()
                 .option()
                 .label(I18n.get("gui." + MODID + "sphere"))
-                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetShape(ShapeType.SPHERE)))
+                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(
+                        new PacketConfigAction(PacketConfigAction.Action.SET_SHAPE, ShapeType.SPHERE.ordinal())))
                 .done()
                 .option()
                 .label(I18n.get("gui." + MODID + "cylinder"))
-                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSetShape(ShapeType.CYLINDER)))
+                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(
+                        new PacketConfigAction(PacketConfigAction.Action.SET_SHAPE, ShapeType.CYLINDER.ordinal())))
                 .done()
                 .done();
         addMoveCoordsOptions(b);
@@ -292,9 +297,9 @@ public class ItemMatterManipulator extends Item {
                 .label(I18n.get("gui." + MODID + "mark_copy"))
                 .onClicked(() -> {
                     if (MMModConfig.PASTE_AUTO_CLEAR.get()) {
-                        MMNetwork.CHANNEL.sendToServer(new PacketClearCoords());
+                        MMNetwork.CHANNEL.sendToServer(new PacketConfigAction(PacketConfigAction.Action.CLEAR_COORDS));
                         if (MMModConfig.RESET_TRANSFORM.get()) {
-                            MMNetwork.CHANNEL.sendToServer(new PacketResetTransform());
+                            MMNetwork.CHANNEL.sendToServer(new PacketConfigAction(PacketConfigAction.Action.RESET_TRANSFORM));
                         }
                     }
                     MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.MARK_COPY_A, null));
@@ -305,7 +310,7 @@ public class ItemMatterManipulator extends Item {
                 .label(I18n.get("gui." + MODID + "edit_stack"))
                 .option()
                 .label(I18n.get("gui." + MODID + "reset"))
-                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketResetArray()))
+                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketConfigAction(PacketConfigAction.Action.RESET_ARRAY)))
                 .done()
                 .option()
                 .label(I18n.get("gui." + MODID + "mark"))
@@ -369,21 +374,24 @@ public class ItemMatterManipulator extends Item {
                 .label(() -> I18n.get("gui." + MODID + "replace_cribs") + (live.get().replaceCribsWithProxies ? " [ON]" : " [OFF]"))
                 .hidden(!Mods.GTCEU)
                 .keepOpen()
-                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketToggleReplaceCribs()))
+                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(
+                        new PacketConfigAction(PacketConfigAction.Action.TOGGLE_REPLACE_CRIBS)))
                 .done()
                 .option()
                 .label(() ->
                         I18n.get("gui." + MODID + "link_external_hubs") + (live.get().linkExternalHubs ? " [ON]" : " [OFF]"))
                 .hidden(!Mods.EXTENDED_AE)
                 .keepOpen()
-                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketToggleLinkExternalHubs()))
+                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(
+                        new PacketConfigAction(PacketConfigAction.Action.TOGGLE_LINK_EXTERNAL_HUBS)))
                 .done()
                 .option()
                 .label(() ->
                         I18n.get("gui." + MODID + "tether_empty_hubs") + (live.get().tetherEmptyHubs ? " [ON]" : " [OFF]"))
                 .hidden(!Mods.EXTENDED_AE)
                 .keepOpen()
-                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketToggleTetherEmptyHubs()))
+                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(
+                        new PacketConfigAction(PacketConfigAction.Action.TOGGLE_TETHER_EMPTY_HUBS)))
                 .done()
                 .done();
 
@@ -400,9 +408,9 @@ public class ItemMatterManipulator extends Item {
                 .label(I18n.get("gui." + MODID + "mark_cut"))
                 .onClicked(() -> {
                     if (MMModConfig.PASTE_AUTO_CLEAR.get()) {
-                        MMNetwork.CHANNEL.sendToServer(new PacketClearCoords());
+                        MMNetwork.CHANNEL.sendToServer(new PacketConfigAction(PacketConfigAction.Action.CLEAR_COORDS));
                         if (MMModConfig.RESET_TRANSFORM.get()) {
-                            MMNetwork.CHANNEL.sendToServer(new PacketResetTransform());
+                            MMNetwork.CHANNEL.sendToServer(new PacketConfigAction(PacketConfigAction.Action.RESET_TRANSFORM));
                         }
                     }
                     MMNetwork.CHANNEL.sendToServer(new PacketSetPendingAction(PendingAction.MARK_CUT_A, null));
@@ -422,7 +430,8 @@ public class ItemMatterManipulator extends Item {
                 .label(I18n.get("gui." + MODID + "edit_replace_whitelist"))
                 .option()
                 .label(I18n.get("gui." + MODID + "clear_replace_whitelist"))
-                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketClearWhitelist()))
+                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(
+                        new PacketConfigAction(PacketConfigAction.Action.CLEAR_WHITELIST)))
                 .done()
                 .option()
                 .label(I18n.get("gui." + MODID + "add_block"))
