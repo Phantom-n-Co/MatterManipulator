@@ -82,6 +82,7 @@ public class MMRenderer {
                 case CABLES -> renderCableMode(ps, cfg);
                 case COPYING, MOVING -> renderCopyMode(ps, cfg);
             }
+            BoxRenderer.flush(); // draw selection boxes before the hints so the hints sit on top
             GhostBlockRenderer.render(ps, cfg.placeMode, event.getFrustum());
             GhostBlockRenderer.renderStatusBoxes(ps);
             renderTargetRuler(ps, mc, state.getConfig(), cfg.action);

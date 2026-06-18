@@ -270,6 +270,7 @@ public class GhostBlockRenderer {
             ps.pushPose();
             ps.translate(anchor.getX(), anchor.getY(), anchor.getZ());
             rt.setupRenderState();
+            if (onTop) RenderSystem.disableDepthTest();
             vbo.bind();
             vbo.drawWithShader(
                     ps.last().pose(),
@@ -277,6 +278,7 @@ public class GhostBlockRenderer {
                     GameRenderer.getRendertypeTranslucentShader());
             VertexBuffer.unbind();
             rt.clearRenderState();
+            if (onTop) RenderSystem.enableDepthTest();
             ps.popPose();
         }
 
@@ -295,6 +297,7 @@ public class GhostBlockRenderer {
                     0.33f,
                     0.35f);
         }
+        BoxRenderer.flush();
     }
 
     /** Standalone error/warning boxes for status positions not covered by pending blocks. */
@@ -305,6 +308,7 @@ public class GhostBlockRenderer {
         while (iter.hasNext()) drawStatusBox(ps, iter.nextLong(), 1f, 0.33f, 0.33f);
         iter = warningHints.longIterator();
         while (iter.hasNext()) drawStatusBox(ps, iter.nextLong(), 1f, 0.67f, 0f);
+        BoxRenderer.flush();
     }
 
     private static void drawStatusBox(PoseStack ps, long packed, float r, float g, float b) {

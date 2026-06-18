@@ -19,17 +19,24 @@ import org.joml.Matrix4f;
  * renders both normally and under an Iris/Oculus shaderpack — Iris patches the vanilla core shaders, so
  * geometry routed through them participates in the pack's pipeline. The fancybox "travelling wave" shimmer
  * is baked per-vertex on the CPU across a subdivided grid (a custom GLSL program can't run under a pack).
+ *
+ * <p>Subdivision density is constant per block (so the wave looks identical at any size — no stretch), but
+ * small boxes collapse to a single quad and there's a hard cap per edge, so the thousands of tiny
+ * status/removal markers and pathologically huge selections both stay cheap. Boxes are batched:
+ * {@link #drawFilledBox} only queues geometry; call {@link #flush} once after a group to draw them all.
  */
 @OnlyIn(Dist.CLIENT)
 public class BoxRenderer {
-    // Grid density for the per-vertex shimmer: steps per block along an edge, capped so huge selections
-    // stay cheap (the wave just undersamples on very large boxes). ponytail: bump if the wave looks faceted.
+    /** Vertices per block along an edge — enough to sample the wave (~0.8 cycles/block) smoothly. */
     private static final float STEPS_PER_BLOCK = 4f;
-    private static final int MAX_STEPS = 12;
+    /** Below this edge length the wave isn't perceptible; draw a single quad to keep many markers cheap. */
+    private static final float MIN_SUBDIVIDE_LEN = 2f;
+    /** Hard ceiling on steps per edge so a huge selection can't explode the vertex count (mild stretch only past ~32 blocks). */
+    private static final int MAX_STEPS = 128;
 
     /**
-     * Draws a translucent, animated filled AABB.
-     * Callers must have the PoseStack already translated by -camPos before calling.
+     * Queues a translucent, animated filled AABB. Callers must have the PoseStack already translated by
+     * -camPos, and must call {@link #flush} afterwards to actually draw the queued boxes.
      */
     public static void drawFilledBox(
             PoseStack ps,
@@ -59,13 +66,13 @@ public class BoxRenderer {
         float t = (System.currentTimeMillis() % 2500) / 1000f / 2.5f * 2f * (float) Math.PI;
 
         Matrix4f pose = ps.last().pose();
-        var buffers = Minecraft.getInstance().renderBuffers().bufferSource();
-        VertexConsumer vc = buffers.getBuffer(MMRenderType.FANCY_BOX);
+        VertexConsumer vc = Minecraft.getInstance().renderBuffers().bufferSource().getBuffer(MMRenderType.FANCY_BOX);
 
-        // Only draw the near walls, never the far ones.
+        // Only draw the near walls (the far ones are culled): the near wall faces the camera, and the
+        // hints render on top anyway, so no wall is left veiling the contents.
         Vec3 cam = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
 
-        // Each face = origin corner + two edge vectors, with UVs forming a continuous unwrap across the box.
+        // Each face = origin corner + two edge vectors, with UV deltas forming a continuous unwrap.
         // spotless:off
         // ── bottom (y-) ──────────────────────────────────────────────────────────
         if (cam.y <= fy0) face(vc, pose, t, r, g, b, a,
@@ -86,8 +93,11 @@ public class BoxRenderer {
         if (cam.z >= fz1) face(vc, pose, t, r, g, b, a,
                 fx0, fy0, fz1, dZ, 0,     0, dY, 0, 0, dY,      dX, 0, 0, dX, 0);
         // spotless:on
+    }
 
-        buffers.endBatch(MMRenderType.FANCY_BOX);
+    /** Draws every box queued since the last flush as a single batch. */
+    public static void flush() {
+        Minecraft.getInstance().renderBuffers().bufferSource().endBatch(MMRenderType.FANCY_BOX);
     }
 
     /** Subdivides one face (origin + two edge vectors, each with a UV delta) into a grid of quads. */
@@ -132,9 +142,11 @@ public class BoxRenderer {
     }
     // spotless:on
 
+    /** Steps along an edge: 1 (single quad) below {@link #MIN_SUBDIVIDE_LEN}, else constant density up to the cap. */
     private static int steps(float ex, float ey, float ez) {
         double len = Math.sqrt(ex * ex + ey * ey + ez * ez);
-        return Math.max(1, Math.min(MAX_STEPS, (int) Math.ceil(len * STEPS_PER_BLOCK)));
+        if (len < MIN_SUBDIVIDE_LEN) return 1;
+        return Math.min(MAX_STEPS, (int) Math.ceil(len * STEPS_PER_BLOCK));
     }
 
     /** Translucent, double-sided, no depth-write RenderType on the vanilla {@code position_color} shader. */
