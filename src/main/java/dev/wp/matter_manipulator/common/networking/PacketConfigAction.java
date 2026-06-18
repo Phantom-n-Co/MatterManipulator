@@ -25,7 +25,6 @@ import static dev.wp.matter_manipulator.MMMod.MODID;
  * The {@code arg} carries an enum ordinal for the SET_* actions and is ignored by the rest.
  */
 public class PacketConfigAction {
-
     @FunctionalInterface
     interface Mutation {
         /** Apply to {@code cfg}; return a feedback message for the player, or {@code null} for none. */
