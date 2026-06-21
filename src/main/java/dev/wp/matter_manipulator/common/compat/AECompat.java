@@ -358,7 +358,8 @@ public class AECompat {
         List<GenericStack> stacks = new ArrayList<>(blocks.size());
         for (ItemStack s : blocks) {
             if (s.isEmpty()) continue;
-            AEItemKey key = AEItemKey.of(s);
+
+            AEItemKey key = cableFamily(s) != null ? AEItemKey.of(cableFamily(s).stack(AEColor.TRANSPARENT)) : AEItemKey.of(s);
             if (key != null) stacks.add(new GenericStack(key, s.getCount()));
         }
         if (stacks.isEmpty()) return false;
