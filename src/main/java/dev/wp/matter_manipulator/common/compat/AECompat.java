@@ -28,8 +28,12 @@ import appeng.api.parts.IPartItem;
 import appeng.api.stacks.AEFluidKey;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.GenericStack;
+import appeng.api.util.AEColor;
 import appeng.core.definitions.AEItems;
+import appeng.core.definitions.AEParts;
+import appeng.core.definitions.ColoredItemDefinition;
 import appeng.crafting.pattern.EncodedPatternItem;
+import appeng.items.parts.ColoredPartItem;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
@@ -109,8 +113,8 @@ public class AECompat {
                 IPart part = partHost.getPart(dir);
                 if (part == null) continue;
                 ItemStack partItem = new ItemStack(part.getPartItem());
-                if (creative || inv.canConsume(partItem)) {
-                    inv.consume(partItem);
+                if (creative || canConsumeCable(inv, partItem)) {
+                    consumeCable(inv, partItem);
                     if (part instanceof ISegmentedInventory seg) {
                         filterSegmented(seg, inv, creative);
                     }
@@ -155,6 +159,46 @@ public class AECompat {
         }
     }
 
+    /** The colour family of a cable part item, or null if it isn't a colored cable. */
+    @Nullable
+    private static ColoredItemDefinition<?> cableFamily(ItemStack stack) {
+        if (!(stack.getItem() instanceof ColoredPartItem<?> cable)) return null;
+        for (ColoredItemDefinition<?> def : AEParts.COLORED_PARTS) {
+            if (def.item(cable.getColor()) == cable) return def; // items are singletons
+        }
+        return null;
+    }
+
+    /**
+     * Whether a cable part is affordable in ANY colour (the manipulator paints cables for free), or
+     * the exact item if it isn't a cable.
+     */
+    private static boolean canConsumeCable(MMInventory inv, ItemStack partItem) {
+        ColoredItemDefinition<?> fam = cableFamily(partItem);
+        if (fam == null) return inv.canConsume(partItem);
+        for (AEColor c : AEColor.values()) {
+            ItemStack v = fam.stack(c);
+            if (!v.isEmpty() && inv.canConsume(v)) return true; // canConsume(EMPTY) is true — guard it
+        }
+        return false;
+    }
+
+    /** Consumes one cable of any available colour (or the exact item for non-cables). */
+    private static void consumeCable(MMInventory inv, ItemStack partItem) {
+        ColoredItemDefinition<?> fam = cableFamily(partItem);
+        if (fam == null) {
+            inv.consume(partItem);
+            return;
+        }
+        for (AEColor c : AEColor.values()) {
+            ItemStack v = fam.stack(c);
+            if (!v.isEmpty() && inv.canConsume(v)) {
+                inv.consume(v);
+                return;
+            }
+        }
+    }
+
     /**
      * Removal counterpart of {@link #captureAEItems}: detaches every part and facade and empties the
      * cell/upgrade/storage inventories, returning everything that should be refunded to the player when
@@ -168,7 +212,10 @@ public class AECompat {
             for (Direction dir : PART_SIDES) {
                 IPart part = partHost.getPart(dir);
                 if (part == null) continue;
-                drops.add(new ItemStack(part.getPartItem()));
+                ItemStack partItem = new ItemStack(part.getPartItem());
+                ColoredItemDefinition<?> fam = cableFamily(partItem);
+                // Cables come back un-dyed (fluix); colour is free, so we don't refund a dyed one.
+                drops.add(fam == null ? partItem : fam.stack(AEColor.TRANSPARENT));
                 if (part instanceof ISegmentedInventory seg) collectSegmented(seg, drops);
                 partHost.removePartFromSide(dir);
             }
