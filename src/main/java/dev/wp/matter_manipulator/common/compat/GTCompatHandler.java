@@ -86,4 +86,10 @@ public class GTCompatHandler implements CompatHandler {
         // An ME stocking hatch's tank is the network, not local storage — never drain it.
         return GTCompat.isStockingPart(be);
     }
+
+    @Override
+    @Nullable
+    public java.util.function.IntPredicate excludedInventorySlots(BlockEntity be) {
+        return GTCompat.excludedInventorySlots(be);
+    }
 }

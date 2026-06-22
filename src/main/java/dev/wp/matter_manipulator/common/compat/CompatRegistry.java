@@ -12,6 +12,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.IntPredicate;
 
 import javax.annotation.Nullable;
 
@@ -126,5 +127,15 @@ public final class CompatRegistry {
             if (h.skipTankDrain(be)) return true;
         }
         return false;
+    }
+
+    /** Copy capture: combined item-handler slots to skip (union across handlers); never {@code null}. */
+    public static IntPredicate excludedInventorySlots(BlockEntity be) {
+        IntPredicate p = null;
+        for (CompatHandler h : HANDLERS) {
+            IntPredicate hp = h.excludedInventorySlots(be);
+            if (hp != null) p = (p == null) ? hp : p.or(hp);
+        }
+        return p == null ? (i -> false) : p;
     }
 }

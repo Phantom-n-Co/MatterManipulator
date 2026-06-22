@@ -76,7 +76,7 @@ public class PendingBlock {
         } else {
             addAnalysis(VanillaMiscAnalysis.analyze(be));
         }
-        addAnalysis(InventoryAnalysis.analyze(be));
+        addAnalysis(InventoryAnalysis.analyze(be, CompatRegistry.excludedInventorySlots(be)));
         addAnalysis(FluidAnalysis.analyze(be));
     }
 

@@ -10,6 +10,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 
+import java.util.function.IntPredicate;
+
 import javax.annotation.Nullable;
 
 /**
@@ -86,5 +88,16 @@ public interface CompatHandler {
     /** Overwrite: true if tanks must NOT be drained (network-backed, e.g. an ME stocking hatch). */
     default boolean skipTankDrain(BlockEntity be) {
         return false;
+    }
+
+    /**
+     * Copy capture: combined-{@code ITEM_HANDLER} slot indices the generic {@link
+     * dev.wp.matter_manipulator.common.building.analysis.InventoryAnalysis} must skip — config or
+     * network-backed slots that aren't real storage (e.g. a GT circuit-config slot, or every slot of
+     * an ME stocking part). {@code null} = exclude nothing.
+     */
+    @Nullable
+    default IntPredicate excludedInventorySlots(BlockEntity be) {
+        return null;
     }
 }

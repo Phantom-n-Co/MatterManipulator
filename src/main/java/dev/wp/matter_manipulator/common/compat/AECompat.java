@@ -463,7 +463,11 @@ public class AECompat {
         @Override
         public void collectRequiredItems(RequiredItems out) {
             if (items != null) {
-                for (ItemStack s : items) out.add(s);
+                // Cables are painted for free — always plan them as FLUIX, never a dyed variant.
+                for (ItemStack s : items) {
+                    ColoredItemDefinition<?> fam = cableFamily(s);
+                    out.add(fam == null ? s : fam.stack(AEColor.TRANSPARENT));
+                }
             }
         }
 

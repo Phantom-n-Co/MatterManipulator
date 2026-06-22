@@ -12,6 +12,8 @@ import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.IItemHandlerModifiable;
 
+import java.util.function.IntPredicate;
+
 /**
  * Items a copied container held, captured through its Forge item-handler capability as
  * {@code {Slot, id, Count, tag}} entries. Layout-independent: it works for any block exposing the
@@ -21,12 +23,13 @@ import net.minecraftforge.items.IItemHandlerModifiable;
 public class InventoryAnalysis implements ITileAnalysis {
     private ListTag contents;
 
-    /** Captures a block entity's item-handler contents, or null if it has none. */
-    public static InventoryAnalysis analyze(BlockEntity be) {
+    /** Captures a block entity's item-handler contents (skipping {@code skip} slots), or null if none. */
+    public static InventoryAnalysis analyze(BlockEntity be, IntPredicate skip) {
         IItemHandler handler = be.getCapability(ForgeCapabilities.ITEM_HANDLER).resolve().orElse(null);
         if (handler == null) return null;
         ListTag list = new ListTag();
         for (int slot = 0; slot < handler.getSlots(); slot++) {
+            if (skip.test(slot)) continue;
             ItemStack stack = handler.getStackInSlot(slot);
             if (stack.isEmpty()) continue;
             CompoundTag tag = stack.save(new CompoundTag());

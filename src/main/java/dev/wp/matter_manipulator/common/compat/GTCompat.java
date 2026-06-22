@@ -28,6 +28,7 @@ import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.level.LevelEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.items.IItemHandlerModifiable;
 
 import com.gregtechceu.gtceu.api.block.MetaMachineBlock;
 import com.gregtechceu.gtceu.api.block.property.GTBlockStateProperties;
@@ -50,18 +51,21 @@ import com.gregtechceu.gtceu.api.machine.feature.IRecipeLogicMachine;
 import com.gregtechceu.gtceu.api.machine.feature.IVoidable;
 import com.gregtechceu.gtceu.api.machine.feature.multiblock.IDistinctPart;
 import com.gregtechceu.gtceu.api.machine.feature.multiblock.IMultiController;
+import com.gregtechceu.gtceu.api.machine.trait.MachineTrait;
 import com.gregtechceu.gtceu.api.pattern.util.RelativeDirection;
 import com.gregtechceu.gtceu.common.data.GTItems;
 import com.gregtechceu.gtceu.common.data.machines.GTAEMachines;
 import com.gregtechceu.gtceu.common.item.IntCircuitBehaviour;
 import com.gregtechceu.gtceu.integration.ae2.machine.MEPatternBufferPartMachine;
 import com.gregtechceu.gtceu.integration.ae2.machine.MEPatternBufferProxyPartMachine;
+import com.gregtechceu.gtceu.integration.ae2.machine.feature.IGridConnectedMachine;
 import com.gregtechceu.gtceu.integration.ae2.machine.feature.multiblock.IMEStockingPart;
 import com.lowdragmc.lowdraglib.syncdata.blockentity.IAutoSyncBlockEntity;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.function.IntPredicate;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -128,6 +132,39 @@ public class GTCompat {
      */
     public static boolean isStockingPart(BlockEntity be) {
         return be instanceof MetaMachineBlockEntity mbe && mbe.metaMachine instanceof IMEStockingPart;
+    }
+
+    /** True if this is any ME hatch/bus (input/output/stocking/pattern buffer) — its handler fronts the network. */
+    public static boolean isMEPart(BlockEntity be) {
+        return be instanceof MetaMachineBlockEntity mbe && mbe.metaMachine instanceof IGridConnectedMachine;
+    }
+
+    /**
+     * Combined {@code ITEM_HANDLER} slot indices the generic inventory capture must skip for a GT
+     * machine: an ME hatch/bus fronts the AE2 network, not local storage (skip everything), and a circuit slot is
+     * config, not storage — the circuit is already restored for free from the semantic {@code "circuit"}
+     * int, so counting/charging it again is wrong. Returns {@code null} when nothing should be skipped.
+     */
+    @Nullable
+    public static IntPredicate excludedInventorySlots(BlockEntity be) {
+        if (isMEPart(be)) return i -> true; // network-backed handler — never capture its contents
+        if (!(be instanceof MetaMachineBlockEntity mbe)) return null;
+        MetaMachine m = mbe.metaMachine;
+        if (!(m instanceof IHasCircuitSlot cm) || !cm.isCircuitSlotEnabled()) return null;
+
+        int start = -1, end = -1, offset = 0;
+        for (MachineTrait t : m.getTraits()) {
+            if (!(t instanceof IItemHandlerModifiable h) || !t.hasCapability(null)) continue;
+            int slots = h.getSlots();
+            if (t == cm.getCircuitInventory()) {
+                start = offset;
+                end = offset + slots;
+            }
+            offset += slots;
+        }
+        if (start < 0) return null;
+        final int s = start, e = end;
+        return i -> i >= s && i < e;
     }
 
     /** True if {@code be} is a GTCEu ME Pattern Buffer (the modern "crafting input bus" / CRIB). */
