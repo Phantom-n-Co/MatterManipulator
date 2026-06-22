@@ -100,15 +100,39 @@ public class BuildGenerator {
                     var current = level.getBlockState(pos);
                     if (cfg.replaceWhitelist.contains(current.getBlock())) {
                         var picked = cfg.replaceWith.pick(rng);
-                        // Exchanging places fresh blocks too — no analyses.
-                        if (picked != null) {
-                            blocks.add(new PendingBlock(pos, picked));
+                        if (picked == null) continue;
+
+                        // Keep whatever the new block can accept: carry over every blockstate property
+                        // the two share (facing/orientation/variant — GT's facing trio included), and
+                        // for a genuine type change, capture the old tile state so settings/covers/
+                        // inventory/fluids migrate via the COPYING analyses. The build loop's
+                        // remove→replace path refunds the old block and re-consumes those items when it
+                        // reapplies them, so the transfer is charge-balanced (no dupe, "if it fits"
+                        // falls out of the per-slot insert). Same-block swaps carry no analyses: the
+                        // copied properties make the state identical and the loop no-ops it.
+                        BlockState placed = picked.state;
+                        for (Property<?> prop : current.getProperties()) {
+                            placed = copyProperty(placed, current, prop);
                         }
+                        var pb = new PendingBlock(pos, new BlockSpec(placed));
+                        if (placed.getBlock() != current.getBlock()) {
+                            pb.analyze(level, pos, false);
+                        }
+                        blocks.add(pb);
                     }
                 }
             }
         }
         return blocks;
+    }
+
+    /** Sets {@code prop} on {@code target} to its value in {@code source}, if the target has it and the value is valid. */
+    private static <T extends Comparable<T>> BlockState copyProperty(
+            BlockState target, BlockState source, Property<T> prop) {
+        if (!target.hasProperty(prop)) return target;
+        T value = source.getValue(prop);
+        if (!prop.getPossibleValues().contains(value)) return target;
+        return target.setValue(prop, value);
     }
 
     private static List<PendingBlock> generateCopyMove(
