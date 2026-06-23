@@ -63,6 +63,7 @@ import com.gregtechceu.gtceu.integration.ae2.machine.feature.multiblock.IMEStock
 import com.lowdragmc.lowdraglib.syncdata.blockentity.IAutoSyncBlockEntity;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.function.IntPredicate;
@@ -594,8 +595,15 @@ public class GTCompat {
             if (semantic.contains("machineConfig")) m.pasteConfig(player, semantic.getCompound("machineConfig"));
             // A fresh copy belongs to the player pasting it, like a normally placed machine.
             if (ctx.player() != null) m.setOwnerUUID(ctx.player().getUUID());
-            m.onUnload();
-            m.onLoad();
+            if (m instanceof IGridConnectedMachine gm) {
+                // An ME part's AE2 node is a one-shot ManagedGridNode, so onUnload()/onLoad() would destroy a live
+                // node on re-paste and recreate throws. Let the BE load handle it; only reinit covers + ME status.
+                reinitCovers(be);
+                refreshGridNode(gm);
+            } else {
+                m.onUnload();
+                m.onLoad();
+            }
         }
 
         private void applyPipe(PipeBlockEntity<?, ?> pipe, BlockEntity be, BlockApplyContext ctx) {
@@ -779,6 +787,29 @@ public class GTCompat {
 
         private static boolean isPatternBufferFamily(MetaMachine m) {
             return m instanceof MEPatternBufferPartMachine || m instanceof MEPatternBufferProxyPartMachine;
+        }
+
+        /**
+         * Re-applies the AE2 node's in-world settings and refreshes its online flag without destroying it.
+         * While the node is still pending creation ({@code !isReady}) its init-data is unconsumed, so the
+         * setters succeed and the block-entity load creates it with the right exposed side; once it's live
+         * (in-place re-paste) the init-data is gone, so we leave the already-correct node alone and only
+         * recompute its status.
+         */
+        private static void refreshGridNode(IGridConnectedMachine gm) {
+            var mainNode = gm.getMainNode();
+            if (mainNode == null) return;
+            if (!mainNode.isReady()) {
+                mainNode.setInWorldNode(true);
+                mainNode.setExposedOnSides(exposedSides(gm));
+            }
+            gm.updateMEStatus();
+        }
+
+        /** The sides an ME part exposes its node on: just its front facing, or all sides if it has none. */
+        private static EnumSet<Direction> exposedSides(IGridConnectedMachine gm) {
+            if (gm.self().hasFrontFacing()) return EnumSet.of(gm.self().getFrontFacing());
+            return EnumSet.allOf(Direction.class);
         }
 
         // ── transform helpers ────────────────────────────────────────────────────────

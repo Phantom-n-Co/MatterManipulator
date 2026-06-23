@@ -119,9 +119,8 @@ public class AECompat {
                         filterSegmented(seg, inv, creative);
                     }
                 } else {
-                    // Can't pay for this copied part: remove it from the world. removePartFromSide
-                    // detaches it without dropping, and we must not give it back — it was rebuilt
-                    // from the template, so handing it over would mint a free part.
+                    // Can't pay for this copied part: removePartFromSide detaches it without dropping. Don't give
+                    // it back — it was rebuilt from the template, so handing it over would mint a free part.
                     partHost.removePartFromSide(dir);
                 }
             }

@@ -146,10 +146,8 @@ public class PendingBuild {
         for (var pb : blocks) {
             translated.add(pb.at(anchor.offset(pb.relPos)));
         }
-        // Sort by build order, THEN by block state, then by position. Grouping identical states
-        // adjacently is what lets the two-phase loop's homogeneous batch fill the whole place speed;
-        // sorting by build order alone leaves mixed states interleaved, so each batch (and thus each
-        // tick) places only a tiny run. Mirrors the original's (buildOrder, spec, coord) comparator.
+        // Sort by build order, THEN block state, then position: grouping identical states adjacently lets the
+        // two-phase loop's homogeneous batch fill at place speed instead of a tiny run per tick.
         translated.sort(Comparator.comparingInt((PendingBlock pb) -> pb.buildOrder)
                 .thenComparingInt(pb -> pb.spec.state.hashCode())
                 .thenComparingLong(pb -> pb.relPos.asLong()));
@@ -250,10 +248,8 @@ public class PendingBuild {
                 continue;
             }
 
-            // In-place reconfigure: the block is already what we want, so just (re)apply its tile
-            // state, charging only the analysis-installed items (no block item, no remove/replace, no
-            // EU). This is the original's areEquivalent branch and keeps exchange/config from
-            // needlessly destroying a matching block.
+            // In-place reconfigure: the block already matches, so just (re)apply its tile state, charging only
+            // analysis-installed items (no block item, remove/replace, or EU) rather than destroying a match.
             if (existing.equals(next.spec.state)) {
                 var block = queue.removeFirst();
                 if (!block.analyses.isEmpty()) block.apply(new BlockApplyContext(level, pos, inv, wirelessRemap));
@@ -352,9 +348,8 @@ public class PendingBuild {
             }
 
             if (!pb.spec.isAir()) {
-                // The BlockState is authoritative (it already carries facing/orientation), so we set it
-                // directly rather than via the item's placement — calling setPlacedBy would re-orient
-                // directional and GT machines toward the player and break copy rotation.
+                // The BlockState is authoritative (already carries facing/orientation), so set it directly:
+                // setPlacedBy would re-orient directional and GT machines toward the player, breaking copy rotation.
                 level.setBlockAndUpdate(pos, pb.spec.state);
                 if (!pb.analyses.isEmpty()) pb.apply(new BlockApplyContext(level, pos, inv, wirelessRemap));
             }

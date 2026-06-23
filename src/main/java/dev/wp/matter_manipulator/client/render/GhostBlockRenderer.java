@@ -465,9 +465,8 @@ public class GhostBlockRenderer {
                 int before = consumer.vertexCount();
                 brd.renderBatched(target, pos, level, pose, consumer, false, level.getRandom(), ModelData.EMPTY, null);
 
-                // Blocks with a dynamic model driven by block-entity data (e.g. AE2 cable buses) bake
-                // nothing from the default state; reconstruct a throwaway BE from the captured tile data
-                // and retry with its model data so the real parts show.
+                // Blocks with a dynamic model (e.g. AE2 cable buses) bake nothing from the default state;
+                // reconstruct a throwaway BE from the captured tile data and retry so the real parts show.
                 CompoundTag previewTile = pb.previewTileData();
                 if (consumer.vertexCount() == before && previewTile != null) {
                     ModelData md = reconstructModelData(pos, target, previewTile);

@@ -356,9 +356,8 @@ public class MMRenderer {
         long now = System.currentTimeMillis();
         boolean analysisSame = lastAnalyzedConfig != null && analysisInputsEqual(lastAnalyzedConfig, cfg);
 
-        // Moving the paste anchor (coordC) leaves the analysis unchanged; skip regenerating but keep
-        // the baseline current (incl. the new coordC) so the next comparison stays stable. The new
-        // coordC still flows to GhostBlockRenderer as the render origin and re-bakes there.
+        // Moving the paste anchor (coordC) leaves the analysis unchanged; skip regenerating but keep the
+        // baseline current so comparisons stay stable. coordC still re-bakes via GhostBlockRenderer.
         if (analysisSame && now - lastAnalysisTime < 1000) {
             lastAnalyzedConfig = cfg.copy();
             return;
@@ -369,9 +368,8 @@ public class MMRenderer {
 
         var fresh = BuildGenerator.generateBlocks(cfg, level);
         long sig = signatureOf(fresh);
-        // The 1s refresh exists to catch world edits, but re-baking thousands of block models is
-        // expensive. When the inputs are unchanged and the generated blocks are identical, keep the
-        // old list reference so GhostBlockRenderer's reference guard skips the rebake.
+        // The 1s refresh catches world edits, but re-baking thousands of models is expensive: when inputs
+        // and generated blocks are identical, keep the old list reference so the rebake guard skips it.
         if (analysisSame && sig == analysisSignature && !analysisCache.isEmpty()) return;
         analysisCache = fresh;
         analysisSignature = sig;

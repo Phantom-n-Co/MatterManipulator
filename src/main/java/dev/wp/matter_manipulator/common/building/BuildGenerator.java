@@ -102,14 +102,8 @@ public class BuildGenerator {
                         var picked = cfg.replaceWith.pick(rng);
                         if (picked == null) continue;
 
-                        // Keep whatever the new block can accept: carry over every blockstate property
-                        // the two share (facing/orientation/variant — GT's facing trio included), and
-                        // for a genuine type change, capture the old tile state so settings/covers/
-                        // inventory/fluids migrate via the COPYING analyses. The build loop's
-                        // remove→replace path refunds the old block and re-consumes those items when it
-                        // reapplies them, so the transfer is charge-balanced (no dupe, "if it fits"
-                        // falls out of the per-slot insert). Same-block swaps carry no analyses: the
-                        // copied properties make the state identical and the loop no-ops it.
+                        // Carry over every shared blockstate property (facing/orientation/variant, GT trio); for a
+                        // type change, capture old tile state so covers/inventory/fluids migrate via COPYING analyses.
                         BlockState placed = picked.state;
                         for (Property<?> prop : current.getProperties()) {
                             placed = copyProperty(placed, current, prop);
@@ -185,9 +179,8 @@ public class BuildGenerator {
                 blockState = GTCompat.transformBlockState(blockState, original, cfg.transform);
             }
 
-            // Smart copy (COPYING): a captured GTCEu ME Pattern Buffer (CRIB) becomes a Pattern Buffer
-            // Proxy linked back to the original buffer's world position (COPY leaves it in place, so the
-            // proxy slaves to it). This replaces the buffer's analyses with just the proxy link.
+            // Smart copy (COPYING): a captured GTCEu ME Pattern Buffer (CRIB) becomes a Pattern Buffer Proxy
+            // linked to the original's world position (it stays in place), replacing its analyses with the link.
             BlockPos cribMaster = null;
             if (Mods.GTCEU && !moving && cfg.replaceCribsWithProxies) {
                 BlockPos worldPos = cfg.coordA.pos.offset(pb.relPos.getX(), pb.relPos.getY(), pb.relPos.getZ());

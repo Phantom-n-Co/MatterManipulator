@@ -131,9 +131,8 @@ public class MMTransform {
         return next;
     }
 
-    // Value equality over the orientation fields only (rotation is a transient cache). Required so
-    // MMConfig.equals works across copies — otherwise the client re-analyses and re-bakes the ghost
-    // preview every frame.
+    // Value equality over orientation fields only (rotation is a transient cache). Required so MMConfig.equals
+    // works across copies — otherwise the client re-analyses and re-bakes the ghost preview every frame.
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
