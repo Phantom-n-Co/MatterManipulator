@@ -13,7 +13,6 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraftforge.fluids.FluidStack;
@@ -92,10 +91,10 @@ public class PacketRequestRequiredItems {
                 req.add(pb.spec.toStack());
                 pb.collectRequiredItems(req);
             }
-            Map<Item, Long> required = req.items;
+            List<RequiredItems.ItemEntry> required = req.items;
             Map<Fluid, Long> requiredFluids = req.fluids;
 
-            if (required.isEmpty() && requiredFluids.isEmpty()) {
+            if (req.isEmpty()) {
                 MMUtils.sendInfoToPlayer(player, MODID + ".info.none");
                 return;
             }
@@ -104,14 +103,13 @@ public class PacketRequestRequiredItems {
             var inv = new MMInventory(player, cfg.uplink);
 
             MMUtils.sendInfoToPlayer(player, MODID + ".info.required_items");
-            for (var entry : required.entrySet()) {
-                long count = entry.getValue();
-                ItemStack itemStack = new ItemStack(entry.getKey());
-                long available = inv.countAvailable(itemStack);
+            for (var entry : required) {
+                long count = entry.count;
+                long available = inv.countAvailable(entry.proto);
                 long missing = Math.max(0, count - available);
 
                 var line = Component.literal("  ")
-                        .append(entry.getKey().getDescription())
+                        .append(entry.proto.getHoverName())
                         .append(Component.literal(": " + count).withStyle(ChatFormatting.GOLD));
                 if (missing > 0) {
                     line.append(Component.literal(" (" + missing + " missing)").withStyle(ChatFormatting.RED));
@@ -144,9 +142,8 @@ public class PacketRequestRequiredItems {
                     MMUtils.sendErrorToPlayer(player, MODID + ".info.error.no_uplink");
                 } else {
                     List<ItemStack> planItems = new ArrayList<>(required.size());
-                    for (var entry : required.entrySet()) {
-                        planItems.add(
-                                new ItemStack(entry.getKey(), (int) Math.min(entry.getValue(), Integer.MAX_VALUE)));
+                    for (var entry : required) {
+                        planItems.add(entry.proto.copyWithCount((int) Math.min(entry.count, Integer.MAX_VALUE)));
                     }
                     boolean ok = AECompat.uplinkAddPlan(level, cfg.uplink, player.getUUID(), planItems, autocraft);
                     MMUtils.sendInfoToPlayer(
