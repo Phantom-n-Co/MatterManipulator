@@ -207,7 +207,7 @@ public class BuildGenerator {
                     new BlockSpec(blockState),
                     pb.buildOrder);
             if (cribMaster != null) {
-                out.addAnalysis(new GTCompat.CribProxyAnalysis(cribMaster));
+                out.addAnalysis(new GTCompat.PatternBufferProxyAnalysis(cribMaster));
             } else if (hubTether != null) {
                 out.addAnalysis(ExtendedAECompat.tetherToHub(hubTether));
             } else {

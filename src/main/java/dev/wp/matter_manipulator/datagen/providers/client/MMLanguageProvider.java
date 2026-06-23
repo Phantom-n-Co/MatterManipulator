@@ -144,7 +144,7 @@ public class MMLanguageProvider extends LanguageProvider {
         add(guiKey("set_cable"), "Set Cable");
         add(guiKey("smart_copy"), "Smart Copy");
         add(guiKey("back"), "Back");
-        add(guiKey("replace_cribs"), "Replace CRIBs with Proxies");
+        add(guiKey("replace_cribs"), "Replace Pattern Buffers with Proxies");
         add(guiKey("link_external_hubs"), "Link External Hubs");
         add(guiKey("tether_empty_hubs"), "Tether Unlinked Hubs");
     }
@@ -159,7 +159,7 @@ public class MMLanguageProvider extends LanguageProvider {
         add(infoKey("finished_placing"), "Finished placing blocks.");
         add(infoKey("process_move"), "Moved %s blocks (%s remaining)");
         add(infoKey("finished_move"), "Finished moving blocks.");
-        add(infoKey("replace_cribs"), "Replace CRIBs with proxies: %s");
+        add(infoKey("replace_cribs"), "Replace Pattern Buffers with proxies: %s");
         add(infoKey("link_external_hubs"), "Link external wireless hubs: %s");
         add(infoKey("tether_empty_hubs"), "Tether unlinked wireless hubs: %s");
         add(infoKey("warning.could_not_find"), "Could not find item, %s block(s) will be skipped:");

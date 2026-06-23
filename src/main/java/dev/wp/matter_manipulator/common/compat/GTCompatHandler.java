@@ -13,6 +13,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 
 import javax.annotation.Nullable;
+import java.util.function.IntPredicate;
 
 /**
  * GregTech {@link CompatHandler}. A thin adapter over {@link GTCompat}'s static methods; imports GT
@@ -89,7 +90,7 @@ public class GTCompatHandler implements CompatHandler {
 
     @Override
     @Nullable
-    public java.util.function.IntPredicate excludedInventorySlots(BlockEntity be) {
+    public IntPredicate excludedInventorySlots(BlockEntity be) {
         return GTCompat.excludedInventorySlots(be);
     }
 }

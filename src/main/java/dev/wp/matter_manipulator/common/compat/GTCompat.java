@@ -168,13 +168,13 @@ public class GTCompat {
         return i -> i >= s && i < e;
     }
 
-    /** True if {@code be} is a GTCEu ME Pattern Buffer (the modern "crafting input bus" / CRIB). */
+    /** True if {@code be} is a GTCEu ME Pattern Buffer. */
     public static boolean isPatternBuffer(@Nullable BlockEntity be) {
         return be instanceof MetaMachineBlockEntity mbe && mbe.metaMachine instanceof MEPatternBufferPartMachine;
     }
 
     /**
-     * The ME Pattern Buffer Proxy block's state for the smart-copy CRIB→proxy swap, carrying the
+     * The ME Pattern Buffer Proxy block's state for the smart-copy Pattern Buffer→proxy swap, carrying the
      * captured buffer's front facing so the proxy lands oriented like the original.
      */
     public static BlockState proxyState(BlockState bufferState) {
@@ -189,15 +189,15 @@ public class GTCompat {
     }
 
     /**
-     * Smart-copy result for a captured ME Pattern Buffer (CRIB): a placed Pattern Buffer Proxy that is
+     * Smart-copy result for a captured ME Pattern Buffer: a placed Pattern Buffer Proxy that is
      * linked back to the original buffer's world position. COPY leaves the source buffer in place, so
-     * every pasted proxy slaves to it (mirrors the original mod's CRIB→proxy). The proxy block itself is
-     * the charged item; this analysis only establishes the link on apply.
+     * every pasted proxy slaves to it. The proxy block itself is the charged item,
+     * this analysis only establishes the link on applying.
      */
-    public static class CribProxyAnalysis implements ITileAnalysis {
+    public static class PatternBufferProxyAnalysis implements ITileAnalysis {
         private final BlockPos master;
 
-        public CribProxyAnalysis(BlockPos master) {
+        public PatternBufferProxyAnalysis(BlockPos master) {
             this.master = master;
         }
 
@@ -221,7 +221,7 @@ public class GTCompat {
 
         @Override
         public ITileAnalysis copy() {
-            return new CribProxyAnalysis(master);
+            return new PatternBufferProxyAnalysis(master);
         }
     }
 
