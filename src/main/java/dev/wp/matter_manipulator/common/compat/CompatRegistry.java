@@ -129,6 +129,14 @@ public final class CompatRegistry {
         return false;
     }
 
+    /** Copy capture: true if any handler says this BE's tanks front the network (skip fluid capture). */
+    public static boolean skipFluidCapture(BlockEntity be) {
+        for (CompatHandler h : HANDLERS) {
+            if (h.skipFluidCapture(be)) return true;
+        }
+        return false;
+    }
+
     /** Copy capture: combined item-handler slots to skip (union across handlers); never {@code null}. */
     public static IntPredicate excludedInventorySlots(BlockEntity be) {
         IntPredicate p = null;

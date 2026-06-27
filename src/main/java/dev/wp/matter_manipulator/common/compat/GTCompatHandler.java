@@ -12,8 +12,9 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 
-import javax.annotation.Nullable;
 import java.util.function.IntPredicate;
+
+import javax.annotation.Nullable;
 
 /**
  * GregTech {@link CompatHandler}. A thin adapter over {@link GTCompat}'s static methods; imports GT
@@ -92,5 +93,11 @@ public class GTCompatHandler implements CompatHandler {
     @Nullable
     public IntPredicate excludedInventorySlots(BlockEntity be) {
         return GTCompat.excludedInventorySlots(be);
+    }
+
+    @Override
+    public boolean skipFluidCapture(BlockEntity be) {
+        // An ME hatch's tank is a view onto the AE2 network, not local storage — never capture it.
+        return GTCompat.isMEPart(be);
     }
 }

@@ -43,7 +43,7 @@ public class PendingBlock {
         this.buildOrder = buildOrder;
     }
 
-    /** A copy at a new relative position, deep-copying analyses so transforms/applies don't alias. */
+    /** A copy at a new relative position, deep-copying analyses so transforms/applies to don't alias. */
     public PendingBlock at(BlockPos newRelPos) {
         PendingBlock copy = new PendingBlock(newRelPos, spec, buildOrder);
         for (ITileAnalysis a : analyses) copy.analyses.add(a.copy());
@@ -59,7 +59,7 @@ public class PendingBlock {
      * keeps everything verbatim ({@link RawTileAnalysis}); COPYING attaches per-concern analyses:
      * AE2 reproduces its own parts/contents, so it stands alone; otherwise a GT machine's config (or
      * a vanilla block's misc config) followed by the generic item-handler contents and tank fluids.
-     * Order matters — config (which may recreate the BE) runs before the inventory fill.
+     * Order matters — config (which may recreate the BE) runs before the inventory fills.
      */
     public void analyze(Level level, BlockPos worldPos, boolean moving) {
         BlockEntity be = level.getBlockEntity(worldPos);
@@ -71,16 +71,16 @@ public class PendingBlock {
         CompatRegistry.TileMatch match = CompatRegistry.analyze(be);
         if (match != null) {
             addAnalysis(match.analysis());
-            // AE re-initialises its own grid and reproduces parts/contents wholesale.
+            // AE re-initializes its own grid and reproduces parts/contents wholesale.
             if (match.exclusive()) return;
         } else {
             addAnalysis(VanillaMiscAnalysis.analyze(be));
         }
         addAnalysis(InventoryAnalysis.analyze(be, CompatRegistry.excludedInventorySlots(be)));
-        addAnalysis(FluidAnalysis.analyze(be));
+        if (!CompatRegistry.skipFluidCapture(be)) addAnalysis(FluidAnalysis.analyze(be));
     }
 
-    /** Block-entity NBT for the ghost preview to reconstruct model data, or null if none is needed. */
+    /** Block-entity NBT for the ghost preview to reconstruct model data or null if none is needed. */
     public CompoundTag previewTileData() {
         CompoundTag out = new CompoundTag();
         for (ITileAnalysis a : analyses) a.contributePreviewNbt(out);
@@ -92,12 +92,12 @@ public class PendingBlock {
         for (ITileAnalysis a : analyses) a.transform(transform);
     }
 
-    /** Reproduce all captured tile state on the freshly placed block; returns false on any failure. */
+    /** Reproduce all captured tile states on the freshly placed block; returns false on any failure. */
     public boolean apply(BlockApplyContext ctx) {
         boolean ok = true;
         for (ITileAnalysis a : analyses) ok &= a.apply(ctx);
-        // The block was placed (and neighbours notified) before the analyses ran, so re-notify + reset the AE2
-        // part cache now the BE has its restored state, letting pasted parts/machines integrate immediately.
+        // The block was placed (and neighbors notified) before the analyses ran, so re-notify + reset the AE2
+        // part of the cache now the BE has its restored state, letting pasted parts/machines integrate immediately.
         var level = ctx.level();
         BlockPos pos = ctx.pos();
         level.updateNeighborsAt(pos, level.getBlockState(pos).getBlock());

@@ -100,4 +100,13 @@ public interface CompatHandler {
     default IntPredicate excludedInventorySlots(BlockEntity be) {
         return null;
     }
+
+    /**
+     * Copy capture: true if this BE's tanks front the network (e.g. an ME stocking/input hatch), so the
+     * generic {@link dev.wp.matter_manipulator.common.building.analysis.FluidAnalysis} must not capture
+     * them. The fluid analog of {@link #excludedInventorySlots} skipping every slot of an ME bus.
+     */
+    default boolean skipFluidCapture(BlockEntity be) {
+        return false;
+    }
 }
