@@ -15,7 +15,6 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.IntTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
@@ -62,7 +61,6 @@ import com.gregtechceu.gtceu.api.pattern.util.RelativeDirection;
 import com.gregtechceu.gtceu.common.data.GTItems;
 import com.gregtechceu.gtceu.common.item.IntCircuitBehaviour;
 import com.gregtechceu.gtceu.integration.ae2.machine.MEBusPartMachine;
-import com.gregtechceu.gtceu.integration.ae2.machine.MEPatternBufferProxyPartMachine;
 import com.gregtechceu.gtceu.integration.ae2.machine.feature.IGridConnectedMachine;
 import com.gregtechceu.gtceu.integration.ae2.machine.feature.multiblock.IMEStockingPart;
 import com.lowdragmc.lowdraglib.syncdata.blockentity.IAutoSyncBlockEntity;
@@ -197,9 +195,9 @@ public class GTCompat {
      */
     public static BlockState proxyState(BlockState bufferState) {
         var bufferId = ForgeRegistries.BLOCKS.getKey(bufferState.getBlock());
-        var proxyId = bufferId.getPath() + "_proxy";
-        if (!ForgeRegistries.BLOCKS.containsKey(ResourceLocation.parse(proxyId))) return bufferState;
-        BlockState proxy = ForgeRegistries.BLOCKS.getValue(ResourceLocation.parse(proxyId)).defaultBlockState();
+        var proxyId = bufferId.withSuffix("_proxy");
+        if (!ForgeRegistries.BLOCKS.containsKey(proxyId)) return bufferState;
+        BlockState proxy = ForgeRegistries.BLOCKS.getValue(proxyId).defaultBlockState();
         if (proxy.getBlock() instanceof MetaMachineBlock pb) {
             RotationState rs = pb.getRotationState();
             if (rs != RotationState.NONE && bufferState.hasProperty(rs.property) && proxy.hasProperty(rs.property)) {
@@ -225,11 +223,17 @@ public class GTCompat {
         @Override
         public boolean apply(BlockApplyContext ctx) {
             BlockEntity be = ctx.getBlockEntity();
-            if (be instanceof MetaMachineBlockEntity mbe
-                    && mbe.metaMachine instanceof MEPatternBufferProxyPartMachine proxy) {
-                proxy.setBuffer(master);
-                be.setChanged();
-                if (needsClientSync(be)) scheduleClientSync(ctx.level(), ctx.pos());
+            if (be instanceof MetaMachineBlockEntity mbe) {
+                var m = mbe.metaMachine;
+                if (m instanceof TieredIOPartMachine && m instanceof IMachineLife && m instanceof IDataStickInteractable) {
+                    try {
+                        // love needing this to handle one specific mods way of making new Pattern Buffers/Proxies...
+                        m.getClass().getMethod("setBuffer", BlockPos.class).invoke(m, master);
+                    } catch (Exception ignored) {} finally {
+                        be.setChanged();
+                        if (needsClientSync(be)) scheduleClientSync(ctx.level(), ctx.pos());
+                    }
+                }
             }
             return true;
         }

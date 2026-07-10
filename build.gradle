@@ -225,6 +225,9 @@ dependencies {
 
     compileOnly('org.projectlombok:lombok:1.18.24')
     annotationProcessor('org.projectlombok:lombok:1.18.24')
+
+    modRuntimeOnly("maven.modrinth:nKghegqg:S74ZUZKc") // BetterGTAE
+    modRuntimeOnly("curse.maven:gregtech-modern-utilities-1235020:8197530") // GTMUtils
 }
 /*
 mixin {
