@@ -15,6 +15,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.IntTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
@@ -29,7 +30,10 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.level.LevelEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.items.IItemHandlerModifiable;
+import net.minecraftforge.registries.ForgeRegistries;
 
+import appeng.api.networking.crafting.ICraftingProvider;
+import appeng.helpers.patternprovider.PatternContainer;
 import com.gregtechceu.gtceu.api.block.MetaMachineBlock;
 import com.gregtechceu.gtceu.api.block.property.GTBlockStateProperties;
 import com.gregtechceu.gtceu.api.blockentity.MetaMachineBlockEntity;
@@ -54,9 +58,8 @@ import com.gregtechceu.gtceu.api.machine.feature.multiblock.IMultiController;
 import com.gregtechceu.gtceu.api.machine.trait.MachineTrait;
 import com.gregtechceu.gtceu.api.pattern.util.RelativeDirection;
 import com.gregtechceu.gtceu.common.data.GTItems;
-import com.gregtechceu.gtceu.common.data.machines.GTAEMachines;
 import com.gregtechceu.gtceu.common.item.IntCircuitBehaviour;
-import com.gregtechceu.gtceu.integration.ae2.machine.MEPatternBufferPartMachine;
+import com.gregtechceu.gtceu.integration.ae2.machine.MEBusPartMachine;
 import com.gregtechceu.gtceu.integration.ae2.machine.MEPatternBufferProxyPartMachine;
 import com.gregtechceu.gtceu.integration.ae2.machine.feature.IGridConnectedMachine;
 import com.gregtechceu.gtceu.integration.ae2.machine.feature.multiblock.IMEStockingPart;
@@ -78,7 +81,9 @@ import javax.annotation.Nullable;
  * {@link #registerEvents()}.
  */
 public class GTCompat {
-    /** Registers the deferred-sync Forge event handlers. Call only when GregTech is present. */
+    /**
+     * Registers the deferred-sync Forge event handlers. Call only when GregTech is present.
+     */
     public static void registerEvents() {
         MinecraftForge.EVENT_BUS.register(GTCompat.class);
     }
@@ -107,7 +112,9 @@ public class GTCompat {
         }
     }
 
-    /** The cover container of a GT machine or pipe (both can carry covers), or null for anything else. */
+    /**
+     * The cover container of a GT machine or pipe (both can carry covers), or null for anything else.
+     */
     @Nullable
     public static ICoverable coverContainerOf(BlockEntity be) {
         if (be instanceof MetaMachineBlockEntity mbe) return mbe.metaMachine.getCoverContainer();
@@ -135,7 +142,9 @@ public class GTCompat {
         return be instanceof MetaMachineBlockEntity mbe && mbe.metaMachine instanceof IMEStockingPart;
     }
 
-    /** True if this is any ME hatch/bus (input/output/stocking/pattern buffer) — its handler fronts the network. */
+    /**
+     * True if this is any ME hatch/bus (input/output/stocking/pattern buffer) — its handler fronts the network.
+     */
     public static boolean isMEPart(BlockEntity be) {
         return be instanceof MetaMachineBlockEntity mbe && mbe.metaMachine instanceof IGridConnectedMachine;
     }
@@ -168,17 +177,28 @@ public class GTCompat {
         return i -> i >= s && i < e;
     }
 
-    /** True if {@code be} is a GTCEu ME Pattern Buffer. */
+    /**
+     * True if {@code be} is a GTCEu ME Pattern Buffer.
+     */
     public static boolean isPatternBuffer(@Nullable BlockEntity be) {
-        return be instanceof MetaMachineBlockEntity mbe && mbe.metaMachine instanceof MEPatternBufferPartMachine;
+        if (be instanceof MetaMachineBlockEntity mbe) {
+            var m = mbe.metaMachine;
+            return m instanceof MEBusPartMachine && m instanceof ICraftingProvider && m instanceof PatternContainer && m instanceof IDataStickInteractable;
+
+        }
+        return false;
     }
 
     /**
      * The ME Pattern Buffer Proxy block's state for the smart-copy Pattern Buffer→proxy swap, carrying the
      * captured buffer's front facing so the proxy lands oriented like the original.
+     * Tries its best to find a matching proxy, falling back to the buffer's state if no match is found.
      */
     public static BlockState proxyState(BlockState bufferState) {
-        BlockState proxy = GTAEMachines.ME_PATTERN_BUFFER_PROXY.getBlock().defaultBlockState();
+        var bufferId = ForgeRegistries.BLOCKS.getKey(bufferState.getBlock());
+        var proxyId = bufferId.getPath() + "_proxy";
+        if (!ForgeRegistries.BLOCKS.containsKey(ResourceLocation.parse(proxyId))) return bufferState;
+        BlockState proxy = ForgeRegistries.BLOCKS.getValue(ResourceLocation.parse(proxyId)).defaultBlockState();
         if (proxy.getBlock() instanceof MetaMachineBlock pb) {
             RotationState rs = pb.getRotationState();
             if (rs != RotationState.NONE && bufferState.hasProperty(rs.property) && proxy.hasProperty(rs.property)) {
@@ -267,7 +287,9 @@ public class GTCompat {
         PENDING_SYNCS.removeIf(sync -> sync.level == event.getLevel());
     }
 
-    /** Returns all cover items that would need to be supplied to fully reproduce this machine's covers. */
+    /**
+     * Returns all cover items that would need to be supplied to fully reproduce this machine's covers.
+     */
     public static List<ItemStack> captureCovers(BlockEntity be) {
         ICoverable covers = coverContainerOf(be);
         if (covers == null) return List.of();
@@ -355,7 +377,9 @@ public class GTCompat {
         };
     }
 
-    /** {@link IElectricItem} backed by the manipulator's own NBT charge (shared with the build loop). */
+    /**
+     * {@link IElectricItem} backed by the manipulator's own NBT charge (shared with the build loop).
+     */
     private static class MMElectricItem implements IElectricItem {
         private final ItemStack stack;
         private final MMTier tier;
@@ -450,7 +474,9 @@ public class GTCompat {
      * semantic path can't run. Facing lives in the block state and is handled by {@code BuildGenerator}.
      */
     public static class GTMachineAnalysis implements ITileAnalysis {
-        /** Legacy whitelist kept only for the ghost preview + the fallback restore (not the primary apply). */
+        /**
+         * Legacy whitelist kept only for the ghost preview + the fallback restore (not the primary apply).
+         */
         private static final String[] ANALYSIS_KEYS = {
                 "ownerUUID", "paintingColor", "cover", "isFlipped",
                 "workingMode", "voidingMode", "batchEnabled", "isWorkingEnabled", "workingEnabled",
@@ -461,20 +487,32 @@ public class GTCompat {
                 "autoPull", "ticksPerCycle", "minStackSize",
         };
 
-        /** Semantic settings, captured via getters and re-applied via setters (MM's own stable keys). */
+        /**
+         * Semantic settings, captured via getters and re-applied via setters (MM's own stable keys).
+         */
         private CompoundTag semantic = new CompoundTag();
-        /** Cover container config (per-side {@code {id,item,data}}) from {@code ICoverable.copyConfig}. */
+        /**
+         * Cover container config (per-side {@code {id,item,data}}) from {@code ICoverable.copyConfig}.
+         */
         private CompoundTag coverConfig = new CompoundTag();
-        /** ME bus/hatch AE config, copied through the data-stick API, or null if not applicable. */
+        /**
+         * ME bus/hatch AE config, copied through the data-stick API, or null if not applicable.
+         */
         @Nullable
         private CompoundTag dataStick;
-        /** Cover items needed to reproduce the covers, for the required-items tally. */
+        /**
+         * Cover items needed to reproduce the covers, for the required-items tally.
+         */
         @Nullable
         private List<ItemStack> coverItems;
-        /** Legacy whitelist NBT slice — powers the ghost preview and the defensive apply fallback. */
+        /**
+         * Legacy whitelist NBT slice — powers the ghost preview and the defensive apply fallback.
+         */
         private CompoundTag previewNbt = new CompoundTag();
 
-        /** Captures a machine/pipe's config semantically (+ the preview/fallback slice), or null otherwise. */
+        /**
+         * Captures a machine/pipe's config semantically (+ the preview/fallback slice), or null otherwise.
+         */
         @Nullable
         public static GTMachineAnalysis analyze(BlockEntity be) {
             if (!(be instanceof MetaMachineBlockEntity) && !(be instanceof PipeBlockEntity)) return null;
@@ -495,7 +533,9 @@ public class GTCompat {
             return a;
         }
 
-        /** Rebuilds an analysis from previously persisted NBT (cables mode; see {@link #toNbt}). */
+        /**
+         * Rebuilds an analysis from previously persisted NBT (cables mode; see {@link #toNbt}).
+         */
         public static GTMachineAnalysis fromConfig(CompoundTag config) {
             GTMachineAnalysis a = new GTMachineAnalysis();
             if (config.contains("semantic")) a.semantic = config.getCompound("semantic").copy();
@@ -505,7 +545,9 @@ public class GTCompat {
             return a;
         }
 
-        /** A reduced analysis keeping only a pipe/machine's paint color (cables mode), or null if unpainted. */
+        /**
+         * A reduced analysis keeping only a pipe/machine's paint color (cables mode), or null if unpainted.
+         */
         @Nullable
         public GTMachineAnalysis colorOnly() {
             if (!semantic.contains("paint")) return null;
@@ -516,7 +558,9 @@ public class GTCompat {
             return a;
         }
 
-        /** Compact, self-describing NBT for persisting a cables-mode analysis on the tool. */
+        /**
+         * Compact, self-describing NBT for persisting a cables-mode analysis on the tool.
+         */
         public CompoundTag toNbt() {
             CompoundTag t = new CompoundTag();
             t.put("semantic", semantic.copy());
@@ -624,7 +668,9 @@ public class GTCompat {
             filterCovers(be, ctx.inv());
         }
 
-        /** Legacy whitelist restore via recreate-then-reinit; the defensive fallback only. */
+        /**
+         * Legacy whitelist restore via recreate-then-reinit; the defensive fallback only.
+         */
         private boolean applyFallback(BlockApplyContext ctx) {
             if (previewNbt.isEmpty()) return true;
             ServerLevel level = ctx.level();
@@ -786,7 +832,10 @@ public class GTCompat {
         }
 
         private static boolean isPatternBufferFamily(MetaMachine m) {
-            return m instanceof MEPatternBufferPartMachine || m instanceof MEPatternBufferProxyPartMachine;
+            if (Mods.AE2) {
+                return (m instanceof MEBusPartMachine && m instanceof ICraftingProvider && m instanceof PatternContainer && m instanceof IDataStickInteractable) ||
+                        (m instanceof TieredIOPartMachine && m instanceof IMachineLife && m instanceof IDataStickInteractable);
+            } else return false;
         }
 
         /**
@@ -806,7 +855,9 @@ public class GTCompat {
             gm.updateMEStatus();
         }
 
-        /** The sides an ME part exposes its node on: just its front facing, or all sides if it has none. */
+        /**
+         * The sides an ME part exposes its node on: just its front facing, or all sides if it has none.
+         */
         private static EnumSet<Direction> exposedSides(IGridConnectedMachine gm) {
             if (gm.self().hasFrontFacing()) return EnumSet.of(gm.self().getFrontFacing());
             return EnumSet.allOf(Direction.class);
@@ -846,7 +897,9 @@ public class GTCompat {
         }
     }
 
-    /** Single-direction auto-I/O sides stored directly in a GT machine's NBT, rotated on transform. */
+    /**
+     * Single-direction auto-I/O sides stored directly in a GT machine's NBT, rotated on transform.
+     */
     private static final String[] GT_FACING_KEYS = {
             "outputFacingItems", "outputFacingFluids", "inputFacingItems", "inputFacingFluids",
     };
