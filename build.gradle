@@ -49,6 +49,7 @@ repositories {
         content {
             includeGroup('com.gregtechceu.gtceu')
             includeGroup('appeng')
+            includeGroup('brachy.modularui')
         }
     }
 
@@ -191,7 +192,7 @@ dependencies {
     modRuntimeOnly("dev.emi:emi-forge:${emi_version}+${minecraft_version}")
     modRuntimeOnly("maven.modrinth:jade:${jade_version}")
 
-    modImplementation("brachy.modularui:modularui-mc${minecraft_version}:${mui_version}") { transitive = false }
+    jarJar(modImplementation("brachy.modularui:modularui-mc${minecraft_version}:${mui_version}"))
 
     // GTm
     modImplementation("com.gregtechceu.gtceu:gtceu-${minecraft_version}:${gtceu_version}:slim") { transitive = false }
