@@ -1,5 +1,7 @@
 package dev.wp.matter_manipulator.common.compat;
 
+import com.gregtechceu.gtceu.integration.ae2.machine.MEPatternBufferPartMachine;
+import com.gregtechceu.gtceu.integration.ae2.machine.MEPatternBufferProxyPartMachine;
 import dev.wp.matter_manipulator.common.building.MMInventory;
 import dev.wp.matter_manipulator.common.building.analysis.BlockApplyContext;
 import dev.wp.matter_manipulator.common.building.analysis.ITileAnalysis;
@@ -64,6 +66,8 @@ import com.gregtechceu.gtceu.integration.ae2.machine.MEBusPartMachine;
 import com.gregtechceu.gtceu.integration.ae2.machine.feature.IGridConnectedMachine;
 import com.gregtechceu.gtceu.integration.ae2.machine.feature.multiblock.IMEStockingPart;
 import com.lowdragmc.lowdraglib.syncdata.blockentity.IAutoSyncBlockEntity;
+import top.ialdaiaxiariyay.bettergtae.common.machine.multiblock.part.ExtendMEPatternBufferPartMachine;
+import top.ialdaiaxiariyay.bettergtae.common.machine.multiblock.part.ExtendMEPatternBufferProxyPartMachine;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -837,10 +841,11 @@ public class GTCompat {
         }
 
         private static boolean isPatternBufferFamily(MetaMachine m) {
-            if (Mods.AE2) {
-                return (m instanceof MEBusPartMachine && m instanceof ICraftingProvider && m instanceof PatternContainer && m instanceof IDataStickInteractable) ||
-                        (m instanceof TieredIOPartMachine && m instanceof IMachineLife && m instanceof IDataStickInteractable);
-            } else return false;
+            if (m instanceof MEPatternBufferPartMachine || m instanceof MEPatternBufferProxyPartMachine){
+                return true;
+            } else if (Mods.BGTAE2)
+                return m instanceof ExtendMEPatternBufferPartMachine || m instanceof ExtendMEPatternBufferProxyPartMachine;
+            else return false;
         }
 
         /**
