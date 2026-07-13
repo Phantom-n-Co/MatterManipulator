@@ -1,7 +1,5 @@
 package dev.wp.matter_manipulator.common.compat;
 
-import com.gregtechceu.gtceu.integration.ae2.machine.MEPatternBufferPartMachine;
-import com.gregtechceu.gtceu.integration.ae2.machine.MEPatternBufferProxyPartMachine;
 import dev.wp.matter_manipulator.common.building.MMInventory;
 import dev.wp.matter_manipulator.common.building.analysis.BlockApplyContext;
 import dev.wp.matter_manipulator.common.building.analysis.ITileAnalysis;
@@ -63,6 +61,8 @@ import com.gregtechceu.gtceu.api.pattern.util.RelativeDirection;
 import com.gregtechceu.gtceu.common.data.GTItems;
 import com.gregtechceu.gtceu.common.item.IntCircuitBehaviour;
 import com.gregtechceu.gtceu.integration.ae2.machine.MEBusPartMachine;
+import com.gregtechceu.gtceu.integration.ae2.machine.MEPatternBufferPartMachine;
+import com.gregtechceu.gtceu.integration.ae2.machine.MEPatternBufferProxyPartMachine;
 import com.gregtechceu.gtceu.integration.ae2.machine.feature.IGridConnectedMachine;
 import com.gregtechceu.gtceu.integration.ae2.machine.feature.multiblock.IMEStockingPart;
 import com.lowdragmc.lowdraglib.syncdata.blockentity.IAutoSyncBlockEntity;
@@ -841,7 +841,7 @@ public class GTCompat {
         }
 
         private static boolean isPatternBufferFamily(MetaMachine m) {
-            if (m instanceof MEPatternBufferPartMachine || m instanceof MEPatternBufferProxyPartMachine){
+            if (m instanceof MEPatternBufferPartMachine || m instanceof MEPatternBufferProxyPartMachine) {
                 return true;
             } else if (Mods.BGTAE2)
                 return m instanceof ExtendMEPatternBufferPartMachine || m instanceof ExtendMEPatternBufferProxyPartMachine;
