@@ -179,15 +179,27 @@ public class GTCompat {
         return i -> i >= s && i < e;
     }
 
+    public static boolean isPatternBufferFamily(MetaMachine m) {
+        return isPatternBuffer(m) || isPatternBufferProxy(m);
+    }
+
     /**
      * True if {@code be} is a GTCEu ME Pattern Buffer.
      */
     public static boolean isPatternBuffer(@Nullable BlockEntity be) {
-        if (be instanceof MetaMachineBlockEntity mbe) {
-            var m = mbe.metaMachine;
-            return m instanceof MEBusPartMachine && m instanceof ICraftingProvider && m instanceof PatternContainer && m instanceof IDataStickInteractable;
-        }
-        return false;
+        return be instanceof MetaMachineBlockEntity mbe && isPatternBuffer(mbe.metaMachine);
+    }
+
+    public static boolean isPatternBuffer(MetaMachine m) {
+        if (m instanceof MEPatternBufferPartMachine) return true;
+        else if (Mods.BGTAE2) return m instanceof ExtendMEPatternBufferPartMachine;
+        else return false;
+    }
+
+    public static boolean isPatternBufferProxy(MetaMachine m) {
+        if (m instanceof MEPatternBufferProxyPartMachine) return true;
+        else if (Mods.BGTAE2) return m instanceof ExtendMEPatternBufferProxyPartMachine;
+        else return false;
     }
 
     /**
@@ -836,22 +848,6 @@ public class GTCompat {
         private static IVoidable.VoidingMode voidingMode(int ordinal) {
             IVoidable.VoidingMode[] values = IVoidable.VoidingMode.VALUES;
             return ordinal >= 0 && ordinal < values.length ? values[ordinal] : IVoidable.VoidingMode.VOID_NONE;
-        }
-
-        private static boolean isPatternBufferFamily(MetaMachine m) {
-            return isPatternBuffer(m) || isPatternBufferProxy(m);
-        }
-
-        private static boolean isPatternBuffer(MetaMachine m) {
-            if (m instanceof MEPatternBufferPartMachine) return true;
-            else if (Mods.BGTAE2) return m instanceof ExtendMEPatternBufferPartMachine;
-            else return false;
-        }
-
-        private static boolean isPatternBufferProxy(MetaMachine m) {
-            if (m instanceof MEPatternBufferProxyPartMachine) return true;
-            else if (Mods.BGTAE2) return m instanceof ExtendMEPatternBufferProxyPartMachine;
-            else return false;
         }
 
         /**
