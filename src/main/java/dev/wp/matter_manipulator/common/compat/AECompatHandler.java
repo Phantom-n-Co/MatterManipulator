@@ -10,6 +10,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
 
 import javax.annotation.Nullable;
 
@@ -52,6 +53,14 @@ public class AECompatHandler implements CompatHandler {
     @Override
     public void afterPaste(ServerLevel level, BlockPos pos, BlockEntity be) {
         AECompat.markHostForUpdate(level, pos);
+    }
+
+    @Override
+    public boolean restoreRaw(ServerLevel level, BlockPos pos, BlockState state, CompoundTag tag) {
+        if (!"ae2:cable_bus".equals(tag.getString("id"))) return false;
+        BlockEntity recreated = BlockEntity.loadStatic(pos, state, tag);
+        if (recreated != null) level.setBlockEntity(recreated);
+        return true;
     }
 
     @Override

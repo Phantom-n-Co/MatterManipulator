@@ -16,6 +16,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.fluids.FluidStack;
 
 import appeng.api.inventories.ISegmentedInventory;
@@ -446,16 +447,29 @@ public class AECompat {
 
         @Override
         public boolean apply(BlockApplyContext ctx) {
-            BlockEntity be = ctx.getBlockEntity();
-            if (be == null) return true;
-            CompoundTag tag = data.copy();
+            ServerLevel level = ctx.level();
             BlockPos pos = ctx.pos();
+            BlockState state = level.getBlockState(pos);
+            CompoundTag tag = data.copy();
             tag.putInt("x", pos.getX());
             tag.putInt("y", pos.getY());
             tag.putInt("z", pos.getZ());
-            be.load(tag);
-            filterAEItems(be, ctx.inv());
-            be.setChanged();
+
+            // Recreate BE from NBT to ensure chunk-load initialization order (ctor → load → onLoad).
+            // Directly loading NBT into the BE that setBlockAndUpdate created means onLoad() fires
+            // before parts are populated, leaving AE2 part grid nodes disconnected from the network.
+            BlockEntity be = BlockEntity.loadStatic(pos, state, tag);
+            if (be != null) {
+                level.setBlockEntity(be);
+            } else {
+                be = level.getBlockEntity(pos);
+                if (be != null) be.load(tag);
+            }
+
+            if (be != null) {
+                filterAEItems(be, ctx.inv());
+                be.setChanged();
+            }
             return true;
         }
 
