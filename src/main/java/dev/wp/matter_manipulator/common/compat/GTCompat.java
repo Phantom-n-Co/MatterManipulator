@@ -235,15 +235,17 @@ public class GTCompat {
         public boolean apply(BlockApplyContext ctx) {
             BlockEntity be = ctx.getBlockEntity();
             if (be instanceof MetaMachineBlockEntity mbe) {
+                BlockPos pos = ctx.pos();
+                ServerLevel level = ctx.level();
                 if (mbe.metaMachine instanceof MEPatternBufferProxyPartMachine proxy) {
                     proxy.setBuffer(master);
                     be.setChanged();
-                    if (needsClientSync(be)) scheduleClientSync(ctx.level(), ctx.pos());
+                    if (needsClientSync(be)) scheduleClientSync(level, pos);
+                    scheduleDelayedLink(level, pos, master);
                 } else if (Mods.BGTAE2 && mbe.metaMachine instanceof ExtendMEPatternBufferProxyPartMachine proxy) {
-                    // mod does not extend the base proxy...
                     proxy.setBuffer(master);
                     be.setChanged();
-                    if (needsClientSync(be)) scheduleClientSync(ctx.level(), ctx.pos());
+                    if (needsClientSync(be)) scheduleClientSync(level, pos);
                 }
             }
             return true;
@@ -265,6 +267,10 @@ public class GTCompat {
 
     private static final List<PendingSync> PENDING_SYNCS = new ArrayList<>();
 
+    private record PendingLink(ServerLevel level, BlockPos pos, BlockPos master, long queuedAt) {}
+
+    private static final List<PendingLink> PENDING_LINKS = new ArrayList<>();
+
     /**
      * Schedules a full LDLib field sync for the machine at {@code pos}.
      * <p>
@@ -278,22 +284,50 @@ public class GTCompat {
         PENDING_SYNCS.add(new PendingSync(level, pos.immutable(), level.getGameTime()));
     }
 
+    /**
+     * Some proxies (e.g. {@code InsaneMEPatternBufferProxyPartMachine}) schedule a tick task in
+     * {@code onLoad()} that calls {@code setBuffer(null)} for freshly placed blocks (their persisted
+     * position field is null). This undoes the link set by {@link PatternBufferProxyAnalysis#apply}
+     * during the same tick. Scheduling a re-link 2 ticks later ensures it runs after that stale tick
+     * task, keeping the proxy linked to the master buffer.
+     */
+    private static void scheduleDelayedLink(ServerLevel level, BlockPos pos, BlockPos master) {
+        PENDING_LINKS.add(new PendingLink(level, pos.immutable(), master, level.getGameTime()));
+    }
+
     @SubscribeEvent
     public static void onLevelTick(TickEvent.LevelTickEvent event) {
         if (event.phase != TickEvent.Phase.END
-                || PENDING_SYNCS.isEmpty()
                 || !(event.level instanceof ServerLevel level))
             return;
-        Iterator<PendingSync> it = PENDING_SYNCS.iterator();
-        while (it.hasNext()) {
-            PendingSync sync = it.next();
-            if (sync.level != level) continue;
-            // The block-update broadcast happens during the next tick's chunk tick;
-            // flush only once a full tick has passed so the client BE exists.
-            if (level.getGameTime() <= sync.queuedAt) continue;
-            it.remove();
-            if (level.isLoaded(sync.pos) && level.getBlockEntity(sync.pos) instanceof IAutoSyncBlockEntity syncBE) {
-                syncBE.syncNow(true);
+
+        // Flush pending client-sync requests (1-tick delay so the client BE exists).
+        if (!PENDING_SYNCS.isEmpty()) {
+            Iterator<PendingSync> it = PENDING_SYNCS.iterator();
+            while (it.hasNext()) {
+                PendingSync sync = it.next();
+                if (sync.level != level) continue;
+                if (level.getGameTime() <= sync.queuedAt) continue;
+                it.remove();
+                if (level.isLoaded(sync.pos) && level.getBlockEntity(sync.pos) instanceof IAutoSyncBlockEntity syncBE) {
+                    syncBE.syncNow(true);
+                }
+            }
+        }
+
+        // Flush pending proxy re-links (2-tick delay to outrun onLoad() tick tasks).
+        if (!PENDING_LINKS.isEmpty()) {
+            Iterator<PendingLink> it = PENDING_LINKS.iterator();
+            while (it.hasNext()) {
+                PendingLink link = it.next();
+                if (link.level != level) continue;
+                if (level.getGameTime() <= link.queuedAt + 1) continue;
+                it.remove();
+                if (level.isLoaded(link.pos)
+                        && level.getBlockEntity(link.pos) instanceof MetaMachineBlockEntity mbe
+                        && mbe.metaMachine instanceof MEPatternBufferProxyPartMachine proxy) {
+                    proxy.setBuffer(link.master);
+                }
             }
         }
     }
@@ -301,6 +335,7 @@ public class GTCompat {
     @SubscribeEvent
     public static void onLevelUnload(LevelEvent.Unload event) {
         PENDING_SYNCS.removeIf(sync -> sync.level == event.getLevel());
+        PENDING_LINKS.removeIf(link -> link.level == event.getLevel());
     }
 
     /**
