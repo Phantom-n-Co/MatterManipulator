@@ -19,8 +19,10 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.fluids.FluidStack;
 
+import appeng.api.config.Actionable;
 import appeng.api.inventories.ISegmentedInventory;
 import appeng.api.inventories.InternalInventory;
+import appeng.api.networking.security.IActionSource;
 import appeng.api.parts.IFacadeContainer;
 import appeng.api.parts.IFacadePart;
 import appeng.api.parts.IPart;
@@ -29,7 +31,13 @@ import appeng.api.parts.IPartItem;
 import appeng.api.stacks.AEFluidKey;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.GenericStack;
+import appeng.api.storage.StorageCells;
+import appeng.api.storage.cells.StorageCell;
+import appeng.api.upgrades.IUpgradeInventory;
+import appeng.api.upgrades.IUpgradeableItem;
 import appeng.api.util.AEColor;
+import appeng.blockentity.storage.ChestBlockEntity;
+import appeng.blockentity.storage.DriveBlockEntity;
 import appeng.core.definitions.AEItems;
 import appeng.core.definitions.AEParts;
 import appeng.core.definitions.ColoredItemDefinition;
@@ -84,8 +92,12 @@ public class AECompat {
                 IFacadePart facade = fc.getFacade(dir);
                 if (facade != null) items.add(facade.getItemStack().copy());
             }
-        } else if (be instanceof ISegmentedInventory seg) {
-            collectSegmented(seg, items);
+        } else {
+            if (be instanceof ISegmentedInventory seg) {
+                collectSegmented(seg, items);
+            }
+            // Drive/Chest store cells internally without ISegmentedInventory.
+            captureNonSegmentedCellItems(be, items);
         }
         return items;
     }
@@ -96,9 +108,175 @@ public class AECompat {
             if (inv == null) continue;
             for (int i = 0; i < inv.size(); i++) {
                 ItemStack s = inv.getStackInSlot(i);
-                if (!s.isEmpty()) out.add(s.copy());
+                if (!s.isEmpty()) {
+                    // For cells: report the cell type (ignoring upgrades/filters) so the
+                    // pre-flight cost check accepts any cell of the same type from the player.
+                    // Upgrades installed in the cell are charged separately.
+                    if (key.equals(ISegmentedInventory.CELLS)) {
+                        out.add(new ItemStack(s.getItem()));
+                        collectCellUpgrades(s, out);
+                    } else {
+                        out.add(s.copy());
+                    }
+                }
             }
         }
+    }
+
+    /**
+     * Removes stored items from a cell item stack via the AE2 API, preserving upgrades, filters,
+     * and other configuration. Writes directly into the passed stack's NBT.
+     */
+    private static void stripCellContents(ItemStack cellStack) {
+        StorageCell cellInv = StorageCells.getCellInventory(cellStack, null);
+        if (cellInv != null) {
+            for (var entry : cellInv.getAvailableStacks()) {
+                cellInv.extract(entry.getKey(), entry.getLongValue(),
+                        Actionable.MODULATE, IActionSource.empty());
+            }
+            cellInv.persist();
+        }
+    }
+
+    /**
+     * Captures cell items from block entities whose cell inventory is not exposed through
+     * {@link ISegmentedInventory#CELLS} (e.g. ME Drive, ME Chest). Reports the cell type only
+     * (ignoring upgrades/filters) so the pre-flight cost check accepts any cell of the same type.
+     */
+    private static void captureNonSegmentedCellItems(BlockEntity be, List<ItemStack> out) {
+        if (be instanceof DriveBlockEntity drive) {
+            InternalInventory inv = drive.getInternalInventory();
+            for (int i = 0; i < inv.size(); i++) {
+                ItemStack s = inv.getStackInSlot(i);
+                if (!s.isEmpty()) {
+                    out.add(new ItemStack(s.getItem()));
+                    collectCellUpgrades(s, out);
+                }
+            }
+        } else if (be instanceof ChestBlockEntity chest) {
+            InternalInventory inv = chest.getInternalInventory();
+            // Combined inventory: slot 0 = input, slot 1 = cell
+            if (inv.size() > 1) {
+                ItemStack s = inv.getStackInSlot(1);
+                if (!s.isEmpty()) {
+                    out.add(new ItemStack(s.getItem()));
+                    collectCellUpgrades(s, out);
+                }
+            }
+        }
+    }
+
+    /**
+     * For block entities whose cell inventory is not exposed through {@link ISegmentedInventory#CELLS}
+     * (e.g. ME Drive, ME Chest), clears cell contents and charges the player.
+     */
+    private static void filterNonSegmentedCells(BlockEntity be, MMInventory inv, boolean creative) {
+        if (be instanceof DriveBlockEntity drive) {
+            filterCellsFromInv(drive.getInternalInventory(), inv, creative);
+        } else if (be instanceof ChestBlockEntity chest) {
+            // Combined inventory: slot 0 = input, slot 1 = cell
+            InternalInventory internal = chest.getInternalInventory();
+            if (internal.size() > 1) {
+                filterCellSlot(internal, 1, inv, creative);
+            }
+        }
+    }
+
+    private static void filterCellsFromInv(InternalInventory internal, MMInventory inv, boolean creative) {
+        for (int i = 0; i < internal.size(); i++) {
+            filterCellSlot(internal, i, inv, creative);
+        }
+    }
+
+    private static void filterCellSlot(InternalInventory internal, int slot, MMInventory inv, boolean creative) {
+        ItemStack template = internal.getStackInSlot(slot);
+        if (template.isEmpty()) return;
+        if (StorageCells.getCellInventory(template, null) == null) return;
+        stripCellContents(template);
+        if (!tryPayCellUpgrades(template, inv, creative)
+                || (!creative && !hasAnyCellOfType(inv, template))) {
+            internal.setItemDirect(slot, ItemStack.EMPTY);
+            return;
+        }
+        if (!creative) consumeOneCellOfType(inv, template);
+        internal.setItemDirect(slot, template);
+    }
+
+    /**
+     * Returns true if the player's inventory contains any cell of the same item type as {@code template}
+     * (ignoring NBT, upgrades, filters, and stored contents).
+     */
+    private static boolean hasAnyCellOfType(MMInventory inv, ItemStack template) {
+        if (inv.getPlayer().isCreative()) return true;
+        var playerInv = inv.getPlayer().getInventory();
+        for (int i = 0; i < playerInv.getContainerSize(); i++) {
+            ItemStack s = playerInv.getItem(i);
+            if (!s.isEmpty() && s.getItem() == template.getItem()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Consumes one cell of the same item type as {@code template} from the player's inventory
+     * (ignoring NBT, upgrades, filters, and stored contents).
+     */
+    private static void consumeOneCellOfType(MMInventory inv, ItemStack template) {
+        var playerInv = inv.getPlayer().getInventory();
+        for (int i = 0; i < playerInv.getContainerSize(); i++) {
+            ItemStack stack = playerInv.getItem(i);
+            if (!stack.isEmpty() && stack.getItem() == template.getItem()) {
+                stack.shrink(1);
+                if (stack.isEmpty()) {
+                    playerInv.setItem(i, ItemStack.EMPTY);
+                }
+                return;
+            }
+        }
+    }
+
+    /**
+     * Collects upgrade items installed in a cell and adds them to {@code out}.
+     */
+    private static void collectCellUpgrades(ItemStack cellStack, List<ItemStack> out) {
+        if (cellStack.getItem() instanceof IUpgradeableItem upgradeable) {
+            IUpgradeInventory upgrades = upgradeable.getUpgrades(cellStack);
+            for (int i = 0; i < upgrades.size(); i++) {
+                ItemStack upgrade = upgrades.getStackInSlot(i);
+                if (!upgrade.isEmpty()) {
+                    out.add(upgrade.copy());
+                }
+            }
+        }
+    }
+
+    /**
+     * Checks the player can afford every upgrade installed in the given cell, then consumes them.
+     * Returns true if all upgrades were paid for (or none exist). Returns false and leaves the
+     * inventory untouched if any upgrade is unaffordable.
+     */
+    private static boolean tryPayCellUpgrades(ItemStack cellStack, MMInventory inv, boolean creative) {
+        if (creative) return true;
+        if (!(cellStack.getItem() instanceof IUpgradeableItem upgradeable)) return true;
+        IUpgradeInventory upgrades = upgradeable.getUpgrades(cellStack);
+
+        var required = new ArrayList<ItemStack>();
+        for (int i = 0; i < upgrades.size(); i++) {
+            ItemStack upgrade = upgrades.getStackInSlot(i);
+            if (!upgrade.isEmpty()) required.add(upgrade);
+        }
+        if (required.isEmpty()) return true;
+
+        // First pass: check all are affordable
+        for (ItemStack upgrade : required) {
+            if (!inv.canConsume(upgrade)) return false;
+        }
+        // Second pass: consume
+        for (ItemStack upgrade : required) {
+            inv.consume(upgrade);
+        }
+        return true;
     }
 
     /**
@@ -149,11 +327,25 @@ public class AECompat {
             for (int i = 0; i < internal.size(); i++) {
                 ItemStack stack = internal.getStackInSlot(i);
                 if (stack.isEmpty()) continue;
-                if (creative || inv.canConsume(stack)) {
-                    inv.consume(stack);
+                if (key.equals(ISegmentedInventory.CELLS)) {
+                    // Cells store their contents and config in the item's NBT. Strip stored items,
+                    // then match by item type only (ignoring upgrades/filters) so the player can
+                    // provide any cell of the same type; the template's config is placed.
+                    // Upgrades installed in the cell are charged separately.
+                    stripCellContents(stack);
+                    if (!tryPayCellUpgrades(stack, inv, creative)
+                            || (!creative && !hasAnyCellOfType(inv, stack))) {
+                        internal.setItemDirect(i, ItemStack.EMPTY);
+                    } else {
+                        if (!creative) consumeOneCellOfType(inv, stack);
+                        internal.setItemDirect(i, stack);
+                    }
                 } else {
-                    // Fabricated from the template — clear it, don't grant a free cell/upgrade.
-                    internal.setItemDirect(i, ItemStack.EMPTY);
+                    if (creative || inv.canConsume(stack)) {
+                        inv.consume(stack);
+                    } else {
+                        internal.setItemDirect(i, ItemStack.EMPTY);
+                    }
                 }
             }
         }
@@ -468,6 +660,7 @@ public class AECompat {
 
             if (be != null) {
                 filterAEItems(be, ctx.inv());
+                filterNonSegmentedCells(be, ctx.inv(), ctx.inv().getPlayer().isCreative());
                 be.setChanged();
             }
             return true;
