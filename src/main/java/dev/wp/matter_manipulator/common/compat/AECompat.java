@@ -422,7 +422,31 @@ public class AECompat {
             collectSegmented(seg, drops);
             clearSegmented(seg);
         }
+        // Drive/Chest store cells internally without ISegmentedInventory — recover them here.
+        dismantleNonSegmentedCells(be, drops);
         return drops;
+    }
+
+    /**
+     * Collects and clears cell items from Drive/Chest block entities whose cell inventory is not
+     * exposed through {@link ISegmentedInventory#CELLS}. Uses {@link InternalInventory#extractItem}
+     * so AE2's {@code onChangeInventory} receives the proper notification if it fires.
+     */
+    private static void dismantleNonSegmentedCells(BlockEntity be, List<ItemStack> out) {
+        if (be instanceof DriveBlockEntity drive) {
+            InternalInventory inv = drive.getInternalInventory();
+            for (int i = 0; i < inv.size(); i++) {
+                ItemStack s = inv.extractItem(i, 64, false);
+                if (!s.isEmpty()) out.add(s);
+            }
+        } else if (be instanceof ChestBlockEntity chest) {
+            InternalInventory inv = chest.getInternalInventory();
+            // Combined: slot 0 = input, slot 1 = cell
+            if (inv.size() > 1) {
+                ItemStack s = inv.extractItem(1, 64, false);
+                if (!s.isEmpty()) out.add(s);
+            }
+        }
     }
 
     private static void clearSegmented(ISegmentedInventory seg) {
@@ -642,6 +666,16 @@ public class AECompat {
             ServerLevel level = ctx.level();
             BlockPos pos = ctx.pos();
             BlockState state = level.getBlockState(pos);
+            // In-place reconfigure (same block type): the build loop's early-exit optimization skips
+            // removeBlock entirely, so the existing BE's cells haven't been salvaged yet — recover
+            // them before we replace the BE.
+            BlockEntity existingBE = level.getBlockEntity(pos);
+            if (existingBE != null) {
+                List<ItemStack> salvaged = new ArrayList<>();
+                dismantleNonSegmentedCells(existingBE, salvaged);
+                for (ItemStack s : salvaged) ctx.inv().give(s);
+            }
+
             CompoundTag tag = data.copy();
             tag.putInt("x", pos.getX());
             tag.putInt("y", pos.getY());
