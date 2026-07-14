@@ -90,6 +90,21 @@ public class MMInventory {
         if (uplinkActive()) AECompat.uplinkInsertFluid(level, uplink, fluid);
     }
 
+    /**
+     * Consumes up to {@code max} items matching {@code proto} by item type only (ignoring NBT).
+     * Sources from the player inventory first, then the bound network.
+     * Returns the number consumed. 0 if none found. Creative pays nothing and returns max.
+     */
+    public int consumeUpToByType(ItemStack proto, int max) {
+        if (max <= 0 || proto.isEmpty()) return 0;
+        if (player.isCreative()) return max;
+        int taken = takeFromInventoryByType(proto, max);
+        if (taken < max && uplinkActive()) {
+            taken += (int) AECompat.uplinkExtractByType(level, uplink, proto, max - taken);
+        }
+        return taken;
+    }
+
     /** Removes up to {@code max} of {@code required} from the player inventory; returns the amount taken. */
     private int takeFromInventory(ItemStack required, int max) {
         int remaining = max;
@@ -97,6 +112,22 @@ public class MMInventory {
         for (int i = 0; i < inv.getContainerSize() && remaining > 0; i++) {
             var stack = inv.getItem(i);
             if (ItemStack.isSameItemSameTags(stack, required)) {
+                int take = Math.min(remaining, stack.getCount());
+                stack.shrink(take);
+                remaining -= take;
+                if (stack.isEmpty()) inv.setItem(i, ItemStack.EMPTY);
+            }
+        }
+        return max - remaining;
+    }
+
+    /** Removes up to {@code max} items matching {@code proto} by type (ignoring NBT); returns amount taken. */
+    private int takeFromInventoryByType(ItemStack proto, int max) {
+        int remaining = max;
+        var inv = player.getInventory();
+        for (int i = 0; i < inv.getContainerSize() && remaining > 0; i++) {
+            var stack = inv.getItem(i);
+            if (!stack.isEmpty() && stack.getItem() == proto.getItem()) {
                 int take = Math.min(remaining, stack.getCount());
                 stack.shrink(take);
                 remaining -= take;

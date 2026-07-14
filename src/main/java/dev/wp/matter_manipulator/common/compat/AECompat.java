@@ -22,6 +22,7 @@ import net.minecraftforge.fluids.FluidStack;
 import appeng.api.config.Actionable;
 import appeng.api.inventories.ISegmentedInventory;
 import appeng.api.inventories.InternalInventory;
+import appeng.api.networking.IGrid;
 import appeng.api.networking.security.IActionSource;
 import appeng.api.parts.IFacadeContainer;
 import appeng.api.parts.IFacadePart;
@@ -31,7 +32,9 @@ import appeng.api.parts.IPartItem;
 import appeng.api.stacks.AEFluidKey;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.GenericStack;
+import appeng.api.stacks.KeyCounter;
 import appeng.api.storage.StorageCells;
+import appeng.api.storage.cells.CellState;
 import appeng.api.storage.cells.StorageCell;
 import appeng.api.upgrades.IUpgradeInventory;
 import appeng.api.upgrades.IUpgradeableItem;
@@ -193,47 +196,84 @@ public class AECompat {
         if (template.isEmpty()) return;
         if (StorageCells.getCellInventory(template, null) == null) return;
         stripCellContents(template);
-        if (!tryPayCellUpgrades(template, inv, creative)
-                || (!creative && !hasAnyCellOfType(inv, template))) {
+        if (!applyCellTemplate(internal, slot, template, inv, creative)) {
             internal.setItemDirect(slot, ItemStack.EMPTY);
-            return;
         }
-        if (!creative) consumeOneCellOfType(inv, template);
-        internal.setItemDirect(slot, template);
     }
 
     /**
-     * Returns true if the player's inventory contains any cell of the same item type as {@code template}
-     * (ignoring NBT, upgrades, filters, and stored contents).
+     * Matches a stripped template cell with an empty player cell of the same type, paying for
+     * upgrades not already installed. Returns true if the template was placed; false clears the slot.
      */
-    private static boolean hasAnyCellOfType(MMInventory inv, ItemStack template) {
-        if (inv.getPlayer().isCreative()) return true;
+    private static boolean applyCellTemplate(InternalInventory internal, int slot, ItemStack template, MMInventory inv, boolean creative) {
+        if (creative) {
+            internal.setItemDirect(slot, template);
+            return true;
+        }
+
+        // 1. Try player inventory — scan for an empty cell of matching type
+        ItemStack playerCell = findEmptyCellInInventory(inv, template);
+        if (playerCell != null) {
+            if (!payMissingCellUpgrades(template, playerCell, inv)) return false;
+            // Consume via MMInventory with exact NBT proto so takeFromInventory matches it
+            ItemStack proto = playerCell.copy();
+            if (inv.consumeUpTo(proto, 1) < 1) return false;
+            internal.setItemDirect(slot, template);
+            return true;
+        }
+
+        // 2. Try uplink network — iterate available stacks for an empty cell of matching type
+        return applyCellTemplateFromUplink(internal, slot, template, inv);
+    }
+
+    /** Scans the player's inventory for an empty storage cell of the same type as {@code template}. */
+    @Nullable
+    private static ItemStack findEmptyCellInInventory(MMInventory inv, ItemStack template) {
         var playerInv = inv.getPlayer().getInventory();
         for (int i = 0; i < playerInv.getContainerSize(); i++) {
             ItemStack s = playerInv.getItem(i);
-            if (!s.isEmpty() && s.getItem() == template.getItem()) {
-                return true;
+            if (!s.isEmpty() && s.getItem() == template.getItem() && isEmptyCell(s)) {
+                return s;
             }
+        }
+        return null;
+    }
+
+    /**
+     * Iterates the bound uplink's network available stacks to find an empty storage cell of the same
+     * type as {@code template}, extracts it, and pays for any missing upgrades.
+     */
+    private static boolean applyCellTemplateFromUplink(InternalInventory internal, int slot, ItemStack template, MMInventory inv) {
+        var level = inv.getPlayer().level();
+        if (!(level instanceof ServerLevel sl)) return false;
+        UplinkBlockEntity u = resolveUplink(sl, inv.getUplink());
+        if (u == null) return false;
+        IGrid grid = u.getGrid();
+        if (grid == null) return false;
+        var storage = grid.getStorageService().getInventory();
+        var counter = new KeyCounter();
+        storage.getAvailableStacks(counter);
+
+        for (var entry : counter) {
+            if (!(entry.getKey() instanceof AEItemKey aeKey)) continue;
+            if (aeKey.getItem() != template.getItem()) continue;
+            ItemStack cellStack = aeKey.toStack();
+            if (!isEmptyCell(cellStack)) continue;
+            if (!payMissingCellUpgrades(template, cellStack, inv)) continue;
+            long extracted = storage.extract(aeKey, 1, Actionable.MODULATE, IActionSource.empty());
+            if (extracted < 1) continue;
+            internal.setItemDirect(slot, template);
+            return true;
         }
         return false;
     }
 
     /**
-     * Consumes one cell of the same item type as {@code template} from the player's inventory
-     * (ignoring NBT, upgrades, filters, and stored contents).
+     * True if the stack is a storage cell that contains no stored items.
      */
-    private static void consumeOneCellOfType(MMInventory inv, ItemStack template) {
-        var playerInv = inv.getPlayer().getInventory();
-        for (int i = 0; i < playerInv.getContainerSize(); i++) {
-            ItemStack stack = playerInv.getItem(i);
-            if (!stack.isEmpty() && stack.getItem() == template.getItem()) {
-                stack.shrink(1);
-                if (stack.isEmpty()) {
-                    playerInv.setItem(i, ItemStack.EMPTY);
-                }
-                return;
-            }
-        }
+    private static boolean isEmptyCell(ItemStack stack) {
+        StorageCell cell = StorageCells.getCellInventory(stack, null);
+        return cell == null || cell.getStatus() == CellState.EMPTY;
     }
 
     /**
@@ -252,31 +292,41 @@ public class AECompat {
     }
 
     /**
-     * Checks the player can afford every upgrade installed in the given cell, then consumes them.
-     * Returns true if all upgrades were paid for (or none exist). Returns false and leaves the
-     * inventory untouched if any upgrade is unaffordable.
+     * Pays only for upgrades in the template that are not already installed in the player's cell.
+     * All-or-nothing: returns false (without consuming anything) if any missing upgrade is unaffordable.
      */
-    private static boolean tryPayCellUpgrades(ItemStack cellStack, MMInventory inv, boolean creative) {
-        if (creative) return true;
-        if (!(cellStack.getItem() instanceof IUpgradeableItem upgradeable)) return true;
-        IUpgradeInventory upgrades = upgradeable.getUpgrades(cellStack);
+    private static boolean payMissingCellUpgrades(ItemStack template, ItemStack playerCell, MMInventory inv) {
+        if (!(template.getItem() instanceof IUpgradeableItem upgradeable)) return true;
 
-        var required = new ArrayList<ItemStack>();
-        for (int i = 0; i < upgrades.size(); i++) {
-            ItemStack upgrade = upgrades.getStackInSlot(i);
-            if (!upgrade.isEmpty()) required.add(upgrade);
+        IUpgradeInventory templateUpgrades = upgradeable.getUpgrades(template);
+        IUpgradeInventory cellUpgrades = upgradeable.getUpgrades(playerCell);
+
+        var missing = new ArrayList<ItemStack>();
+        for (int i = 0; i < templateUpgrades.size(); i++) {
+            ItemStack required = templateUpgrades.getStackInSlot(i);
+            if (required.isEmpty()) continue;
+            if (!containsUpgrade(cellUpgrades, required)) {
+                missing.add(required);
+            }
         }
-        if (required.isEmpty()) return true;
+        if (missing.isEmpty()) return true;
 
-        // First pass: check all are affordable
-        for (ItemStack upgrade : required) {
+        for (ItemStack upgrade : missing) {
             if (!inv.canConsume(upgrade)) return false;
         }
-        // Second pass: consume
-        for (ItemStack upgrade : required) {
+        for (ItemStack upgrade : missing) {
             inv.consume(upgrade);
         }
         return true;
+    }
+
+    private static boolean containsUpgrade(IUpgradeInventory upgrades, ItemStack upgrade) {
+        for (int i = 0; i < upgrades.size(); i++) {
+            if (ItemStack.isSameItemSameTags(upgrades.getStackInSlot(i), upgrade)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -328,17 +378,9 @@ public class AECompat {
                 ItemStack stack = internal.getStackInSlot(i);
                 if (stack.isEmpty()) continue;
                 if (key.equals(ISegmentedInventory.CELLS)) {
-                    // Cells store their contents and config in the item's NBT. Strip stored items,
-                    // then match by item type only (ignoring upgrades/filters) so the player can
-                    // provide any cell of the same type; the template's config is placed.
-                    // Upgrades installed in the cell are charged separately.
                     stripCellContents(stack);
-                    if (!tryPayCellUpgrades(stack, inv, creative)
-                            || (!creative && !hasAnyCellOfType(inv, stack))) {
+                    if (!applyCellTemplate(internal, i, stack, inv, creative)) {
                         internal.setItemDirect(i, ItemStack.EMPTY);
-                    } else {
-                        if (!creative) consumeOneCellOfType(inv, stack);
-                        internal.setItemDirect(i, stack);
                     }
                 } else {
                     if (creative || inv.canConsume(stack)) {
@@ -521,6 +563,32 @@ public class AECompat {
         if (u == null || filter.isEmpty() || amount <= 0) return 0;
         AEItemKey key = AEItemKey.of(filter);
         return key == null ? 0 : u.getUplink().extract(key, amount);
+    }
+
+    /**
+     * Extracts up to {@code amount} of items matching {@code proto} by item type only (ignoring NBT)
+     * from the uplink network. Returns the amount actually extracted (0 if none found or no uplink).
+     * Unlike {@link #uplinkExtract}, this does <b>not</b> match on NBT — it iterates the network's
+     * available stacks and extracts every item whose {@link net.minecraft.world.item.Item#getItem()}
+     * matches {@code proto.getItem()}.
+     */
+    public static long uplinkExtractByType(ServerLevel level, @Nullable Location loc, ItemStack proto, long amount) {
+        UplinkBlockEntity u = resolveUplink(level, loc);
+        if (u == null || proto.isEmpty() || amount <= 0) return 0;
+        IGrid grid = u.getGrid();
+        if (grid == null) return 0;
+        var storage = grid.getStorageService().getInventory();
+        var counter = new KeyCounter();
+        storage.getAvailableStacks(counter);
+        long extracted = 0;
+        for (var entry : counter) {
+            if (!(entry.getKey() instanceof AEItemKey aeKey)) continue;
+            if (aeKey.getItem() != proto.getItem()) continue;
+            long need = amount - extracted;
+            if (need <= 0) break;
+            extracted += storage.extract(aeKey, need, Actionable.MODULATE, IActionSource.empty());
+        }
+        return extracted;
     }
 
     /** Inserts a stack into the uplink's network; returns the count that did not fit. */
