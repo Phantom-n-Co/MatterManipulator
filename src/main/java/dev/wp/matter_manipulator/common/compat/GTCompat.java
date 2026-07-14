@@ -49,13 +49,11 @@ import com.gregtechceu.gtceu.api.machine.feature.IAutoOutputItem;
 import com.gregtechceu.gtceu.api.machine.feature.IDataStickInteractable;
 import com.gregtechceu.gtceu.api.machine.feature.IDropSaveMachine;
 import com.gregtechceu.gtceu.api.machine.feature.IHasCircuitSlot;
-import com.gregtechceu.gtceu.api.machine.feature.IMachineLife;
 import com.gregtechceu.gtceu.api.machine.feature.IMufflableMachine;
 import com.gregtechceu.gtceu.api.machine.feature.IRecipeLogicMachine;
 import com.gregtechceu.gtceu.api.machine.feature.IVoidable;
 import com.gregtechceu.gtceu.api.machine.feature.multiblock.IDistinctPart;
 import com.gregtechceu.gtceu.api.machine.feature.multiblock.IMultiController;
-import com.gregtechceu.gtceu.api.machine.multiblock.part.TieredIOPartMachine;
 import com.gregtechceu.gtceu.api.machine.trait.MachineTrait;
 import com.gregtechceu.gtceu.api.pattern.util.RelativeDirection;
 import com.gregtechceu.gtceu.common.data.GTItems;
@@ -228,15 +226,15 @@ public class GTCompat {
         public boolean apply(BlockApplyContext ctx) {
             BlockEntity be = ctx.getBlockEntity();
             if (be instanceof MetaMachineBlockEntity mbe) {
-                var m = mbe.metaMachine;
-                if (m instanceof TieredIOPartMachine && m instanceof IMachineLife && m instanceof IDataStickInteractable) {
-                    try {
-                        // love needing this to handle one specific mods way of making new Pattern Buffers/Proxies...
-                        m.getClass().getMethod("setBuffer", BlockPos.class).invoke(m, master);
-                    } catch (Exception ignored) {} finally {
-                        be.setChanged();
-                        if (needsClientSync(be)) scheduleClientSync(ctx.level(), ctx.pos());
-                    }
+                if (mbe.metaMachine instanceof MEPatternBufferProxyPartMachine proxy) {
+                    proxy.setBuffer(master);
+                    be.setChanged();
+                    if (needsClientSync(be)) scheduleClientSync(ctx.level(), ctx.pos());
+                } else if (Mods.BGTAE2 && mbe.metaMachine instanceof ExtendMEPatternBufferProxyPartMachine proxy) {
+                    // mod does not extend the base proxy...
+                    proxy.setBuffer(master);
+                    be.setChanged();
+                    if (needsClientSync(be)) scheduleClientSync(ctx.level(), ctx.pos());
                 }
             }
             return true;
@@ -841,10 +839,18 @@ public class GTCompat {
         }
 
         private static boolean isPatternBufferFamily(MetaMachine m) {
-            if (m instanceof MEPatternBufferPartMachine || m instanceof MEPatternBufferProxyPartMachine) {
-                return true;
-            } else if (Mods.BGTAE2)
-                return m instanceof ExtendMEPatternBufferPartMachine || m instanceof ExtendMEPatternBufferProxyPartMachine;
+            return isPatternBuffer(m) || isPatternBufferProxy(m);
+        }
+
+        private static boolean isPatternBuffer(MetaMachine m) {
+            if (m instanceof MEPatternBufferPartMachine) return true;
+            else if (Mods.BGTAE2) return m instanceof ExtendMEPatternBufferPartMachine;
+            else return false;
+        }
+
+        private static boolean isPatternBufferProxy(MetaMachine m) {
+            if (m instanceof MEPatternBufferProxyPartMachine) return true;
+            else if (Mods.BGTAE2) return m instanceof ExtendMEPatternBufferProxyPartMachine;
             else return false;
         }
 
