@@ -157,10 +157,14 @@
   "matter_manipulator.transform.button.rotate_y-": "Rotate Y-",
   "matter_manipulator.transform.button.rotate_z+": "Rotate Z+",
   "matter_manipulator.transform.button.rotate_z-": "Rotate Z-",
-  "matter_manipulator.transform.header.copy": "Copy",
   "matter_manipulator.transform.header.copy_a": "Copy (A)",
   "matter_manipulator.transform.header.copy_b": "Copy (B)",
+  "matter_manipulator.transform.header.from": "From",
+  "matter_manipulator.transform.header.move_a": "Move (A)",
+  "matter_manipulator.transform.header.move_b": "Move (B)",
+  "matter_manipulator.transform.header.offset": "Offset",
   "matter_manipulator.transform.header.paste": "Paste",
   "matter_manipulator.transform.header.stacking": "Stacking",
+  "matter_manipulator.transform.header.to": "To",
   "matter_manipulator.transform.info": "Flip: %s\nUp: %s\nForward: %s"
 }

@@ -50,16 +50,28 @@ public class TransformScreen extends Screen {
     private static final int GROUP_H = 80;
 
     private enum Coord {
-        COPY(MODID + ".transform.header.copy"),
-        COPY_A(MODID + ".transform.header.copy_a"),
-        COPY_B(MODID + ".transform.header.copy_b"),
-        PASTE(MODID + ".transform.header.paste"),
-        STACK(MODID + ".transform.header.stacking");
+        COPY, COPY_A, COPY_B, PASTE, STACK;
 
-        final String headerKey;
-
-        Coord(String headerKey) {
-            this.headerKey = headerKey;
+        String headerKey(PlaceMode mode) {
+            return switch (this) {
+                case COPY -> MODID + ".transform.header.offset";
+                case COPY_A -> switch (mode) {
+                    case COPYING -> MODID + ".transform.header.copy_a";
+                    case MOVING -> MODID + ".transform.header.move_a";
+                    case GEOMETRY, EXCHANGING, CABLES -> MODID + ".transform.header.from";
+                };
+                case COPY_B -> switch (mode) {
+                    case COPYING -> MODID + ".transform.header.copy_b";
+                    case MOVING -> MODID + ".transform.header.move_b";
+                    case GEOMETRY, EXCHANGING, CABLES -> MODID + ".transform.header.to";
+                };
+                case PASTE -> switch (mode) {
+                    case COPYING -> MODID + ".transform.header.paste";
+                    case MOVING -> MODID + ".transform.header.to";
+                    default -> "";
+                };
+                case STACK -> MODID + ".transform.header.stacking";
+            };
         }
     }
 
@@ -189,32 +201,39 @@ public class TransformScreen extends Screen {
     // ── Right columns: coordinate editors ────────────────────────────────────────
 
     private void initRightColumns() {
-        // Stacking only applies to COPYING; the other modes place a single region
+        // Stacking only applies to COPYING; Paste is only relevant for COPYING and MOVING
         boolean showStack = cfg.placeMode == PlaceMode.COPYING;
+        boolean showPaste = cfg.placeMode == PlaceMode.COPYING || cfg.placeMode == PlaceMode.MOVING;
+
+        // Build coord list based on mode
+        List<Coord> allCoords = new ArrayList<>(List.of(Coord.COPY, Coord.COPY_A, Coord.COPY_B));
+        if (showPaste) allCoords.add(Coord.PASTE);
+        if (showStack) allCoords.add(Coord.STACK);
 
         if (minecraft != null && minecraft.getWindow().getGuiScale() <= 2) {
             // Plenty of vertical room: one column with all groups
-            Coord[] groups = showStack
-                    ? new Coord[] { Coord.COPY, Coord.COPY_A, Coord.COPY_B, Coord.PASTE, Coord.STACK }
-                    : new Coord[] { Coord.COPY, Coord.COPY_A, Coord.COPY_B, Coord.PASTE };
             int x = width - ROW_W - 10;
-            int y = (height - GROUP_H * groups.length) / 2;
-            for (Coord coord : groups) {
+            int y = (height - GROUP_H * allCoords.size()) / 2;
+            for (Coord coord : allCoords) {
                 addGroup(x, y, coord);
                 y += GROUP_H;
             }
         } else {
-            Coord[] right = { Coord.COPY_A, Coord.COPY_B, Coord.PASTE };
+            // Right column: COPY_A, COPY_B, and Paste if applicable
+            List<Coord> right = new ArrayList<>(List.of(Coord.COPY_A, Coord.COPY_B));
+            if (showPaste) right.add(Coord.PASTE);
             int x = width - ROW_W - 10;
-            int y = (height - GROUP_H * right.length) / 2;
+            int y = (height - GROUP_H * right.size()) / 2;
             for (Coord coord : right) {
                 addGroup(x, y, coord);
                 y += GROUP_H;
             }
 
-            Coord[] lessRight = showStack ? new Coord[] { Coord.COPY, Coord.STACK } : new Coord[] { Coord.COPY };
+            // Left of right: COPY, and Stacking if applicable
+            List<Coord> lessRight = new ArrayList<>(List.of(Coord.COPY));
+            if (showStack) lessRight.add(Coord.STACK);
             x = width - ROW_W * 2 - 20;
-            y = (height - GROUP_H * lessRight.length) / 2;
+            y = (height - GROUP_H * lessRight.size()) / 2;
             for (Coord coord : lessRight) {
                 addGroup(x, y, coord);
                 y += GROUP_H;
@@ -223,7 +242,7 @@ public class TransformScreen extends Screen {
     }
 
     private void addGroup(int x, int y, Coord coord) {
-        decorations.add(() -> drawHeader(x, y, coord.headerKey));
+        decorations.add(() -> drawHeader(x, y, coord.headerKey(cfg.placeMode)));
         for (int axis = 0; axis < 3; axis++) {
             addCoordRow(x, y + 20 + axis * 20, coord, axis);
         }

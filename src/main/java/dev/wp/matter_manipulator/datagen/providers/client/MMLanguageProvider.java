@@ -77,11 +77,15 @@ public class MMLanguageProvider extends LanguageProvider {
         add(transformKey("button.flip_y"), "Flip Y");
         add(transformKey("button.flip_z"), "Flip Z");
         add(transformKey("button.reset"), "Reset");
-        add(transformKey("header.copy"), "Copy");
         add(transformKey("header.copy_a"), "Copy (A)");
         add(transformKey("header.copy_b"), "Copy (B)");
+        add(transformKey("header.move_a"), "Move (A)");
+        add(transformKey("header.move_b"), "Move (B)");
         add(transformKey("header.paste"), "Paste");
         add(transformKey("header.stacking"), "Stacking");
+        add(transformKey("header.offset"), "Offset");
+        add(transformKey("header.from"), "From");
+        add(transformKey("header.to"), "To");
     }
 
     /**
