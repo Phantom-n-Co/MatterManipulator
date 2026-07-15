@@ -4,6 +4,7 @@ import dev.wp.matter_manipulator.BlockTags;
 import dev.wp.matter_manipulator.MMMod;
 
 import net.minecraft.core.HolderLookup;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.common.Tags;
 import net.minecraftforge.common.data.BlockTagsProvider;
 import net.minecraftforge.data.event.GatherDataEvent;
@@ -22,6 +23,7 @@ public class MMBlockTagsProvider extends BlockTagsProvider {
     @Override
     protected void addTags(@NotNull HolderLookup.Provider provider) {
         this.tag(BlockTags.DROP_BLACKLISTED).addTag(Tags.Blocks.ORES);
+        this.tag(BlockTags.ITEMLESS_BLOCK).addOptional(ResourceLocation.parse("ae2:cable_bus"));
     }
 
     @Override

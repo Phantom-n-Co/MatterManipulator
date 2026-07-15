@@ -1,8 +1,8 @@
 package dev.wp.matter_manipulator.common.networking;
 
 import dev.wp.matter_manipulator.common.items.manipulator.MMState;
-import dev.wp.matter_manipulator.common.items.manipulator.PendingAction;
-import dev.wp.matter_manipulator.common.items.manipulator.SlotType;
+import dev.wp.matter_manipulator.common.items.manipulator.MMTypes.PendingAction;
+import dev.wp.matter_manipulator.common.items.manipulator.MMTypes.SlotType;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;

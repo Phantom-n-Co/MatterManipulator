@@ -3,6 +3,11 @@ package dev.wp.matter_manipulator.common.items.manipulator;
 import dev.wp.matter_manipulator.common.building.BlockSpec;
 import dev.wp.matter_manipulator.common.building.Location;
 import dev.wp.matter_manipulator.common.data.WeightedSpecList;
+import dev.wp.matter_manipulator.common.items.manipulator.MMTypes.PendingAction;
+import dev.wp.matter_manipulator.common.items.manipulator.MMTypes.PlaceMode;
+import dev.wp.matter_manipulator.common.items.manipulator.MMTypes.RemoveMode;
+import dev.wp.matter_manipulator.common.items.manipulator.MMTypes.ShapeType;
+import dev.wp.matter_manipulator.common.items.manipulator.MMTypes.SlotType;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;

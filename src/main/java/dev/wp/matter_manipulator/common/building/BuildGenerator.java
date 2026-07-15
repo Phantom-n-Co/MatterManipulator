@@ -10,7 +10,7 @@ import dev.wp.matter_manipulator.common.compat.CompatRegistry;
 import dev.wp.matter_manipulator.common.compat.ExtendedAECompat;
 import dev.wp.matter_manipulator.common.compat.GTCompat;
 import dev.wp.matter_manipulator.common.items.manipulator.MMConfig;
-import dev.wp.matter_manipulator.common.items.manipulator.PlaceMode;
+import dev.wp.matter_manipulator.common.items.manipulator.MMTypes.PlaceMode;
 import dev.wp.matter_manipulator.common.utils.Mods;
 
 import net.minecraft.core.BlockPos;

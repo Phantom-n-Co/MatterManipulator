@@ -5,7 +5,7 @@ import dev.wp.matter_manipulator.common.items.manipulator.ItemMatterManipulator;
 import dev.wp.matter_manipulator.common.items.manipulator.MMConfig;
 import dev.wp.matter_manipulator.common.items.manipulator.MMState;
 import dev.wp.matter_manipulator.common.items.manipulator.MMTransform;
-import dev.wp.matter_manipulator.common.items.manipulator.PlaceMode;
+import dev.wp.matter_manipulator.common.items.manipulator.MMTypes.PlaceMode;
 import dev.wp.matter_manipulator.common.networking.MMNetwork;
 import dev.wp.matter_manipulator.common.networking.PacketConfigAction;
 import dev.wp.matter_manipulator.common.networking.PacketRotateTransform;

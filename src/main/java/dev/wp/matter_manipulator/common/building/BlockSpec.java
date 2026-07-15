@@ -1,5 +1,7 @@
 package dev.wp.matter_manipulator.common.building;
 
+import dev.wp.matter_manipulator.BlockTags;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
@@ -28,7 +30,9 @@ public class BlockSpec {
         return new BlockSpec(Blocks.AIR.defaultBlockState());
     }
 
-    /** The (lightweight) spec of the block at {@code pos}; tile state is captured via analyses. */
+    /**
+     * The (lightweight) spec of the block at {@code pos}; tile state is captured via analyses.
+     */
     public static BlockSpec fromWorld(Level level, BlockPos pos) {
         return new BlockSpec(level.getBlockState(pos));
     }
@@ -45,7 +49,9 @@ public class BlockSpec {
         return isAir();
     }
 
-    /** Returns the item needed to place this block, or empty if none. */
+    /**
+     * Returns the item needed to place this block, or empty if none.
+     */
     public ItemStack toStack() {
         var item = state.getBlock().asItem();
         if (item == Items.AIR) return ItemStack.EMPTY;
@@ -59,8 +65,7 @@ public class BlockSpec {
      * ("AE2 Cable and/or Bus"); its cable and parts are charged separately as analyses.
      */
     public boolean isItemlessBlock() {
-        var key = BuiltInRegistries.BLOCK.getKey(state.getBlock());
-        return key != null && key.toString().equals("ae2:cable_bus");
+        return state.is(BlockTags.ITEMLESS_BLOCK);
     }
 
     public Component getDisplayName() {

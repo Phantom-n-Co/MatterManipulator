@@ -5,9 +5,9 @@ import dev.wp.matter_manipulator.common.building.PendingBlock;
 import dev.wp.matter_manipulator.common.building.PendingBuild;
 import dev.wp.matter_manipulator.common.compat.AECompat;
 import dev.wp.matter_manipulator.common.items.manipulator.ItemMatterManipulator;
-import dev.wp.matter_manipulator.common.items.manipulator.MMCapability;
 import dev.wp.matter_manipulator.common.items.manipulator.MMState;
-import dev.wp.matter_manipulator.common.items.manipulator.PlaceMode;
+import dev.wp.matter_manipulator.common.items.manipulator.MMTypes.MMCapability;
+import dev.wp.matter_manipulator.common.items.manipulator.MMTypes.PlaceMode;
 import dev.wp.matter_manipulator.common.utils.MMUtils;
 import dev.wp.matter_manipulator.common.utils.Mods;
 

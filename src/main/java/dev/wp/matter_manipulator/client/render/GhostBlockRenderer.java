@@ -2,7 +2,7 @@ package dev.wp.matter_manipulator.client.render;
 
 import dev.wp.matter_manipulator.common.building.PendingBlock;
 import dev.wp.matter_manipulator.common.config.MMModConfig;
-import dev.wp.matter_manipulator.common.items.manipulator.PlaceMode;
+import dev.wp.matter_manipulator.common.items.manipulator.MMTypes.PlaceMode;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;

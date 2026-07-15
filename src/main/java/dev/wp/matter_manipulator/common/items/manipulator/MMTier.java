@@ -1,5 +1,6 @@
 package dev.wp.matter_manipulator.common.items.manipulator;
 
+import dev.wp.matter_manipulator.common.items.manipulator.MMTypes.MMCapability;
 import dev.wp.matter_manipulator.common.utils.Mods;
 
 public enum MMTier {
@@ -87,12 +88,16 @@ public enum MMTier {
         return Mods.GTCEU ? maxEnergy : Math.min(maxEnergy, Integer.MAX_VALUE);
     }
 
-    /** GregTech voltage tier used for charging as an electric item (LV, MV, HV, EV by MK level). */
+    /**
+     * GregTech voltage tier used for charging as an electric item (LV, MV, HV, EV by MK level).
+     */
     public int euTier() {
         return this.euTier;
     }
 
-    /** Whether energy is measured in EU (GregTech present) rather than FE. */
+    /**
+     * Whether energy is measured in EU (GregTech present) rather than FE.
+     */
     public static boolean usesEU() {
         return Mods.GTCEU;
     }

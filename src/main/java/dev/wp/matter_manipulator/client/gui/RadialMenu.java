@@ -21,6 +21,7 @@ import org.joml.Matrix4f;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 
@@ -187,7 +188,7 @@ public class RadialMenu extends Widget<RadialMenu> implements Interactable {
             if (mouseRadius >= innerRadius
                     && mouseRadius <= outerRadius
                     && isAngleBetween(mouseTheta, opt.startTheta, opt.endTheta)) {
-                if (opt.onClick != null) opt.onClick.onClick(this, opt, button);
+                if (opt.onClick != null) opt.onClick.accept(opt, button);
                 if (!opt.keepOpen) getPanel().closeIfOpen();
                 return Result.SUCCESS;
             }
@@ -222,17 +223,12 @@ public class RadialMenu extends Widget<RadialMenu> implements Interactable {
         public Supplier<String> label;
         public double weight = 1;
         public BooleanSupplier hidden = () -> false;
-        public RadialMenuClickHandler onClick;
+        public BiConsumer<RadialMenuOption, Integer> onClick;
         /** True for branch options — click replaces options rather than closing the panel. */
         public boolean keepOpen = false;
 
         // computed during layout
         boolean isHidden;
         double startTheta, endTheta;
-    }
-
-    @FunctionalInterface
-    public interface RadialMenuClickHandler {
-        void onClick(RadialMenu menu, RadialMenuOption option, int mouseButton);
     }
 }

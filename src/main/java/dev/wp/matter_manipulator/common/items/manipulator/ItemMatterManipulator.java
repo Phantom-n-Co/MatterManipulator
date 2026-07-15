@@ -9,6 +9,12 @@ import dev.wp.matter_manipulator.common.building.Location;
 import dev.wp.matter_manipulator.common.building.PendingBuild;
 import dev.wp.matter_manipulator.common.compat.GTCompat;
 import dev.wp.matter_manipulator.common.config.MMModConfig;
+import dev.wp.matter_manipulator.common.items.manipulator.MMTypes.MMCapability;
+import dev.wp.matter_manipulator.common.items.manipulator.MMTypes.PendingAction;
+import dev.wp.matter_manipulator.common.items.manipulator.MMTypes.PlaceMode;
+import dev.wp.matter_manipulator.common.items.manipulator.MMTypes.RemoveMode;
+import dev.wp.matter_manipulator.common.items.manipulator.MMTypes.ShapeType;
+import dev.wp.matter_manipulator.common.items.manipulator.MMTypes.SlotType;
 import dev.wp.matter_manipulator.common.networking.MMNetwork;
 import dev.wp.matter_manipulator.common.networking.PacketConfigAction;
 import dev.wp.matter_manipulator.common.networking.PacketMoveCoords;
@@ -496,7 +502,9 @@ public class ItemMatterManipulator extends Item {
         MMNetwork.CHANNEL.sendToServer(new PacketMoveCoords(which, look));
     }
 
-    /** Opens the transform screen, deferred so the radial menu teardown can't wipe it. */
+    /**
+     * Opens the transform screen, deferred so the radial menu teardown can't wipe it.
+     */
     @OnlyIn(Dist.CLIENT)
     private void addEditTransformOption(RadialMenuBuilder b) {
         b.option()

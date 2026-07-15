@@ -6,9 +6,9 @@ import dev.wp.matter_manipulator.common.building.PendingBlock;
 import dev.wp.matter_manipulator.common.items.manipulator.ItemMatterManipulator;
 import dev.wp.matter_manipulator.common.items.manipulator.MMConfig;
 import dev.wp.matter_manipulator.common.items.manipulator.MMState;
-import dev.wp.matter_manipulator.common.items.manipulator.PendingAction;
-import dev.wp.matter_manipulator.common.items.manipulator.PlaceMode;
-import dev.wp.matter_manipulator.common.items.manipulator.ShapeType;
+import dev.wp.matter_manipulator.common.items.manipulator.MMTypes.PendingAction;
+import dev.wp.matter_manipulator.common.items.manipulator.MMTypes.PlaceMode;
+import dev.wp.matter_manipulator.common.items.manipulator.MMTypes.ShapeType;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;

@@ -1,6 +1,5 @@
 package dev.wp.matter_manipulator.client.gui;
 
-import dev.wp.matter_manipulator.client.gui.RadialMenu.RadialMenuClickHandler;
 import dev.wp.matter_manipulator.client.gui.RadialMenu.RadialMenuOption;
 
 import net.minecraft.client.resources.language.I18n;
@@ -9,6 +8,7 @@ import net.minecraftforge.api.distmarker.OnlyIn;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 
@@ -80,7 +80,7 @@ public class RadialMenuBuilder {
     // ── leaf option ────────────────────────────────────────────────────────────
 
     public static class RadialMenuOptionBuilderLeaf<Parent> extends RadialMenuOptionBuilder<Parent> {
-        private RadialMenuClickHandler onClicked;
+        private BiConsumer<RadialMenuOption, Integer> onClicked;
         private boolean keepOpen = false;
 
         RadialMenuOptionBuilderLeaf(Parent parent) {
@@ -118,15 +118,15 @@ public class RadialMenuBuilder {
             return this;
         }
 
-        /** Click handler — receives the menu, option, and mouse button. Menu is already closing. */
-        public RadialMenuOptionBuilderLeaf<Parent> onClicked(RadialMenuClickHandler h) {
+        /** Click handler — receives the option and mouse button. */
+        public RadialMenuOptionBuilderLeaf<Parent> onClicked(BiConsumer<RadialMenuOption, Integer> h) {
             this.onClicked = h;
             return this;
         }
 
-        /** Convenience: plain Runnable, menu closes automatically after. */
+        /** Convenience: plain Runnable. */
         public RadialMenuOptionBuilderLeaf<Parent> onClicked(Runnable r) {
-            this.onClicked = (menu, opt, btn) -> r.run();
+            this.onClicked = (opt, btn) -> r.run();
             return this;
         }
 
@@ -203,20 +203,19 @@ public class RadialMenuBuilder {
             opt.hidden = this.hidden;
             opt.keepOpen = true;
             boolean addBack = this.backButton;
-            opt.onClick = (_menu, _opt, _btn) -> {
-                // Snapshot the menu we're leaving so the Back option can restore it.
-                List<RadialMenuOption> previous = addBack ? new ArrayList<>(_menu.options) : null;
-                _menu.options.clear();
-                for (var child : children) child.apply(_menu);
+            opt.onClick = (_opt, _btn) -> {
+                List<RadialMenuOption> previous = addBack ? new ArrayList<>(menu.options) : null;
+                menu.options.clear();
+                for (var child : children) child.apply(menu);
                 if (addBack) {
                     RadialMenuOption back = new RadialMenuOption();
                     back.label = () -> I18n.get("gui." + MODID + "back");
                     back.keepOpen = true;
-                    back.onClick = (m, o, b) -> {
-                        m.options.clear();
-                        m.options.addAll(previous);
+                    back.onClick = (o, b) -> {
+                        menu.options.clear();
+                        menu.options.addAll(previous);
                     };
-                    _menu.options.add(back);
+                    menu.options.add(back);
                 }
             };
             menu.options.add(opt);

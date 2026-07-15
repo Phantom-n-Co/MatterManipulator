@@ -1,7 +1,7 @@
 package dev.wp.matter_manipulator.common.building.shapes;
 
 import dev.wp.matter_manipulator.common.items.manipulator.MMConfig;
-import dev.wp.matter_manipulator.common.items.manipulator.SlotType;
+import dev.wp.matter_manipulator.common.items.manipulator.MMTypes.SlotType;
 
 import net.minecraft.core.BlockPos;
 

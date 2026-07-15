@@ -3,6 +3,7 @@ package dev.wp.matter_manipulator.common.items.manipulator;
 import dev.wp.matter_manipulator.common.building.BlockSpec;
 import dev.wp.matter_manipulator.common.compat.CompatRegistry;
 import dev.wp.matter_manipulator.common.data.WeightedSpecList;
+import dev.wp.matter_manipulator.common.items.manipulator.MMTypes.SlotType;
 import dev.wp.matter_manipulator.common.utils.MMUtils;
 
 import net.minecraft.core.BlockPos;
@@ -59,7 +60,9 @@ public class ManipulatorActions {
         }
     }
 
-    /** Air is valid — "replace with air" means delete matching blocks. */
+    /**
+     * Air is valid — "replace with air" means delete matching blocks.
+     */
     public static void exchangeSetTarget(ServerPlayer player, MMConfig cfg, BlockPos pos) {
         BlockSpec block = BlockSpec.fromWorld(player.serverLevel(), pos);
         cfg.replaceWith = new WeightedSpecList();
@@ -83,7 +86,9 @@ public class ManipulatorActions {
         MMUtils.sendInfoToPlayer(player, MODID + ".info.set_exchange_whitelist_to_only_contain", displayName(block));
     }
 
-    /** Picking air clears the cable block. */
+    /**
+     * Picking air clears the cable block.
+     */
     public static void pickCable(ServerPlayer player, MMConfig cfg, BlockPos pos) {
         ServerLevel level = player.serverLevel();
         BlockSpec block = BlockSpec.fromWorld(level, pos);

@@ -5,7 +5,7 @@ import dev.wp.matter_manipulator.common.building.MMInventory;
 import dev.wp.matter_manipulator.common.building.analysis.RequiredItems;
 import dev.wp.matter_manipulator.common.compat.AECompat;
 import dev.wp.matter_manipulator.common.items.manipulator.MMState;
-import dev.wp.matter_manipulator.common.items.manipulator.PlaceMode;
+import dev.wp.matter_manipulator.common.items.manipulator.MMTypes.PlaceMode;
 import dev.wp.matter_manipulator.common.utils.MMUtils;
 import dev.wp.matter_manipulator.common.utils.Mods;
 

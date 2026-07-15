@@ -3,9 +3,9 @@ package dev.wp.matter_manipulator.common.networking;
 import dev.wp.matter_manipulator.common.building.Location;
 import dev.wp.matter_manipulator.common.items.manipulator.MMConfig;
 import dev.wp.matter_manipulator.common.items.manipulator.MMState;
-import dev.wp.matter_manipulator.common.items.manipulator.PendingAction;
-import dev.wp.matter_manipulator.common.items.manipulator.PlaceMode;
-import dev.wp.matter_manipulator.common.items.manipulator.ShapeType;
+import dev.wp.matter_manipulator.common.items.manipulator.MMTypes.PendingAction;
+import dev.wp.matter_manipulator.common.items.manipulator.MMTypes.PlaceMode;
+import dev.wp.matter_manipulator.common.items.manipulator.MMTypes.ShapeType;
 import dev.wp.matter_manipulator.common.utils.MMUtils;
 
 import net.minecraft.core.BlockPos;
