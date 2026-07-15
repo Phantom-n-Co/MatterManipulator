@@ -22,6 +22,7 @@ import dev.wp.matter_manipulator.common.utils.Mods;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.language.I18n;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -111,8 +112,10 @@ public class ItemMatterManipulator extends Item {
                 openRadialMenu(stack, player);
             } else if (!cfg.locked) {
                 int which = (cfg.placeMode == PlaceMode.COPYING || cfg.placeMode == PlaceMode.MOVING) ? 2 : 0;
+                BlockPos look = MMRenderer.getLookingAt(Minecraft.getInstance(), cfg.action);
+                if (look == null) look = player.blockPosition();
                 MMNetwork.CHANNEL.sendToServer(
-                        new PacketSetCoord(which, new Location(level.dimension(), player.blockPosition())));
+                        new PacketSetCoord(which, new Location(level.dimension(), look)));
             }
         }
         return InteractionResultHolder.sidedSuccess(stack, level.isClientSide);

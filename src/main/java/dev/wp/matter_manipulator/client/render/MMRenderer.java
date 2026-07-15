@@ -343,7 +343,11 @@ public class MMRenderer {
         // Not looking at a block (air/entity)
         if (action != null && action.isDirectBlockPick()) return null;
 
-        return player.blockPosition();
+        // Project ~3 blocks forward from the player's eyes instead of snapping to their feet,
+        // so the selection preview and block actions work in open space.
+        var eye = player.getEyePosition();
+        var look = player.getLookAngle();
+        return BlockPos.containing(eye.x + look.x * 3, eye.y + look.y * 3, eye.z + look.z * 3);
     }
 
     private static List<PendingBlock> analysisCache = Collections.emptyList();
