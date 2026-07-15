@@ -273,6 +273,16 @@ public class GTCompat {
     private static final List<PendingLink> PENDING_LINKS = new ArrayList<>();
 
     /**
+     * Delayed pipe-connection restore for COPY-mode pastes. GTCEu pipes auto-connect to neighbours
+     * via {@code PipeBlock.onPlace()} → {@code level.scheduleTick(pos, this, 1)}, which fires one
+     * tick after the paste, modifying the connections set by {@code applyPipe()}. This list defers a
+     * re-apply of the captured connections to 3 ticks after paste, well past the auto-connection tick.
+     */
+    private record PendingPipeLink(ServerLevel level, BlockPos pos, int connections, int blocked, long queuedAt) {}
+
+    private static final List<PendingPipeLink> PENDING_PIPE_LINKS = new ArrayList<>();
+
+    /**
      * Schedules a full LDLib field sync for the machine at {@code pos}.
      * <p>
      * LDLib block entities (GT machines) don't implement {@code getUpdatePacket()}: the
@@ -297,6 +307,10 @@ public class GTCompat {
         PENDING_LINKS.add(new PendingLink(level, pos.immutable(), master, level.getGameTime()));
     }
 
+    private static void scheduleDelayedPipeLink(ServerLevel level, BlockPos pos, int connections, int blocked) {
+        PENDING_PIPE_LINKS.add(new PendingPipeLink(level, pos.immutable(), connections, blocked, level.getGameTime()));
+    }
+
     private static void processPendingLink(PendingLink link) {
         ServerLevel level = link.level;
         if (level.isLoaded(link.pos)
@@ -304,6 +318,25 @@ public class GTCompat {
                 && mbe.metaMachine instanceof MEPatternBufferProxyPartMachine proxy) {
             proxy.setBuffer(link.master);
         }
+    }
+
+    private static void processPendingPipeLink(PendingPipeLink link) {
+        ServerLevel level = link.level;
+        if (!level.isLoaded(link.pos)) return;
+        if (!(level.getBlockEntity(link.pos) instanceof PipeBlockEntity<?, ?> pipe)) return;
+        // Use setConnection with fromNeighbor=true to avoid syncPipeConnections cascade to neighbors.
+        // neighborChanged still fires, but PipeBlock's guard (state.getBlock() != block) prevents
+        // same-type auto-connect, while the pipe net gets properly updated via updateNetworkConnection.
+        for (Direction dir : Direction.values()) {
+            boolean connected = (link.connections & (1 << dir.ordinal())) != 0;
+            pipe.setConnection(dir, connected, true);
+        }
+        if (link.blocked != 0) {
+            for (Direction dir : Direction.values()) {
+                if ((link.blocked & (1 << dir.ordinal())) != 0) pipe.setBlocked(dir, true);
+            }
+        }
+        pipe.setChanged();
     }
 
     @SubscribeEvent
@@ -339,6 +372,18 @@ public class GTCompat {
                 processPendingLink(link);
             }
         }
+
+        // Flush pending pipe connection re-links (4-tick delay to outrun GTCEu's auto-connection tick).
+        if (!PENDING_PIPE_LINKS.isEmpty()) {
+            Iterator<PendingPipeLink> it = PENDING_PIPE_LINKS.iterator();
+            while (it.hasNext()) {
+                PendingPipeLink link = it.next();
+                if (link.level != level) continue;
+                if (level.getGameTime() <= link.queuedAt + 2) continue;
+                it.remove();
+                processPendingPipeLink(link);
+            }
+        }
     }
 
     /**
@@ -349,19 +394,35 @@ public class GTCompat {
      */
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onServerTick(TickEvent.ServerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || PENDING_LINKS.isEmpty()) return;
+        if (event.phase != TickEvent.Phase.END) return;
+        if (PENDING_LINKS.isEmpty() && PENDING_PIPE_LINKS.isEmpty()) return;
 
         long now = 0;
-        Iterator<PendingLink> it = PENDING_LINKS.iterator();
-        while (it.hasNext()) {
-            PendingLink link = it.next();
-            ServerLevel level = link.level;
-            if (!level.isLoaded(link.pos)) continue;
-            if (now == 0) now = level.getGameTime();
-            // Fire at queuedAt + 2 (same 4-tick delay as the level-tick pass).
-            if (now <= link.queuedAt + 2) continue;
-            it.remove();
-            processPendingLink(link);
+
+        if (!PENDING_LINKS.isEmpty()) {
+            Iterator<PendingLink> it = PENDING_LINKS.iterator();
+            while (it.hasNext()) {
+                PendingLink link = it.next();
+                ServerLevel level = link.level;
+                if (!level.isLoaded(link.pos)) continue;
+                if (now == 0) now = level.getGameTime();
+                if (now <= link.queuedAt + 2) continue;
+                it.remove();
+                processPendingLink(link);
+            }
+        }
+
+        if (!PENDING_PIPE_LINKS.isEmpty()) {
+            Iterator<PendingPipeLink> it = PENDING_PIPE_LINKS.iterator();
+            while (it.hasNext()) {
+                PendingPipeLink link = it.next();
+                ServerLevel level = link.level;
+                if (!level.isLoaded(link.pos)) continue;
+                if (now == 0) now = level.getGameTime();
+                if (now <= link.queuedAt + 2) continue;
+                it.remove();
+                processPendingPipeLink(link);
+            }
         }
     }
 
@@ -369,6 +430,7 @@ public class GTCompat {
     public static void onLevelUnload(LevelEvent.Unload event) {
         PENDING_SYNCS.removeIf(sync -> sync.level == event.getLevel());
         PENDING_LINKS.removeIf(link -> link.level == event.getLevel());
+        PENDING_PIPE_LINKS.removeIf(link -> link.level == event.getLevel());
     }
 
     /**
@@ -736,20 +798,37 @@ public class GTCompat {
 
         private void applyPipe(PipeBlockEntity<?, ?> pipe, BlockEntity be, BlockApplyContext ctx) {
             if (semantic.contains("paint")) pipe.setPaintingColor(semantic.getInt("paint"));
+            // Open captured connections only — never explicitly close non-captured sides, because
+            // setConnection(false) syncs to the neighbour via syncPipeConnections, cascading into
+            // unintended connection changes on adjacent pasted pipes. GTCEu pipe auto-connection
+            // via PipeBlock.onPlace() → scheduleTick → addNode runs 1 tick later and may add or
+            // remove connections; the delayed PENDING_PIPE_LINKS re-link corrects that.
+            int capturedConnections = 0;
+            boolean hasConnections = false;
             if (semantic.contains("connections")) {
-                int connections = semantic.getInt("connections");
+                capturedConnections = semantic.getInt("connections");
+                hasConnections = true;
                 for (Direction dir : Direction.values()) {
-                    if ((connections & (1 << dir.ordinal())) != 0) pipe.setConnection(dir, true, false);
+                    if ((capturedConnections & (1 << dir.ordinal())) != 0) {
+                        pipe.setConnection(dir, true, false);
+                    }
                 }
             }
+            int capturedBlocked = 0;
+            boolean hasBlocked = false;
             if (semantic.contains("blocked")) {
-                int blocked = semantic.getInt("blocked");
+                capturedBlocked = semantic.getInt("blocked");
+                hasBlocked = true;
                 for (Direction dir : Direction.values()) {
-                    if ((blocked & (1 << dir.ordinal())) != 0) pipe.setBlocked(dir, true);
+                    if ((capturedBlocked & (1 << dir.ordinal())) != 0) pipe.setBlocked(dir, true);
                 }
             }
             pipe.getCoverContainer().pasteConfig(serverPlayer(ctx), coverConfig);
             filterCovers(be, ctx.inv());
+            // Schedule a delayed re-apply to outrun GTCEu's auto-connection tick.
+            if (hasConnections || hasBlocked) {
+                scheduleDelayedPipeLink(ctx.level(), ctx.pos(), capturedConnections, capturedBlocked);
+            }
         }
 
         /**
