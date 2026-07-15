@@ -1,8 +1,5 @@
 package dev.wp.matter_manipulator.common.utils;
 
-import dev.wp.matter_manipulator.common.compat.AECompat;
-import dev.wp.matter_manipulator.common.compat.GTCompat;
-
 import net.minecraftforge.fml.ModList;
 
 /**

@@ -61,7 +61,7 @@ public class MMConfig {
     /**
      * Which slot type is being targeted when the blockSelectMode action is active.
      */
-    public BlockSelectMode blockSelectMode = BlockSelectMode.ALL;
+    public SlotType blockSelectMode = SlotType.ALL;
 
     public boolean locked = false;
 

@@ -203,7 +203,7 @@ public class TransformScreen extends Screen {
     private void initRightColumns() {
         // Stacking only applies to COPYING; Paste is only relevant for COPYING and MOVING
         boolean showStack = cfg.placeMode == PlaceMode.COPYING;
-        boolean showPaste = cfg.placeMode == PlaceMode.COPYING || cfg.placeMode == PlaceMode.MOVING;
+        boolean showPaste = cfg.placeMode.isCopyOrMove();
 
         // Build coord list based on mode
         List<Coord> allCoords = new ArrayList<>(List.of(Coord.COPY, Coord.COPY_A, Coord.COPY_B));

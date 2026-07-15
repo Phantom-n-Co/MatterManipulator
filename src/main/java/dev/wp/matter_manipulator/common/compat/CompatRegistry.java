@@ -10,8 +10,9 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.IntPredicate;
 
 import javax.annotation.Nullable;
@@ -23,7 +24,7 @@ import javax.annotation.Nullable;
  * here instead of branching on mod id, and never imports the soft-dep classes directly.
  */
 public final class CompatRegistry {
-    private static final List<CompatHandler> HANDLERS = new CopyOnWriteArrayList<>();
+    private static final List<CompatHandler> HANDLERS = Collections.synchronizedList(new ArrayList<>());
 
     private CompatRegistry() {}
 

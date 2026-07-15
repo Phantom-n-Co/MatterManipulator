@@ -4,5 +4,6 @@ public enum SlotType {
     CORNER,
     EDGE,
     FACE,
-    VOLUME
+    VOLUME,
+    ALL
 }

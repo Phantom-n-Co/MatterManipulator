@@ -1,8 +1,8 @@
 package dev.wp.matter_manipulator.common.networking;
 
-import dev.wp.matter_manipulator.common.items.manipulator.BlockSelectMode;
 import dev.wp.matter_manipulator.common.items.manipulator.MMState;
 import dev.wp.matter_manipulator.common.items.manipulator.PendingAction;
+import dev.wp.matter_manipulator.common.items.manipulator.SlotType;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
@@ -19,9 +19,9 @@ public class PacketSetPendingAction {
     private final PendingAction action;
 
     @Nullable
-    private final BlockSelectMode selectMode;
+    private final SlotType selectMode;
 
-    public PacketSetPendingAction(@Nullable PendingAction action, @Nullable BlockSelectMode selectMode) {
+    public PacketSetPendingAction(@Nullable PendingAction action, @Nullable SlotType selectMode) {
         this.action = action;
         this.selectMode = selectMode;
     }
@@ -35,7 +35,7 @@ public class PacketSetPendingAction {
 
     public static PacketSetPendingAction decode(FriendlyByteBuf buf) {
         PendingAction action = buf.readBoolean() ? buf.readEnum(PendingAction.class) : null;
-        BlockSelectMode mode = buf.readBoolean() ? buf.readEnum(BlockSelectMode.class) : null;
+        SlotType mode = buf.readBoolean() ? buf.readEnum(SlotType.class) : null;
         return new PacketSetPendingAction(action, mode);
     }
 

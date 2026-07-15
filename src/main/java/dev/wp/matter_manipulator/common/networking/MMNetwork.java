@@ -24,8 +24,6 @@ public class MMNetwork {
 
         reg(PacketSetCoord.class, PacketSetCoord::encode, PacketSetCoord::decode, PacketSetCoord::handle);
         reg(PacketSetConfig.class, PacketSetConfig::encode, PacketSetConfig::decode, PacketSetConfig::handle);
-        reg(PacketStartBuild.class, PacketStartBuild::encode, PacketStartBuild::decode, PacketStartBuild::handle);
-        reg(PacketCancelBuild.class, PacketCancelBuild::encode, PacketCancelBuild::decode, PacketCancelBuild::handle);
         reg(PacketConfigAction.class, PacketConfigAction::encode, PacketConfigAction::decode, PacketConfigAction::handle);
         reg(
                 PacketSetPendingAction.class,
@@ -52,8 +50,7 @@ public class MMNetwork {
                 PacketSetCoordDirect::encode,
                 PacketSetCoordDirect::decode,
                 PacketSetCoordDirect::handle);
-        reg(PacketClearPlan.class, PacketClearPlan::encode, PacketClearPlan::decode, PacketClearPlan::handle);
-        reg(PacketToggleBuild.class, PacketToggleBuild::encode, PacketToggleBuild::decode, PacketToggleBuild::handle);
+        reg(PacketSignal.class, PacketSignal::encode, PacketSignal::decode, PacketSignal::handle);
     }
 
     private static <T> void reg(

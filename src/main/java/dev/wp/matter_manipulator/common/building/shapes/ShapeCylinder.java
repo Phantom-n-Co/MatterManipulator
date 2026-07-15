@@ -93,21 +93,7 @@ public class ShapeCylinder {
                 for (int bIdx = 0; bIdx < absB; bIdx++) {
                     if (!present[aIdx + 1][hIdx + 1][bIdx + 1]) continue;
 
-                    boolean onSurface = false;
-                    for (int da = -1; da <= 1; da++) {
-                        for (int dh = -1; dh <= 1; dh++) {
-                            for (int db = -1; db <= 1; db++) {
-                                if (Math.abs(da) + Math.abs(dh) + Math.abs(db) != 1) continue;
-                                if (!present[aIdx + 1 + da][hIdx + 1 + dh][bIdx + 1 + db]) {
-                                    onSurface = true;
-                                    break;
-                                }
-                            }
-                            if (onSurface) break;
-                        }
-                        if (onSurface) break;
-                    }
-
+                    boolean onSurface = ShapeSphere.isSurface(present, aIdx + 1, hIdx + 1, bIdx + 1);
                     SlotType slot = onSurface ? SlotType.FACE : SlotType.VOLUME;
 
                     BlockPos pos = new BlockPos(

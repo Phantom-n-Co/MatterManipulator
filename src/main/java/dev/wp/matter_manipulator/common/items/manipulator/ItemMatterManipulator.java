@@ -10,13 +10,12 @@ import dev.wp.matter_manipulator.common.building.PendingBuild;
 import dev.wp.matter_manipulator.common.compat.GTCompat;
 import dev.wp.matter_manipulator.common.config.MMModConfig;
 import dev.wp.matter_manipulator.common.networking.MMNetwork;
-import dev.wp.matter_manipulator.common.networking.PacketClearPlan;
 import dev.wp.matter_manipulator.common.networking.PacketConfigAction;
 import dev.wp.matter_manipulator.common.networking.PacketMoveCoords;
 import dev.wp.matter_manipulator.common.networking.PacketRequestRequiredItems;
 import dev.wp.matter_manipulator.common.networking.PacketSetCoord;
 import dev.wp.matter_manipulator.common.networking.PacketSetPendingAction;
-import dev.wp.matter_manipulator.common.networking.PacketToggleBuild;
+import dev.wp.matter_manipulator.common.networking.PacketSignal;
 import dev.wp.matter_manipulator.common.utils.Mods;
 
 import net.minecraft.ChatFormatting;
@@ -86,7 +85,7 @@ public class ItemMatterManipulator extends Item {
 
             // In COPYING/MOVING mode, right-click sets Coord C (Paste) by default, NOT Coord A (Source).
             // Source coordinates (A/B) must be set via the Mark buttons (actions).
-            int which = (cfg.placeMode == PlaceMode.COPYING || cfg.placeMode == PlaceMode.MOVING) ? 2 : 0;
+            int which = cfg.placeMode.isCopyOrMove() ? 2 : 0;
 
             MMNetwork.CHANNEL.sendToServer(new PacketSetCoord(which, new Location(level.dimension(), selectedPos)));
             return InteractionResult.SUCCESS;
@@ -104,14 +103,14 @@ public class ItemMatterManipulator extends Item {
         if (level.isClientSide) {
             // Sneak + right-click air (not aimed at a block) toggles the build, like the original.
             if (player.isShiftKeyDown()) {
-                MMNetwork.CHANNEL.sendToServer(new PacketToggleBuild());
+                MMNetwork.CHANNEL.sendToServer(new PacketSignal(PacketSignal.Action.TOGGLE_BUILD));
                 return InteractionResultHolder.sidedSuccess(stack, true);
             }
             var cfg = MMState.of(stack).getConfig();
             if (cfg.action == null) {
                 openRadialMenu(stack, player);
             } else if (!cfg.locked) {
-                int which = (cfg.placeMode == PlaceMode.COPYING || cfg.placeMode == PlaceMode.MOVING) ? 2 : 0;
+                int which = cfg.placeMode.isCopyOrMove() ? 2 : 0;
                 BlockPos look = MMRenderer.getLookingAt(Minecraft.getInstance(), cfg.action);
                 if (look == null) look = player.blockPosition();
                 MMNetwork.CHANNEL.sendToServer(
@@ -238,27 +237,27 @@ public class ItemMatterManipulator extends Item {
                 .option()
                 .label(I18n.get("gui." + MODID + "set_corners"))
                 .onClicked(() -> MMNetwork.CHANNEL.sendToServer(
-                        new PacketSetPendingAction(PendingAction.GEOM_SELECTING_BLOCK, BlockSelectMode.CORNERS)))
+                        new PacketSetPendingAction(PendingAction.GEOM_SELECTING_BLOCK, SlotType.CORNER)))
                 .done()
                 .option()
                 .label(I18n.get("gui." + MODID + "set_edges"))
                 .onClicked(() -> MMNetwork.CHANNEL.sendToServer(
-                        new PacketSetPendingAction(PendingAction.GEOM_SELECTING_BLOCK, BlockSelectMode.EDGES)))
+                        new PacketSetPendingAction(PendingAction.GEOM_SELECTING_BLOCK, SlotType.EDGE)))
                 .done()
                 .option()
                 .label(I18n.get("gui." + MODID + "set_faces"))
                 .onClicked(() -> MMNetwork.CHANNEL.sendToServer(
-                        new PacketSetPendingAction(PendingAction.GEOM_SELECTING_BLOCK, BlockSelectMode.FACES)))
+                        new PacketSetPendingAction(PendingAction.GEOM_SELECTING_BLOCK, SlotType.FACE)))
                 .done()
                 .option()
                 .label(I18n.get("gui." + MODID + "set_volumes"))
                 .onClicked(() -> MMNetwork.CHANNEL.sendToServer(
-                        new PacketSetPendingAction(PendingAction.GEOM_SELECTING_BLOCK, BlockSelectMode.VOLUMES)))
+                        new PacketSetPendingAction(PendingAction.GEOM_SELECTING_BLOCK, SlotType.VOLUME)))
                 .done()
                 .option()
                 .label(I18n.get("gui." + MODID + "set_all"))
                 .onClicked(() -> MMNetwork.CHANNEL.sendToServer(
-                        new PacketSetPendingAction(PendingAction.GEOM_SELECTING_BLOCK, BlockSelectMode.ALL)))
+                        new PacketSetPendingAction(PendingAction.GEOM_SELECTING_BLOCK, SlotType.ALL)))
                 .done()
                 .option()
                 .label(I18n.get("gui." + MODID + "clear_all"))
@@ -361,7 +360,7 @@ public class ItemMatterManipulator extends Item {
                 .option()
                 .label(I18n.get("gui." + MODID + "clear_plan"))
                 .hidden(!hasAuto)
-                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketClearPlan()))
+                .onClicked(() -> MMNetwork.CHANNEL.sendToServer(new PacketSignal(PacketSignal.Action.CLEAR_PLAN)))
                 .done()
                 .done();
 

@@ -45,19 +45,16 @@ public class ShapeSphere {
                 for (int z = 0; z < sz; z++) {
                     if (!present[x + 1][y + 1][z + 1]) continue;
 
-                    boolean onSurface = false;
-                    if (rx > 1 && (!present[x][y + 1][z + 1] || !present[x + 2][y + 1][z + 1])) onSurface = true;
-                    if (!onSurface && ry > 1 && (!present[x + 1][y][z + 1] || !present[x + 1][y + 2][z + 1]))
-                        onSurface = true;
-                    if (!onSurface && rz > 1 && (!present[x + 1][y + 1][z] || !present[x + 1][y + 1][z + 2]))
-                        onSurface = true;
-
-                    SlotType slot = onSurface ? SlotType.FACE : SlotType.VOLUME;
+                    SlotType slot = isSurface(present, x + 1, y + 1, z + 1) ? SlotType.FACE : SlotType.VOLUME;
                     result.add(new ShapeBlock(new BlockPos(x + minX, y + minY, z + minZ), slot));
                 }
             }
         }
 
         return result;
+    }
+
+    static boolean isSurface(boolean[][][] grid, int x, int y, int z) {
+        return !grid[x - 1][y][z] || !grid[x + 1][y][z] || !grid[x][y - 1][z] || !grid[x][y + 1][z] || !grid[x][y][z - 1] || !grid[x][y][z + 1];
     }
 }

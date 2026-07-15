@@ -67,7 +67,7 @@ public class MMRenderer {
         updateAnalysisCache(cfg, mc.level);
 
         // Ghost-block hints: positions are coordC-relative in COPYING/MOVING, absolute otherwise
-        BlockPos ghostOrigin = (cfg.placeMode == PlaceMode.COPYING || cfg.placeMode == PlaceMode.MOVING) && cfg.coordC != null
+        BlockPos ghostOrigin = cfg.placeMode.isCopyOrMove() && cfg.coordC != null
                 ? cfg.coordC.pos
                 : null;
         int tierRange = ((ItemMatterManipulator) held.getItem()).getTier().range;
@@ -388,7 +388,7 @@ public class MMRenderer {
      */
     private static boolean analysisInputsEqual(MMConfig a, MMConfig b) {
         if (a.placeMode != b.placeMode) return false;
-        if (a.placeMode == PlaceMode.COPYING || a.placeMode == PlaceMode.MOVING) {
+        if (a.placeMode.isCopyOrMove()) {
             if ((a.coordC == null) != (b.coordC == null)) return false;
             MMConfig norm = a.copy();
             norm.coordC = b.coordC;

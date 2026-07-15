@@ -21,51 +21,35 @@ import static dev.wp.matter_manipulator.MMMod.MODID;
  * (PacketSetCoord) and middle-mouse picking (PacketMMBPressed).
  */
 public class ManipulatorActions {
-    /**
-     * Sets or adds (when {@code add}) a block in the palette list(s) chosen by
-     * {@code selectMode}.
-     */
     public static void pickBlock(
-            ServerPlayer player, MMConfig cfg, BlockSelectMode selectMode, BlockPos pos, boolean add) {
+            ServerPlayer player, MMConfig cfg, SlotType selectMode, BlockPos pos, boolean add) {
         BlockSpec block = BlockSpec.fromWorld(player.serverLevel(), pos);
 
-        String what = switch (selectMode) {
-            case CORNERS -> "corners";
-            case EDGES -> "edges";
-            case FACES -> "faces";
-            case VOLUMES -> "volumes";
-            case ALL -> "all blocks";
-        };
+        String what = selectMode == SlotType.ALL ? "all blocks" : selectMode.name().toLowerCase() + "s";
 
-        switch (selectMode) {
-            case CORNERS -> {
-                if (!add) cfg.corners = new WeightedSpecList();
-                cfg.corners.add(block, 1);
-            }
-            case EDGES -> {
-                if (!add) cfg.edges = new WeightedSpecList();
-                cfg.edges.add(block, 1);
-            }
-            case FACES -> {
-                if (!add) cfg.faces = new WeightedSpecList();
-                cfg.faces.add(block, 1);
-            }
-            case VOLUMES -> {
-                if (!add) cfg.volumes = new WeightedSpecList();
-                cfg.volumes.add(block, 1);
-            }
-            case ALL -> {
-                if (!add) {
-                    cfg.corners = new WeightedSpecList();
-                    cfg.edges = new WeightedSpecList();
-                    cfg.faces = new WeightedSpecList();
-                    cfg.volumes = new WeightedSpecList();
+        for (SlotType t : selectMode == SlotType.ALL
+                ? new SlotType[] { SlotType.CORNER, SlotType.EDGE, SlotType.FACE, SlotType.VOLUME }
+                : new SlotType[] { selectMode }) {
+            var list = switch (t) {
+                case CORNER -> {
+                    if (!add) cfg.corners = new WeightedSpecList();
+                    yield cfg.corners;
                 }
-                cfg.corners.add(block, 1);
-                cfg.edges.add(block, 1);
-                cfg.faces.add(block, 1);
-                cfg.volumes.add(block, 1);
-            }
+                case EDGE -> {
+                    if (!add) cfg.edges = new WeightedSpecList();
+                    yield cfg.edges;
+                }
+                case FACE -> {
+                    if (!add) cfg.faces = new WeightedSpecList();
+                    yield cfg.faces;
+                }
+                case VOLUME -> {
+                    if (!add) cfg.volumes = new WeightedSpecList();
+                    yield cfg.volumes;
+                }
+                default -> throw new AssertionError();
+            };
+            list.add(block, 1);
         }
 
         if (add) {

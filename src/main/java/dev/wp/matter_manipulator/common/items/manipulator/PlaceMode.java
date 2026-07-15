@@ -5,5 +5,9 @@ public enum PlaceMode {
     COPYING,
     MOVING,
     EXCHANGING,
-    CABLES
+    CABLES;
+
+    public boolean isCopyOrMove() {
+        return this == COPYING || this == MOVING;
+    }
 }

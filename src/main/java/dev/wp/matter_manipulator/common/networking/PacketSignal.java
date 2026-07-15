@@ -3,10 +3,13 @@ package dev.wp.matter_manipulator.common.networking;
 import dev.wp.matter_manipulator.common.building.BuildGenerator;
 import dev.wp.matter_manipulator.common.building.PendingBlock;
 import dev.wp.matter_manipulator.common.building.PendingBuild;
+import dev.wp.matter_manipulator.common.compat.AECompat;
 import dev.wp.matter_manipulator.common.items.manipulator.ItemMatterManipulator;
 import dev.wp.matter_manipulator.common.items.manipulator.MMCapability;
 import dev.wp.matter_manipulator.common.items.manipulator.MMState;
 import dev.wp.matter_manipulator.common.items.manipulator.PlaceMode;
+import dev.wp.matter_manipulator.common.utils.MMUtils;
+import dev.wp.matter_manipulator.common.utils.Mods;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
@@ -17,27 +20,66 @@ import net.minecraftforge.network.NetworkEvent;
 import java.util.List;
 import java.util.function.Supplier;
 
-/**
- * Client requests the server to start a build based on the current MMConfig.
- */
-public class PacketStartBuild {
-    public PacketStartBuild() {}
+import static dev.wp.matter_manipulator.MMMod.MODID;
 
-    public static void encode(PacketStartBuild pkt, FriendlyByteBuf buf) {}
-
-    public static PacketStartBuild decode(FriendlyByteBuf buf) {
-        return new PacketStartBuild();
+public class PacketSignal {
+    public enum Action {
+        CANCEL_BUILD, CLEAR_PLAN, START_BUILD, TOGGLE_BUILD
     }
 
-    public static void handle(PacketStartBuild pkt, Supplier<NetworkEvent.Context> ctx) {
+    public final Action action;
+
+    public PacketSignal(Action action) {
+        this.action = action;
+    }
+
+    public static void encode(PacketSignal pkt, FriendlyByteBuf buf) {
+        buf.writeEnum(pkt.action);
+    }
+
+    public static PacketSignal decode(FriendlyByteBuf buf) {
+        return new PacketSignal(buf.readEnum(Action.class));
+    }
+
+    public static void handle(PacketSignal pkt, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
             ServerPlayer player = ctx.get().getSender();
-            if (player != null) execute(player);
+            if (player == null) return;
+            switch (pkt.action) {
+                case CANCEL_BUILD -> {
+                    PendingBuild.cancel(player);
+                    player.sendSystemMessage(Component.literal("Build cancelled."));
+                }
+                case CLEAR_PLAN -> {
+                    var state = MMState.ofHeld(player.getMainHandItem());
+                    if (state == null) return;
+                    var cfg = state.getConfig();
+                    if (!Mods.AE2 || cfg.uplink == null) {
+                        MMUtils.sendErrorToPlayer(player, MODID + ".info.error.no_uplink");
+                        return;
+                    }
+                    int cleared = AECompat.uplinkClearPlan(player.serverLevel(), cfg.uplink, player.getUUID());
+                    if (cleared < 0) {
+                        MMUtils.sendErrorToPlayer(player, MODID + ".info.error.no_uplink");
+                    } else {
+                        MMUtils.sendInfoToPlayer(player, MODID + ".info.plan_cleared", cleared);
+                    }
+                }
+                case START_BUILD -> executeStart(player);
+                case TOGGLE_BUILD -> {
+                    if (PendingBuild.hasActiveBuild(player.getUUID())) {
+                        PendingBuild.cancel(player);
+                        player.sendSystemMessage(Component.literal("Build cancelled."));
+                    } else {
+                        executeStart(player);
+                    }
+                }
+            }
         });
         ctx.get().setPacketHandled(true);
     }
 
-    public static void execute(ServerPlayer player) {
+    private static void executeStart(ServerPlayer player) {
         var held = player.getMainHandItem();
         if (!(held.getItem() instanceof ItemMatterManipulator item)) return;
 
@@ -64,9 +106,7 @@ public class PacketStartBuild {
             return;
         }
 
-        BlockPos anchor = (cfg.placeMode == PlaceMode.COPYING || cfg.placeMode == PlaceMode.MOVING)
-                ? cfg.coordC.pos
-                : BlockPos.ZERO;
+        BlockPos anchor = cfg.placeMode.isCopyOrMove() ? cfg.coordC.pos : BlockPos.ZERO;
 
         BlockPos sourceMin = null, sourceMax = null;
         if (cfg.placeMode == PlaceMode.MOVING) {
@@ -78,14 +118,6 @@ public class PacketStartBuild {
                     Math.max(a.getX(), b.getX()), Math.max(a.getY(), b.getY()), Math.max(a.getZ(), b.getZ()));
         }
 
-        PendingBuild.start(
-                player,
-                tier,
-                blocks,
-                anchor,
-                cfg.placeMode == PlaceMode.MOVING,
-                sourceMin,
-                sourceMax,
-                cfg.placeMode == PlaceMode.CABLES);
+        PendingBuild.start(player, tier, blocks, anchor, cfg.placeMode == PlaceMode.MOVING, sourceMin, sourceMax, cfg.placeMode == PlaceMode.CABLES);
     }
 }

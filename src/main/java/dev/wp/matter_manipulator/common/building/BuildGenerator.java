@@ -72,6 +72,7 @@ public class BuildGenerator {
                 case EDGE -> cfg.edges;
                 case FACE -> cfg.faces;
                 case VOLUME -> cfg.volumes;
+                case ALL -> throw new AssertionError();
             };
             var picked = palette.pick(rng);
             // Geometry places fresh blocks: the palette spec is state-only, no analyses attached.

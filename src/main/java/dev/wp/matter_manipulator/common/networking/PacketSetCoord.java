@@ -78,7 +78,7 @@ public class PacketSetCoord {
                 // Direct coord set for other modes (COPYING, MOVING)
                 // In these modes, right-click defaults to setting coord C (Paste target) if no action is active.
                 int effectiveWhich = pkt.which;
-                if (effectiveWhich == 0 && (cfg.placeMode == PlaceMode.COPYING || cfg.placeMode == PlaceMode.MOVING)) {
+                if (effectiveWhich == 0 && cfg.placeMode.isCopyOrMove()) {
                     effectiveWhich = 2;
                 }
 

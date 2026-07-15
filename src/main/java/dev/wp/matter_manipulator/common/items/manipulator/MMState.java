@@ -6,9 +6,7 @@ import dev.wp.matter_manipulator.common.building.Location;
 import dev.wp.matter_manipulator.common.config.MMModConfig;
 import dev.wp.matter_manipulator.common.data.WeightedSpecList;
 import dev.wp.matter_manipulator.common.items.MMUpgrades;
-import dev.wp.matter_manipulator.common.persist.BlockSpecAdapter;
-import dev.wp.matter_manipulator.common.persist.LocationAdapter;
-import dev.wp.matter_manipulator.common.persist.WeightedSpecListAdapter;
+import dev.wp.matter_manipulator.common.persist.PersistAdapters;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
@@ -28,9 +26,12 @@ public class MMState {
     private static final String KEY_JSON_VER = "jsonVersion";
 
     public static final Gson GSON = new GsonBuilder()
-            .registerTypeAdapter(BlockSpec.class, new BlockSpecAdapter())
-            .registerTypeAdapter(Location.class, new LocationAdapter())
-            .registerTypeAdapter(WeightedSpecList.class, new WeightedSpecListAdapter())
+            .registerTypeAdapter(BlockSpec.class, PersistAdapters.BLOCK_SPEC_SERIALIZER)
+            .registerTypeAdapter(BlockSpec.class, PersistAdapters.BLOCK_SPEC_DESERIALIZER)
+            .registerTypeAdapter(Location.class, PersistAdapters.LOCATION_SERIALIZER)
+            .registerTypeAdapter(Location.class, PersistAdapters.LOCATION_DESERIALIZER)
+            .registerTypeAdapter(WeightedSpecList.class, PersistAdapters.WEIGHTED_LIST_SERIALIZER)
+            .registerTypeAdapter(WeightedSpecList.class, PersistAdapters.WEIGHTED_LIST_DESERIALIZER)
             .create();
 
     private final ItemStack stack;
