@@ -27,6 +27,7 @@ import net.minecraftforge.common.util.FakePlayerFactory;
 import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.level.LevelEvent;
+import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.items.IItemHandlerModifiable;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -288,11 +289,21 @@ public class GTCompat {
      * Some proxies (e.g. {@code InsaneMEPatternBufferProxyPartMachine}) schedule a tick task in
      * {@code onLoad()} that calls {@code setBuffer(null)} for freshly placed blocks (their persisted
      * position field is null). This undoes the link set by {@link PatternBufferProxyAnalysis#apply}
-     * during the same tick. Scheduling a re-link 2 ticks later ensures it runs after that stale tick
-     * task, keeping the proxy linked to the master buffer.
+     * during the same tick. Scheduling a re-link 4 ticks later ensures it runs after the tick task
+     * (which fires in {@code ServerTickEvent.END} with cycle-counting delay semantics), keeping the
+     * proxy linked to the master buffer.
      */
     private static void scheduleDelayedLink(ServerLevel level, BlockPos pos, BlockPos master) {
         PENDING_LINKS.add(new PendingLink(level, pos.immutable(), master, level.getGameTime()));
+    }
+
+    private static void processPendingLink(PendingLink link) {
+        ServerLevel level = link.level;
+        if (level.isLoaded(link.pos)
+                && level.getBlockEntity(link.pos) instanceof MetaMachineBlockEntity mbe
+                && mbe.metaMachine instanceof MEPatternBufferProxyPartMachine proxy) {
+            proxy.setBuffer(link.master);
+        }
     }
 
     @SubscribeEvent
@@ -315,20 +326,42 @@ public class GTCompat {
             }
         }
 
-        // Flush pending proxy re-links (2-tick delay to outrun onLoad() tick tasks).
+        // Flush pending proxy re-links (4-tick delay to outrun onLoad() tick tasks).
+        // The tick task from onLoad() goes through ServerTickEvent.END with delay counting
+        // that may consume 2 server-tick cycles. We add 2 extra ticks of margin.
         if (!PENDING_LINKS.isEmpty()) {
             Iterator<PendingLink> it = PENDING_LINKS.iterator();
             while (it.hasNext()) {
                 PendingLink link = it.next();
                 if (link.level != level) continue;
-                if (level.getGameTime() <= link.queuedAt + 1) continue;
+                if (level.getGameTime() <= link.queuedAt + 2) continue;
                 it.remove();
-                if (level.isLoaded(link.pos)
-                        && level.getBlockEntity(link.pos) instanceof MetaMachineBlockEntity mbe
-                        && mbe.metaMachine instanceof MEPatternBufferProxyPartMachine proxy) {
-                    proxy.setBuffer(link.master);
-                }
+                processPendingLink(link);
             }
+        }
+    }
+
+    /**
+     * Server-tick pass: catches any proxy whose onLoad() tick task fires during ServerTickEvent.END
+     * of the same tick that our LevelTickEvent.END pass processed. Because ServerTickEvent.END fires
+     * after LevelTickEvent.END, and tick tasks may process here, this second pass with a shorter
+     * delay ensures we re-link after the tick task's setBuffer(null) rather than before it.
+     */
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void onServerTick(TickEvent.ServerTickEvent event) {
+        if (event.phase != TickEvent.Phase.END || PENDING_LINKS.isEmpty()) return;
+
+        long now = 0;
+        Iterator<PendingLink> it = PENDING_LINKS.iterator();
+        while (it.hasNext()) {
+            PendingLink link = it.next();
+            ServerLevel level = link.level;
+            if (!level.isLoaded(link.pos)) continue;
+            if (now == 0) now = level.getGameTime();
+            // Fire at queuedAt + 2 (same 4-tick delay as the level-tick pass).
+            if (now <= link.queuedAt + 2) continue;
+            it.remove();
+            processPendingLink(link);
         }
     }
 
