@@ -2,6 +2,9 @@ package dev.wp.matter_manipulator.common.data;
 
 import dev.wp.matter_manipulator.common.building.BlockSpec;
 
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -61,6 +64,28 @@ public class WeightedSpecList {
 
     public boolean contains(Block block) {
         return entries.stream().anyMatch(e -> e.spec.state.getBlock() == block);
+    }
+
+    public CompoundTag toNBT() {
+        var list = new ListTag();
+        for (var e : entries) {
+            var tag = new CompoundTag();
+            tag.put("spec", e.spec.toNBT());
+            tag.putInt("weight", e.weight);
+            list.add(tag);
+        }
+        var out = new CompoundTag();
+        out.put("entries", list);
+        return out;
+    }
+
+    public static WeightedSpecList fromNBT(CompoundTag tag) {
+        var list = new WeightedSpecList();
+        for (var e : tag.getList("entries", Tag.TAG_COMPOUND)) {
+            var ct = (CompoundTag) e;
+            list.add(BlockSpec.fromNBT(ct.getCompound("spec")), ct.getInt("weight"));
+        }
+        return list;
     }
 
     public static class WeightedEntry {

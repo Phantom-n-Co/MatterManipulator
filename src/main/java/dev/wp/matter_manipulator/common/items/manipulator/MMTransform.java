@@ -1,6 +1,7 @@
 package dev.wp.matter_manipulator.common.items.manipulator;
 
 import net.minecraft.core.Direction;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.block.Mirror;
 import net.minecraft.world.level.block.Rotation;
 
@@ -60,6 +61,26 @@ public class MMTransform {
      */
     public boolean isReflection() {
         return getRotation().determinant3x3() < 0;
+    }
+
+    public CompoundTag toNBT() {
+        var tag = new CompoundTag();
+        tag.putBoolean("flipX", flipX);
+        tag.putBoolean("flipY", flipY);
+        tag.putBoolean("flipZ", flipZ);
+        tag.putInt("forward", forward.ordinal());
+        tag.putInt("up", up.ordinal());
+        return tag;
+    }
+
+    public static MMTransform fromNBT(CompoundTag tag) {
+        var t = new MMTransform();
+        t.flipX = tag.getBoolean("flipX");
+        t.flipY = tag.getBoolean("flipY");
+        t.flipZ = tag.getBoolean("flipZ");
+        t.forward = Direction.values()[tag.getInt("forward")];
+        t.up = Direction.values()[tag.getInt("up")];
+        return t;
     }
 
     private static final Direction[] HORIZONTALS = { Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST };

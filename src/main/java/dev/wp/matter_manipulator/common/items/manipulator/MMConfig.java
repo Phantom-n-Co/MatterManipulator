@@ -95,6 +95,99 @@ public class MMConfig {
 
     public MMConfig() {}
 
+    public CompoundTag toNBT() {
+        var tag = new CompoundTag();
+        tag.putInt("placeMode", placeMode.ordinal());
+        tag.putInt("removeMode", removeMode.ordinal());
+        tag.putInt("shape", shape.ordinal());
+        if (coordA != null) tag.put("coordA", coordA.toNBT());
+        if (coordB != null) tag.put("coordB", coordB.toNBT());
+        if (coordC != null) tag.put("coordC", coordC.toNBT());
+        if (coordAOffset != null) {
+            var o = new CompoundTag();
+            o.putInt("x", coordAOffset.x);
+            o.putInt("y", coordAOffset.y);
+            o.putInt("z", coordAOffset.z);
+            tag.put("coordAOffset", o);
+        }
+        if (coordBOffset != null) {
+            var o = new CompoundTag();
+            o.putInt("x", coordBOffset.x);
+            o.putInt("y", coordBOffset.y);
+            o.putInt("z", coordBOffset.z);
+            tag.put("coordBOffset", o);
+        }
+        if (coordCOffset != null) {
+            var o = new CompoundTag();
+            o.putInt("x", coordCOffset.x);
+            o.putInt("y", coordCOffset.y);
+            o.putInt("z", coordCOffset.z);
+            tag.put("coordCOffset", o);
+        }
+        tag.put("corners", corners.toNBT());
+        tag.put("edges", edges.toNBT());
+        tag.put("faces", faces.toNBT());
+        tag.put("volumes", volumes.toNBT());
+        tag.put("replaceWhitelist", replaceWhitelist.toNBT());
+        tag.put("replaceWith", replaceWith.toNBT());
+        tag.put("cables", cables.toNBT());
+        if (cableTile != null) tag.putString("cableTile", cableTile);
+        tag.putIntArray("arraySpan", arraySpan);
+        tag.put("transform", transform.toNBT());
+        if (capturedRegion != null) tag.put("capturedRegion", capturedRegion);
+        if (captureOrigin != null) tag.put("captureOrigin", captureOrigin.toNBT());
+        if (action != null) tag.putInt("action", action.ordinal() + 1);
+        tag.putInt("blockSelectMode", blockSelectMode.ordinal());
+        tag.putBoolean("locked", locked);
+        if (replaceCribsWithProxies) tag.putBoolean("replaceCribsWithProxies", true);
+        if (linkExternalHubs) tag.putBoolean("linkExternalHubs", true);
+        if (tetherEmptyHubs) tag.putBoolean("tetherEmptyHubs", true);
+        if (uplink != null) tag.put("uplink", uplink.toNBT());
+        return tag;
+    }
+
+    public static MMConfig fromNBT(CompoundTag tag) {
+        var cfg = new MMConfig();
+        cfg.placeMode = PlaceMode.values()[tag.getInt("placeMode")];
+        cfg.removeMode = RemoveMode.values()[tag.getInt("removeMode")];
+        cfg.shape = ShapeType.values()[tag.getInt("shape")];
+        if (tag.contains("coordA")) cfg.coordA = Location.fromNBT(tag.getCompound("coordA"));
+        if (tag.contains("coordB")) cfg.coordB = Location.fromNBT(tag.getCompound("coordB"));
+        if (tag.contains("coordC")) cfg.coordC = Location.fromNBT(tag.getCompound("coordC"));
+        if (tag.contains("coordAOffset")) {
+            var o = tag.getCompound("coordAOffset");
+            cfg.coordAOffset = new Vector3i(o.getInt("x"), o.getInt("y"), o.getInt("z"));
+        }
+        if (tag.contains("coordBOffset")) {
+            var o = tag.getCompound("coordBOffset");
+            cfg.coordBOffset = new Vector3i(o.getInt("x"), o.getInt("y"), o.getInt("z"));
+        }
+        if (tag.contains("coordCOffset")) {
+            var o = tag.getCompound("coordCOffset");
+            cfg.coordCOffset = new Vector3i(o.getInt("x"), o.getInt("y"), o.getInt("z"));
+        }
+        cfg.corners = WeightedSpecList.fromNBT(tag.getCompound("corners"));
+        cfg.edges = WeightedSpecList.fromNBT(tag.getCompound("edges"));
+        cfg.faces = WeightedSpecList.fromNBT(tag.getCompound("faces"));
+        cfg.volumes = WeightedSpecList.fromNBT(tag.getCompound("volumes"));
+        cfg.replaceWhitelist = WeightedSpecList.fromNBT(tag.getCompound("replaceWhitelist"));
+        cfg.replaceWith = WeightedSpecList.fromNBT(tag.getCompound("replaceWith"));
+        cfg.cables = BlockSpec.fromNBT(tag.getCompound("cables"));
+        if (tag.contains("cableTile")) cfg.cableTile = tag.getString("cableTile");
+        cfg.arraySpan = tag.getIntArray("arraySpan");
+        if (tag.contains("transform")) cfg.transform = MMTransform.fromNBT(tag.getCompound("transform"));
+        if (tag.contains("capturedRegion")) cfg.capturedRegion = tag.getCompound("capturedRegion");
+        if (tag.contains("captureOrigin")) cfg.captureOrigin = Location.fromNBT(tag.getCompound("captureOrigin"));
+        if (tag.contains("action")) cfg.action = PendingAction.values()[tag.getInt("action") - 1];
+        cfg.blockSelectMode = SlotType.values()[tag.getInt("blockSelectMode")];
+        cfg.locked = tag.getBoolean("locked");
+        cfg.replaceCribsWithProxies = tag.getBoolean("replaceCribsWithProxies");
+        cfg.linkExternalHubs = tag.getBoolean("linkExternalHubs");
+        cfg.tetherEmptyHubs = tag.getBoolean("tetherEmptyHubs");
+        if (tag.contains("uplink")) cfg.uplink = Location.fromNBT(tag.getCompound("uplink"));
+        return cfg;
+    }
+
     public MMConfig copy() {
         MMConfig next = new MMConfig();
         next.placeMode = this.placeMode;

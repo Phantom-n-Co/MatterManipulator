@@ -1,38 +1,19 @@
 package dev.wp.matter_manipulator.common.items.manipulator;
 
-import dev.wp.matter_manipulator.MMMod;
-import dev.wp.matter_manipulator.common.building.BlockSpec;
-import dev.wp.matter_manipulator.common.building.Location;
 import dev.wp.matter_manipulator.common.config.MMModConfig;
-import dev.wp.matter_manipulator.common.data.WeightedSpecList;
 import dev.wp.matter_manipulator.common.items.MMUpgrades;
-import dev.wp.matter_manipulator.common.persist.PersistAdapters;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
-
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 
 import java.util.BitSet;
 
 import javax.annotation.Nullable;
 
 public class MMState {
-    private static final int JSON_VERSION = 1;
     private static final String KEY_CHARGE = "charge";
     private static final String KEY_UPGRADES = "upgrades";
     private static final String KEY_CONFIG = "config";
-    private static final String KEY_JSON_VER = "jsonVersion";
-
-    public static final Gson GSON = new GsonBuilder()
-            .registerTypeAdapter(BlockSpec.class, PersistAdapters.BLOCK_SPEC_SERIALIZER)
-            .registerTypeAdapter(BlockSpec.class, PersistAdapters.BLOCK_SPEC_DESERIALIZER)
-            .registerTypeAdapter(Location.class, PersistAdapters.LOCATION_SERIALIZER)
-            .registerTypeAdapter(Location.class, PersistAdapters.LOCATION_DESERIALIZER)
-            .registerTypeAdapter(WeightedSpecList.class, PersistAdapters.WEIGHTED_LIST_SERIALIZER)
-            .registerTypeAdapter(WeightedSpecList.class, PersistAdapters.WEIGHTED_LIST_DESERIALIZER)
-            .create();
 
     private final ItemStack stack;
     private MMConfig config;
@@ -40,18 +21,10 @@ public class MMState {
 
     public MMState(ItemStack stack) {
         this.stack = stack;
-        ensureTag();
     }
 
     private CompoundTag tag() {
         return stack.getOrCreateTag();
-    }
-
-    private void ensureTag() {
-        var t = tag();
-        if (!t.contains(KEY_JSON_VER)) {
-            t.putInt(KEY_JSON_VER, JSON_VERSION);
-        }
     }
 
     // ── Energy ──────────────────────────────────────────────────────────────────
@@ -131,16 +104,11 @@ public class MMState {
     private MMConfig loadConfig() {
         var t = tag();
         if (!t.contains(KEY_CONFIG)) return new MMConfig();
-        try {
-            return GSON.fromJson(t.getString(KEY_CONFIG), MMConfig.class);
-        } catch (Exception e) {
-            MMMod.LOGGER.warn("Failed to load MMConfig from NBT, resetting: {}", e.getMessage());
-            return new MMConfig();
-        }
+        return MMConfig.fromNBT(t.getCompound(KEY_CONFIG));
     }
 
     public void saveConfig(MMConfig cfg) {
-        tag().putString(KEY_CONFIG, GSON.toJson(cfg));
+        tag().put(KEY_CONFIG, cfg.toNBT());
     }
 
     /** Convenience: get config, apply a mutation, save, and mark dirty. */

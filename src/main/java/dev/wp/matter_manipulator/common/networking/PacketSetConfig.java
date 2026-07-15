@@ -3,6 +3,7 @@ package dev.wp.matter_manipulator.common.networking;
 import dev.wp.matter_manipulator.common.items.manipulator.MMConfig;
 import dev.wp.matter_manipulator.common.items.manipulator.MMState;
 
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
@@ -10,18 +11,18 @@ import net.minecraftforge.network.NetworkEvent;
 import java.util.function.Supplier;
 
 public class PacketSetConfig {
-    public final String configJson;
+    public final CompoundTag configNbt;
 
-    public PacketSetConfig(String configJson) {
-        this.configJson = configJson;
+    public PacketSetConfig(CompoundTag configNbt) {
+        this.configNbt = configNbt;
     }
 
     public static void encode(PacketSetConfig pkt, FriendlyByteBuf buf) {
-        buf.writeUtf(pkt.configJson, 32768);
+        buf.writeNbt(pkt.configNbt);
     }
 
     public static PacketSetConfig decode(FriendlyByteBuf buf) {
-        return new PacketSetConfig(buf.readUtf(32768));
+        return new PacketSetConfig(buf.readNbt());
     }
 
     public static void handle(PacketSetConfig pkt, Supplier<NetworkEvent.Context> ctx) {
@@ -30,14 +31,10 @@ public class PacketSetConfig {
             if (player == null) return;
             var held = player.getMainHandItem();
             var state = MMState.ofHeld(held);
-            if (state == null) return;
+            if (state == null || pkt.configNbt == null) return;
 
-            try {
-                MMConfig cfg = MMState.GSON.fromJson(pkt.configJson, MMConfig.class);
-                state.saveConfig(cfg);
-            } catch (Exception e) {
-                // Ignore bad packets
-            }
+            MMConfig cfg = MMConfig.fromNBT(pkt.configNbt);
+            state.saveConfig(cfg);
         });
         ctx.get().setPacketHandled(true);
     }
