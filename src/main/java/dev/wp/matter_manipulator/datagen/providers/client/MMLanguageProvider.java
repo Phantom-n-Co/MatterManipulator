@@ -48,7 +48,6 @@ public class MMLanguageProvider extends LanguageProvider {
         add(itemKey("plan_token.named"), "Build Plan (%s blocks)");
 
         add("key.categories.matter_manipulator", "Matter Manipulator");
-        add(keyKey("ctrl"), "Control");
         add(keyKey("lock_positions"), "Lock Position");
         add(keyKey("copy"), "Mark Copy");
         add(keyKey("cut"), "Mark Cut");

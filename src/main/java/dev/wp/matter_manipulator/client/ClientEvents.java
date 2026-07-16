@@ -142,12 +142,6 @@ public class ClientEvents {
             return;
         }
 
-        // If the CONTROL modifier is bound it must be held; unbinding it makes the keys work bare.
-        if (!MMKeyMappings.CONTROL.isUnbound() && !MMKeyMappings.CONTROL.isDown()) {
-            drainClicks();
-            return;
-        }
-
         if (MMKeyMappings.LOCK_POSITIONS.consumeClick()) {
             MMNetwork.CHANNEL.sendToServer(new PacketConfigAction(PacketConfigAction.Action.TOGGLE_LOCK));
             playActionSound(1.0f);
