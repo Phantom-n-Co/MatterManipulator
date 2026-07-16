@@ -8,6 +8,8 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.fluids.FluidStack;
 
+import java.util.function.BiPredicate;
+
 import javax.annotation.Nullable;
 
 /**
@@ -58,7 +60,7 @@ public class MMInventory {
      */
     public void consume(ItemStack required) {
         if (required.isEmpty() || player.isCreative()) return;
-        int remaining = required.getCount() - takeFromInventory(required, required.getCount());
+        int remaining = required.getCount() - takeFromInventory(required, required.getCount(), ItemStack::isSameItemSameTags);
         if (remaining > 0 && uplinkActive()) {
             remaining -= (int) AECompat.uplinkExtract(level, uplink, required, remaining);
         }
@@ -73,7 +75,7 @@ public class MMInventory {
     public int consumeUpTo(ItemStack proto, int max) {
         if (max <= 0 || proto.isEmpty()) return 0;
         if (player.isCreative()) return max;
-        int taken = takeFromInventory(proto, max);
+        int taken = takeFromInventory(proto, max, ItemStack::isSameItemSameTags);
         if (taken < max && uplinkActive()) {
             taken += (int) AECompat.uplinkExtract(level, uplink, proto, max - taken);
         }
@@ -98,36 +100,20 @@ public class MMInventory {
     public int consumeUpToByType(ItemStack proto, int max) {
         if (max <= 0 || proto.isEmpty()) return 0;
         if (player.isCreative()) return max;
-        int taken = takeFromInventoryByType(proto, max);
+        int taken = takeFromInventory(proto, max, (s, p) -> !s.isEmpty() && s.getItem() == p.getItem());
         if (taken < max && uplinkActive()) {
             taken += (int) AECompat.uplinkExtractByType(level, uplink, proto, max - taken);
         }
         return taken;
     }
 
-    /** Removes up to {@code max} of {@code required} from the player inventory; returns the amount taken. */
-    private int takeFromInventory(ItemStack required, int max) {
+    /** Removes up to {@code max} items matching {@code matcher} from the player inventory; returns amount taken. */
+    private int takeFromInventory(ItemStack proto, int max, BiPredicate<ItemStack, ItemStack> matcher) {
         int remaining = max;
         var inv = player.getInventory();
         for (int i = 0; i < inv.getContainerSize() && remaining > 0; i++) {
             var stack = inv.getItem(i);
-            if (ItemStack.isSameItemSameTags(stack, required)) {
-                int take = Math.min(remaining, stack.getCount());
-                stack.shrink(take);
-                remaining -= take;
-                if (stack.isEmpty()) inv.setItem(i, ItemStack.EMPTY);
-            }
-        }
-        return max - remaining;
-    }
-
-    /** Removes up to {@code max} items matching {@code proto} by type (ignoring NBT); returns amount taken. */
-    private int takeFromInventoryByType(ItemStack proto, int max) {
-        int remaining = max;
-        var inv = player.getInventory();
-        for (int i = 0; i < inv.getContainerSize() && remaining > 0; i++) {
-            var stack = inv.getItem(i);
-            if (!stack.isEmpty() && stack.getItem() == proto.getItem()) {
+            if (matcher.test(stack, proto)) {
                 int take = Math.min(remaining, stack.getCount());
                 stack.shrink(take);
                 remaining -= take;

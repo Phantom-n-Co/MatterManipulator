@@ -6,10 +6,8 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 
-import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.mojang.blaze3d.vertex.VertexFormat;
 import org.joml.Matrix4f;
 
 /**
@@ -66,7 +64,7 @@ public class BoxRenderer {
         float t = (System.currentTimeMillis() % 2500) / 1000f / 2.5f * 2f * (float) Math.PI;
 
         Matrix4f pose = ps.last().pose();
-        VertexConsumer vc = Minecraft.getInstance().renderBuffers().bufferSource().getBuffer(MMRenderType.FANCY_BOX);
+        VertexConsumer vc = Minecraft.getInstance().renderBuffers().bufferSource().getBuffer(MMRenderTypes.FANCY_BOX);
 
         // Only draw the near walls (the far ones are culled): the near wall faces the camera, and the
         // hints render on top anyway, so no wall is left veiling the contents.
@@ -97,7 +95,7 @@ public class BoxRenderer {
 
     /** Draws every box queued since the last flush as a single batch. */
     public static void flush() {
-        Minecraft.getInstance().renderBuffers().bufferSource().endBatch(MMRenderType.FANCY_BOX);
+        Minecraft.getInstance().renderBuffers().bufferSource().endBatch(MMRenderTypes.FANCY_BOX);
     }
 
     /** Subdivides one face (origin + two edge vectors, each with a UV delta) into a grid of quads. */
@@ -147,35 +145,5 @@ public class BoxRenderer {
         double len = Math.sqrt(ex * ex + ey * ey + ez * ez);
         if (len < MIN_SUBDIVIDE_LEN) return 1;
         return Math.min(MAX_STEPS, (int) Math.ceil(len * STEPS_PER_BLOCK));
-    }
-
-    /** Translucent, double-sided, no depth-write RenderType on the vanilla {@code position_color} shader. */
-    private static final class MMRenderType extends RenderType {
-        private MMRenderType(
-                String name,
-                VertexFormat fmt,
-                VertexFormat.Mode mode,
-                int size,
-                boolean crumbling,
-                boolean sort,
-                Runnable setup,
-                Runnable clear) {
-            super(name, fmt, mode, size, crumbling, sort, setup, clear);
-        }
-
-        static final RenderType FANCY_BOX = create(
-                "matter_manipulator:fancy_box",
-                DefaultVertexFormat.POSITION_COLOR,
-                VertexFormat.Mode.QUADS,
-                1536,
-                false,
-                true,
-                CompositeState.builder()
-                        .setShaderState(POSITION_COLOR_SHADER)
-                        .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
-                        .setCullState(NO_CULL)
-                        .setDepthTestState(LEQUAL_DEPTH_TEST)
-                        .setWriteMaskState(COLOR_WRITE)
-                        .createCompositeState(false));
     }
 }

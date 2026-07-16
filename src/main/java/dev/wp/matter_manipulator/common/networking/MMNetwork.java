@@ -30,12 +30,7 @@ public class MMNetwork {
                 PacketSetPendingAction::encode,
                 PacketSetPendingAction::decode,
                 PacketSetPendingAction::handle);
-        reg(
-                PacketRotateTransform.class,
-                PacketRotateTransform::encode,
-                PacketRotateTransform::decode,
-                PacketRotateTransform::handle);
-        reg(PacketToggleFlip.class, PacketToggleFlip::encode, PacketToggleFlip::decode, PacketToggleFlip::handle);
+        reg(PacketTransformAction.class, PacketTransformAction::encode, PacketTransformAction::decode, PacketTransformAction::handle);
         reg(PacketSetArraySpan.class, PacketSetArraySpan::encode, PacketSetArraySpan::decode, PacketSetArraySpan::handle);
         reg(PacketMMBPressed.class, PacketMMBPressed::encode, PacketMMBPressed::decode, PacketMMBPressed::handle);
         reg(PacketMoveCoords.class, PacketMoveCoords::encode, PacketMoveCoords::decode, PacketMoveCoords::handle);

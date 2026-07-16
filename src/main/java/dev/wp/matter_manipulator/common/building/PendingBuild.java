@@ -279,7 +279,8 @@ public class PendingBuild {
             }
 
             // Placement dependency (e.g. a torch needs a wall)
-            if (!next.spec.state.canSurvive(new SimulatedLevelReader(level, pos), pos)) {
+            // ponytail: SimulatedLevelReader inlined — canSurvive checks neighbors, not pos itself, so passing level directly is equivalent
+            if (!next.spec.state.canSurvive(level, pos)) {
                 queue.addLast(queue.removeFirst());
                 if (++shuffleCount > queue.size()) {
                     fullCycle = true;

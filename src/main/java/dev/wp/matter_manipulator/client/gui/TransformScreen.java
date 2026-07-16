@@ -8,10 +8,9 @@ import dev.wp.matter_manipulator.common.items.manipulator.MMTransform;
 import dev.wp.matter_manipulator.common.items.manipulator.MMTypes.PlaceMode;
 import dev.wp.matter_manipulator.common.networking.MMNetwork;
 import dev.wp.matter_manipulator.common.networking.PacketConfigAction;
-import dev.wp.matter_manipulator.common.networking.PacketRotateTransform;
 import dev.wp.matter_manipulator.common.networking.PacketSetArraySpan;
 import dev.wp.matter_manipulator.common.networking.PacketSetCoordDirect;
-import dev.wp.matter_manipulator.common.networking.PacketToggleFlip;
+import dev.wp.matter_manipulator.common.networking.PacketTransformAction;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -131,12 +130,12 @@ public class TransformScreen extends Screen {
     private void addRotateRow(int x, int y, String axis, Direction dir) {
         addRenderableWidget(Button.builder(
                 Component.translatable(MODID + ".transform.button.rotate_" + axis + "-"),
-                b -> MMNetwork.CHANNEL.sendToServer(new PacketRotateTransform(dir, false)))
+                b -> MMNetwork.CHANNEL.sendToServer(new PacketTransformAction(PacketTransformAction.Action.valueOf("ROTATE_" + axis.toUpperCase() + "_NEG"))))
                 .bounds(x, y, 62, 18)
                 .build());
         addRenderableWidget(Button.builder(
                 Component.translatable(MODID + ".transform.button.rotate_" + axis + "+"),
-                b -> MMNetwork.CHANNEL.sendToServer(new PacketRotateTransform(dir, true)))
+                b -> MMNetwork.CHANNEL.sendToServer(new PacketTransformAction(PacketTransformAction.Action.valueOf("ROTATE_" + axis.toUpperCase() + "_POS"))))
                 .bounds(x + 68, y, 62, 18)
                 .build());
     }
@@ -144,7 +143,7 @@ public class TransformScreen extends Screen {
     private void addFlipButton(int x, int y, String axis, int flag) {
         addRenderableWidget(Button.builder(
                 Component.translatable(MODID + ".transform.button.flip_" + axis),
-                b -> MMNetwork.CHANNEL.sendToServer(new PacketToggleFlip(flag)))
+                b -> MMNetwork.CHANNEL.sendToServer(new PacketTransformAction(PacketTransformAction.Action.valueOf("FLIP_" + axis.toUpperCase()))))
                 .bounds(x, y, 40, 18)
                 .build());
     }

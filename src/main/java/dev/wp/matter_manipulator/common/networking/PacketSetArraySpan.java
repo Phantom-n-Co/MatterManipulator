@@ -16,29 +16,24 @@ public class PacketSetArraySpan {
         this.value = value;
     }
 
-    public PacketSetArraySpan(FriendlyByteBuf buf) {
-        this.index = buf.readInt();
-        this.value = buf.readInt();
-    }
-
     public static PacketSetArraySpan decode(FriendlyByteBuf buf) {
-        return new PacketSetArraySpan(buf);
+        return new PacketSetArraySpan(buf.readInt(), buf.readInt());
     }
 
-    public void encode(FriendlyByteBuf buf) {
-        buf.writeInt(index);
-        buf.writeInt(value);
+    public static void encode(PacketSetArraySpan pkt, FriendlyByteBuf buf) {
+        buf.writeInt(pkt.index);
+        buf.writeInt(pkt.value);
     }
 
-    public void handle(Supplier<NetworkEvent.Context> ctx) {
+    public static void handle(PacketSetArraySpan pkt, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
             var player = ctx.get().getSender();
             if (player == null) return;
             var stack = player.getMainHandItem();
             var state = MMState.of(stack);
-            if (index >= 0 && index < 3) {
+            if (pkt.index >= 0 && pkt.index < 3) {
                 var cfg = state.mutate();
-                cfg.arraySpan[index] = value;
+                cfg.arraySpan[pkt.index] = pkt.value;
                 state.saveIfDirty();
             }
         });

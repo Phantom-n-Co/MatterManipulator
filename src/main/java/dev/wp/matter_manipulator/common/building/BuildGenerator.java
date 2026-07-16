@@ -2,10 +2,7 @@ package dev.wp.matter_manipulator.common.building;
 
 import dev.wp.matter_manipulator.common.building.analysis.ITileAnalysis;
 import dev.wp.matter_manipulator.common.building.shapes.ShapeBlock;
-import dev.wp.matter_manipulator.common.building.shapes.ShapeCube;
-import dev.wp.matter_manipulator.common.building.shapes.ShapeCylinder;
-import dev.wp.matter_manipulator.common.building.shapes.ShapeLine;
-import dev.wp.matter_manipulator.common.building.shapes.ShapeSphere;
+import dev.wp.matter_manipulator.common.building.shapes.Shapes;
 import dev.wp.matter_manipulator.common.compat.CompatRegistry;
 import dev.wp.matter_manipulator.common.compat.ExtendedAECompat;
 import dev.wp.matter_manipulator.common.compat.GTCompat;
@@ -55,12 +52,12 @@ public class BuildGenerator {
         if (cfg.coordA == null || cfg.coordB == null) return Collections.emptyList();
 
         List<ShapeBlock> shapeBlocks = switch (cfg.shape) {
-            case LINE -> ShapeLine.generate(cfg.coordA.pos, cfg.coordB.pos);
-            case CUBE -> ShapeCube.generate(cfg.coordA.pos, cfg.coordB.pos);
-            case SPHERE -> ShapeSphere.generate(cfg.coordA.pos, cfg.coordB.pos);
+            case LINE -> Shapes.line(cfg.coordA.pos, cfg.coordB.pos);
+            case CUBE -> Shapes.cube(cfg.coordA.pos, cfg.coordB.pos);
+            case SPHERE -> Shapes.sphere(cfg.coordA.pos, cfg.coordB.pos);
             case CYLINDER -> {
                 if (cfg.coordC == null) yield Collections.emptyList();
-                yield ShapeCylinder.generate(cfg.coordA.pos, cfg.coordB.pos, cfg.coordC.pos);
+                yield Shapes.cylinder(cfg.coordA.pos, cfg.coordB.pos, cfg.coordC.pos);
             }
         };
 
@@ -264,7 +261,7 @@ public class BuildGenerator {
         Vector3i pinnedB = MMConfig.pinToAxes(
                 new Vector3i(a.getX(), a.getY(), a.getZ()), new Vector3i(b.getX(), b.getY(), b.getZ()));
 
-        var line = ShapeLine.generate(a, new BlockPos(pinnedB.x, pinnedB.y, pinnedB.z));
+        var line = Shapes.line(a, new BlockPos(pinnedB.x, pinnedB.y, pinnedB.z));
         var blocks = new ArrayList<PendingBlock>();
         for (var sb : line) {
             var pb = new PendingBlock(sb.pos(), cfg.cables);

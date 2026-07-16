@@ -5,13 +5,9 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.server.ServerLifecycleHooks;
 
 import java.util.Objects;
-
-import javax.annotation.Nullable;
 
 public class Location {
     public ResourceKey<Level> dimension;
@@ -28,24 +24,6 @@ public class Location {
 
     public Location(int x, int y, int z) {
         this(Level.OVERWORLD, new BlockPos(x, y, z));
-    }
-
-    public Location offset(BlockPos delta) {
-        return new Location(dimension, pos.offset(delta));
-    }
-
-    public double distanceTo(Location other) {
-        double dx = pos.getX() - other.pos.getX();
-        double dy = pos.getY() - other.pos.getY();
-        double dz = pos.getZ() - other.pos.getZ();
-        return Math.sqrt(dx * dx + dy * dy + dz * dz);
-    }
-
-    @Nullable
-    public ServerLevel getLevel() {
-        var server = ServerLifecycleHooks.getCurrentServer();
-        if (server == null) return null;
-        return server.getLevel(dimension);
     }
 
     public CompoundTag toNBT() {

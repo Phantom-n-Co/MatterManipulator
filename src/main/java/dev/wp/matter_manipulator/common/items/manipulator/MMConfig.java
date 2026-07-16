@@ -19,6 +19,8 @@ import org.joml.Vector3i;
 import java.util.Arrays;
 import java.util.Objects;
 
+import javax.annotation.Nullable;
+
 public class MMConfig {
     public PlaceMode placeMode = PlaceMode.GEOMETRY;
     public RemoveMode removeMode = RemoveMode.NONE;
@@ -108,27 +110,9 @@ public class MMConfig {
         if (coordA != null) tag.put("coordA", coordA.toNBT());
         if (coordB != null) tag.put("coordB", coordB.toNBT());
         if (coordC != null) tag.put("coordC", coordC.toNBT());
-        if (coordAOffset != null) {
-            var o = new CompoundTag();
-            o.putInt("x", coordAOffset.x);
-            o.putInt("y", coordAOffset.y);
-            o.putInt("z", coordAOffset.z);
-            tag.put("coordAOffset", o);
-        }
-        if (coordBOffset != null) {
-            var o = new CompoundTag();
-            o.putInt("x", coordBOffset.x);
-            o.putInt("y", coordBOffset.y);
-            o.putInt("z", coordBOffset.z);
-            tag.put("coordBOffset", o);
-        }
-        if (coordCOffset != null) {
-            var o = new CompoundTag();
-            o.putInt("x", coordCOffset.x);
-            o.putInt("y", coordCOffset.y);
-            o.putInt("z", coordCOffset.z);
-            tag.put("coordCOffset", o);
-        }
+        putVec3i(tag, "coordAOffset", coordAOffset);
+        putVec3i(tag, "coordBOffset", coordBOffset);
+        putVec3i(tag, "coordCOffset", coordCOffset);
         tag.put("corners", corners.toNBT());
         tag.put("edges", edges.toNBT());
         tag.put("faces", faces.toNBT());
@@ -159,18 +143,9 @@ public class MMConfig {
         if (tag.contains("coordA")) cfg.coordA = Location.fromNBT(tag.getCompound("coordA"));
         if (tag.contains("coordB")) cfg.coordB = Location.fromNBT(tag.getCompound("coordB"));
         if (tag.contains("coordC")) cfg.coordC = Location.fromNBT(tag.getCompound("coordC"));
-        if (tag.contains("coordAOffset")) {
-            var o = tag.getCompound("coordAOffset");
-            cfg.coordAOffset = new Vector3i(o.getInt("x"), o.getInt("y"), o.getInt("z"));
-        }
-        if (tag.contains("coordBOffset")) {
-            var o = tag.getCompound("coordBOffset");
-            cfg.coordBOffset = new Vector3i(o.getInt("x"), o.getInt("y"), o.getInt("z"));
-        }
-        if (tag.contains("coordCOffset")) {
-            var o = tag.getCompound("coordCOffset");
-            cfg.coordCOffset = new Vector3i(o.getInt("x"), o.getInt("y"), o.getInt("z"));
-        }
+        cfg.coordAOffset = getVec3i(tag, "coordAOffset");
+        cfg.coordBOffset = getVec3i(tag, "coordBOffset");
+        cfg.coordCOffset = getVec3i(tag, "coordCOffset");
         cfg.corners = WeightedSpecList.fromNBT(tag.getCompound("corners"));
         cfg.edges = WeightedSpecList.fromNBT(tag.getCompound("edges"));
         cfg.faces = WeightedSpecList.fromNBT(tag.getCompound("faces"));
@@ -201,9 +176,9 @@ public class MMConfig {
         next.coordA = this.coordA;
         next.coordB = this.coordB;
         next.coordC = this.coordC;
-        next.coordAOffset = this.coordAOffset != null ? new Vector3i(this.coordAOffset) : null;
-        next.coordBOffset = this.coordBOffset != null ? new Vector3i(this.coordBOffset) : null;
-        next.coordCOffset = this.coordCOffset != null ? new Vector3i(this.coordCOffset) : null;
+        next.coordAOffset = copyVec3i(this.coordAOffset);
+        next.coordBOffset = copyVec3i(this.coordBOffset);
+        next.coordCOffset = copyVec3i(this.coordCOffset);
         next.corners = this.corners;
         next.edges = this.edges;
         next.faces = this.faces;
@@ -395,5 +370,27 @@ public class MMConfig {
 
     public void rotate(Direction axis, int amount) {
         transform.rotate(axis, amount);
+    }
+
+    private static void putVec3i(CompoundTag tag, String key, @Nullable Vector3i v) {
+        if (v != null) {
+            var o = new CompoundTag();
+            o.putInt("x", v.x);
+            o.putInt("y", v.y);
+            o.putInt("z", v.z);
+            tag.put(key, o);
+        }
+    }
+
+    @Nullable
+    private static Vector3i getVec3i(CompoundTag tag, String key) {
+        if (!tag.contains(key)) return null;
+        var o = tag.getCompound(key);
+        return new Vector3i(o.getInt("x"), o.getInt("y"), o.getInt("z"));
+    }
+
+    @Nullable
+    private static Vector3i copyVec3i(@Nullable Vector3i v) {
+        return v != null ? new Vector3i(v) : null;
     }
 }
