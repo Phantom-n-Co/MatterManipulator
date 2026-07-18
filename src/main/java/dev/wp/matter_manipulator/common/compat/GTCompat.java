@@ -55,6 +55,8 @@ import com.gregtechceu.gtceu.api.machine.feature.IVoidable;
 import com.gregtechceu.gtceu.api.machine.feature.multiblock.IDistinctPart;
 import com.gregtechceu.gtceu.api.machine.feature.multiblock.IMultiController;
 import com.gregtechceu.gtceu.api.machine.trait.MachineTrait;
+import com.gregtechceu.gtceu.api.pattern.MultiblockState;
+import com.gregtechceu.gtceu.api.pattern.MultiblockWorldSavedData;
 import com.gregtechceu.gtceu.api.pattern.util.RelativeDirection;
 import com.gregtechceu.gtceu.common.data.GTItems;
 import com.gregtechceu.gtceu.common.item.IntCircuitBehaviour;
@@ -774,8 +776,13 @@ public class GTCompat {
                 rlm.setActiveRecipeType(semantic.getInt("recipeType"));
             if (m instanceof IDistinctPart dp && semantic.contains("distinct"))
                 dp.setDistinct(semantic.getBoolean("distinct"));
-            if (m instanceof IMultiController mc && semantic.contains("batch"))
+            if (m instanceof IMultiController mc && semantic.contains("batch")) {
                 mc.setBatchEnabled(semantic.getBoolean("batch"));
+                try {
+                    mc.getMultiblockState().setError(MultiblockState.UNLOAD_ERROR);
+                    MultiblockWorldSavedData.getOrCreate(ctx.level()).addAsyncLogic(mc);
+                } catch (Throwable ignored) {}
+            }
             if (m instanceof IMEStockingPart sp) {
                 if (semantic.contains("minStackSize")) sp.setMinStackSize(semantic.getInt("minStackSize"));
                 if (semantic.contains("ticksPerCycle")) sp.setTicksPerCycle(semantic.getInt("ticksPerCycle"));
