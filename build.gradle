@@ -193,7 +193,7 @@ dependencies {
     compileOnly("org.jetbrains:annotations:26.0.2-1")
     annotationProcessor('org.spongepowered:mixin:0.8.5:processor')
 
-    modRuntimeOnly("dev.emi:emi-forge:${emi_version}+${minecraft_version}")
+    modImplementation("dev.emi:emi-forge:${emi_version}+${minecraft_version}")
     modRuntimeOnly("maven.modrinth:jade:${jade_version}")
 
     jarJar(modImplementation("brachy.modularui:modularui-mc${minecraft_version}:${mui_version}"))
