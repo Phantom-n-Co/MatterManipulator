@@ -29,6 +29,7 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.level.LevelEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.items.IItemHandlerModifiable;
 import net.minecraftforge.registries.ForgeRegistries;
 
@@ -57,6 +58,7 @@ import com.gregtechceu.gtceu.api.machine.trait.MachineTrait;
 import com.gregtechceu.gtceu.api.pattern.util.RelativeDirection;
 import com.gregtechceu.gtceu.common.data.GTItems;
 import com.gregtechceu.gtceu.common.item.IntCircuitBehaviour;
+import com.gregtechceu.gtceu.common.machine.multiblock.part.FluidHatchPartMachine;
 import com.gregtechceu.gtceu.integration.ae2.machine.MEPatternBufferPartMachine;
 import com.gregtechceu.gtceu.integration.ae2.machine.MEPatternBufferProxyPartMachine;
 import com.gregtechceu.gtceu.integration.ae2.machine.feature.IGridConnectedMachine;
@@ -756,6 +758,10 @@ public class GTCompat {
                 if (semantic.contains("outFluidAllowIn"))
                     af.setAllowInputFromOutputSideFluids(semantic.getBoolean("outFluidAllowIn"));
             }
+            if (m instanceof FluidHatchPartMachine fh && semantic.contains("lockedFluid")) {
+                FluidStack locked = FluidStack.loadFluidStackFromNBT(semantic.getCompound("lockedFluid"));
+                fh.tank.setLocked(!locked.isEmpty(), locked);
+            }
             if (m instanceof IMufflableMachine mm && semantic.contains("muffled"))
                 mm.setMuffled(semantic.getBoolean("muffled"));
             if (m instanceof IHasCircuitSlot cm && semantic.contains("circuit"))
@@ -925,6 +931,9 @@ public class GTCompat {
                 t.putString("outFluidSide", af.getOutputFacingFluids().getSerializedName());
                 t.putBoolean("outFluidAuto", af.isAutoOutputFluids());
                 t.putBoolean("outFluidAllowIn", af.isAllowInputFromOutputSideFluids());
+            }
+            if (m instanceof FluidHatchPartMachine fh && fh.tank != null) {
+                t.put("lockedFluid", fh.tank.getLockedFluid().getFluid().writeToNBT(new CompoundTag()));
             }
             if (m instanceof IMufflableMachine mm) t.putBoolean("muffled", mm.isMuffled());
             if (m instanceof IHasCircuitSlot cm && cm.isCircuitSlotEnabled()) {
